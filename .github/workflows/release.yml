@@ -37,4 +37,7 @@ jobs:
           files: |
             dist/plot-go_*
             dist/SHA256SUMS
+            dist/LICENSE
+            dist/NOTICE
+            dist/MustRead.html
           generate_release_notes: true

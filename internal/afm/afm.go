@@ -13,8 +13,16 @@ import (
 	"sync"
 )
 
-//go:embed adobe-core14/*.afm
+//go:embed adobe-core14/*.afm adobe-core14/MustRead.html
 var files embed.FS
+
+// AdobeNotice is Adobe's MustRead.html, whose terms require it to go with
+// the AFM files wherever they are distributed - they are embedded in every
+// plot-go binary, so this is too (plot-go -notices prints it).
+func AdobeNotice() string {
+	b, _ := files.ReadFile("adobe-core14/MustRead.html")
+	return string(b)
+}
 
 // Box is an ink box in units of the font size (1 = one em).
 type Box struct {

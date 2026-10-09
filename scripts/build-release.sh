@@ -21,4 +21,6 @@ for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; d
     go build -trimpath -ldflags "-s -w -X main.version=$version" -o "$out" ./cmd/plot-go
   echo "$out"
 done
+# the notices go with the binaries (the binaries also carry them: -notices)
+cp LICENSE NOTICE internal/afm/adobe-core14/MustRead.html dist/
 (cd dist && sha256sum plot-go_* > SHA256SUMS)

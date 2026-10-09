@@ -15,6 +15,7 @@
 package main
 
 import (
+	_ "embed"
 	"flag"
 	"fmt"
 	"io"
@@ -25,11 +26,26 @@ import (
 	"github.com/fitteia/OneFit-Engine-plot/agr"
 	"github.com/fitteia/OneFit-Engine-plot/backend"
 	"github.com/fitteia/OneFit-Engine-plot/draw"
+	"github.com/fitteia/OneFit-Engine-plot/internal/afm"
 	"github.com/fitteia/OneFit-Engine-plot/render"
 )
 
 // version is set by scripts/build-release.sh (-ldflags -X main.version=...).
 var version = "dev"
+
+// The repository's LICENSE and NOTICE, kept in step by
+// TestNoticesMatchTheRepository, travel inside the binary with Adobe's
+// notice for the font metrics it embeds: plot-go -notices prints them.
+//
+//go:embed NOTICE
+var notice string
+
+//go:embed LICENSE
+var license string
+
+func printNotices() {
+	fmt.Print(notice, "\n", "---- Adobe Core 14 AFM files (embedded font metrics): MustRead.html ----\n\n", afm.AdobeNotice(), "\n\n---- LICENSE ----\n\n", license)
+}
 
 type writer func(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) error
 
@@ -47,11 +63,16 @@ func main() {
 	format := flag.String("format", "", "pdf, eps or svg (default: from -o's extension, else pdf)")
 	quiet := flag.Bool("q", false, "do not print warnings")
 	showVersion := flag.Bool("version", false, "print the version and exit")
+	showNotices := flag.Bool("notices", false, "print the license and third-party notices and exit")
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, "usage: plot-go [-o OUT] [-format pdf|eps|svg] [-q] FILE.agr")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+	if *showNotices {
+		printNotices()
+		return
+	}
 	if *showVersion {
 		fmt.Println("plot-go", version)
 		return
