@@ -29,3 +29,9 @@ Font Name Liberation. They are licensed under the SIL Open Font License
 1.1 (internal/glyph/OFL.txt); the go-fonts package under a BSD license
 (internal/glyph/go-fonts-LICENSE). plot-go -notices prints both. The fonts
 are used unmodified and are not sold on their own.
+
+Where the URW base-35 fonts are installed as OpenType (Debian's
+fonts-urw-base35, a Ghostscript dependency), plot-go reads their outlines
+from the system at run time instead, to draw the very glyphs Ghostscript
+puts in OneFit's PDFs. Those fonts (AGPL-3 with a font exception) are not
+part of plot-go and are not distributed with it.

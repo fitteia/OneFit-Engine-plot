@@ -1,16 +1,25 @@
 // Package glyph gives the outlines of characters in the standard fonts, so
 // text can be drawn as shapes - the same in every browser, whatever fonts
-// it has. The standard fonts are stood in for by the Liberation fonts,
-// whose advance widths are those of Helvetica, Times and Courier; the
-// Symbol font's letters are drawn as the Greek letters of Liberation Serif.
+// it has.
+//
+// Where the URW base-35 fonts are installed as OpenType (Debian's
+// fonts-urw-base35, which Ghostscript needs), it uses them: the very glyphs
+// Ghostscript embeds when epstopdf turns OneFit's EPS into its PDF, so the
+// preview is the PDF. They are read at run time from the system, never
+// shipped. Otherwise it uses the Liberation fonts it carries, whose advance
+// widths are those of Helvetica, Times and Courier; the Symbol font's
+// letters are then Liberation Serif's Greek. OFE_URW_FONTS names another
+// directory holding the URW OpenType files.
 //
 // The Liberation fonts are distributed under the SIL Open Font License 1.1
-// (see Notice).
+// (see FontLicense).
 package glyph
 
 import (
 	_ "embed"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/fitteia/OneFit-Engine-plot/internal/afm"
@@ -103,11 +112,67 @@ type Seg struct {
 	Pts [][2]float64
 }
 
+// urwFiles: each standard font's URW base-35 OpenType file.
+var urwFiles = map[string]string{
+	"Helvetica":             "NimbusSans-Regular.otf",
+	"Helvetica-Bold":        "NimbusSans-Bold.otf",
+	"Helvetica-Oblique":     "NimbusSans-Italic.otf",
+	"Helvetica-BoldOblique": "NimbusSans-BoldItalic.otf",
+	"Times-Roman":           "NimbusRoman-Regular.otf",
+	"Times-Bold":            "NimbusRoman-Bold.otf",
+	"Times-Italic":          "NimbusRoman-Italic.otf",
+	"Times-BoldItalic":      "NimbusRoman-BoldItalic.otf",
+	"Courier":               "NimbusMonoPS-Regular.otf",
+	"Courier-Bold":          "NimbusMonoPS-Bold.otf",
+	"Courier-Oblique":       "NimbusMonoPS-Italic.otf",
+	"Courier-BoldOblique":   "NimbusMonoPS-BoldItalic.otf",
+	"Symbol":                "StandardSymbolsPS.otf",
+}
+
+// urwDirs are searched in order, after $OFE_URW_FONTS.
+var urwDirs = []string{
+	"/usr/share/fonts/opentype/urw-base35",
+	"/usr/local/share/fonts/opentype/urw-base35",
+	"/usr/share/fonts/urw-base35",
+}
+
 type font struct {
 	f   *sfnt.Font
 	upm float64
+	urw bool // a URW font: Symbol is looked up by its own codes
 	mu  sync.Mutex
 	buf sfnt.Buffer
+}
+
+// Source is where a standard font's outlines come from: the URW file's
+// path, or "Liberation" (the fonts plot-go carries).
+func Source(name string) string {
+	f, err := load(name)
+	if err != nil {
+		return ""
+	}
+	if f.urw {
+		return urwPath(name)
+	}
+	return "Liberation"
+}
+
+func urwPath(name string) string {
+	file, ok := urwFiles[name]
+	if !ok {
+		return ""
+	}
+	dirs := urwDirs
+	if d := os.Getenv("OFE_URW_FONTS"); d != "" {
+		dirs = append([]string{d}, dirs...)
+	}
+	for _, d := range dirs {
+		p := filepath.Join(d, file)
+		if st, err := os.Stat(p); err == nil && st.Mode().IsRegular() {
+			return p
+		}
+	}
+	return ""
 }
 
 var (
@@ -120,6 +185,15 @@ func load(name string) (*font, error) {
 	defer mu.Unlock()
 	if f := cache[name]; f != nil {
 		return f, nil
+	}
+	if p := urwPath(name); p != "" {
+		if b, err := os.ReadFile(p); err == nil {
+			if f, err := sfnt.Parse(b); err == nil {
+				ft := &font{f: f, upm: float64(f.UnitsPerEm()), urw: true}
+				cache[name] = ft
+				return ft, nil
+			}
+		}
 	}
 	ttf, ok := standIns[name]
 	if !ok {
@@ -143,7 +217,12 @@ func Outline(fontName string, c byte) ([]Seg, error) {
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	i, err := f.f.GlyphIndex(&f.buf, Rune(fontName, c))
+	r := Rune(fontName, c)
+	if f.urw && fontName == "Symbol" {
+		// Standard Symbols maps the Symbol font's own codes ('m' is mu)
+		r = rune(c)
+	}
+	i, err := f.f.GlyphIndex(&f.buf, r)
 	if err != nil || i == 0 {
 		return nil, err
 	}
@@ -166,7 +245,7 @@ func Outline(fontName string, c byte) ([]Seg, error) {
 		}
 		out = append(out, seg)
 	}
-	if fontName == "Symbol" {
+	if fontName == "Symbol" && !f.urw {
 		fitSymbol(out, c)
 	}
 	return out, nil
