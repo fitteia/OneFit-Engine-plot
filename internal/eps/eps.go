@@ -63,12 +63,12 @@ func Parse(r io.Reader) (*draw.Drawing, error) {
 		return nil, fmt.Errorf("no %%%%EndSetup: not gracebat EPS")
 	}
 	body, _, _ = strings.Cut(body, "%%Trailer")
+	// fonts may be defined in the setup (plot-go) or in the body (gracebat)
 	fonts := map[string]string{}
-	body = fontDef.ReplaceAllStringFunc(body, func(s string) string {
-		m := fontDef.FindStringSubmatch(s)
+	for _, m := range fontDef.FindAllStringSubmatch(src, -1) {
 		fonts[m[2]] = m[1]
-		return " "
-	})
+	}
+	body = fontDef.ReplaceAllString(body, " ")
 
 	d := &draw.Drawing{}
 	st := &state{matrix: [4]float64{1, 0, 0, 1}}
@@ -195,6 +195,7 @@ func Parse(r io.Reader) (*draw.Drawing, error) {
 			}
 		case "SCS":
 			_, e = pop()
+		case "showpage":
 		case "SC":
 			var a []float64
 			if a, e = nums(3); e == nil {

@@ -74,7 +74,7 @@ func Get(name string) (*Font, error) {
 // parse reads the character metrics: lines like
 // "C 48 ; WX 556 ; N zero ; B 37 -19 519 703 ;". Codes are the font's own
 // encoding (Adobe Standard for text fonts), which is ASCII for the
-// printable characters except the quotes, fixed up below.
+// printable characters except the quotes.
 func parse(name, src string) (*Font, error) {
 	f := &Font{Name: name, glyphs: map[byte]glyph{}}
 	byName := map[string]glyph{}
@@ -117,11 +117,9 @@ func parse(name, src string) (*Font, error) {
 		return nil, fmt.Errorf("no character metrics")
 	}
 	if name != "Symbol" && name != "ZapfDingbats" {
-		// Adobe Standard puts quoteright at 39 and quoteleft at 96; text
-		// strings mean the ASCII apostrophe and grave accent.
-		if g, ok := byName["quotesingle"]; ok {
-			f.glyphs['\''] = g
-		}
+		// gracebat's encoding is Adobe Standard in the ASCII range except
+		// that 96 is the grave accent, not quoteleft; 39 stays quoteright
+		// and 45 the hyphen (docs/grace-behaviour.md).
 		if g, ok := byName["grave"]; ok {
 			f.glyphs['`'] = g
 		}

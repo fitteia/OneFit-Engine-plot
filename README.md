@@ -6,11 +6,18 @@ without Grace, Ghostscript or `epstopdf`. It is a batch renderer for the
 part of the Grace format OneFit uses, not a clone of xmgrace; interactive
 plots are the OneFit GUI's job.
 
-Status: steps 1 and 2 are done - the feature inventory, and the parser
-(`agr`), which reads all 735 OneFit files of the inventory corpus. Step 3's
-renderer (`render`) draws every reference file the way gracebat does,
-primitive by primitive (see docs/grace-behaviour.md); it does not write
-files yet (PDF, SVG and PNG backends are next).
+Status: steps 1 to 4 are done. `plot-go FILE.agr` writes a PDF (or EPS,
+SVG) without Grace; the renderer matches gracebat primitive by primitive,
+and the output matches gracebat's page pixel for pixel, allowing for text
+placed up to 0.7 pt apart (see docs/grace-behaviour.md). Next: the
+gracebat-compatible command line (step 5).
+
+```bash
+go install ./cmd/plot-go
+plot-go fit-curves-1.agr                  # -> fit-curves-1.pdf
+plot-go -o plot.svg fit-curves-1.agr      # format from the extension
+plot-go -format eps fit-curves-1.agr      # what OneFit's C core asks for
+```
 
 ## Plan
 
@@ -28,6 +35,10 @@ files yet (PDF, SVG and PNG backends are next).
    `-saveall`), writing PDF directly.
 6. The C core uses plot-go when installed and falls back to `gracebat`;
    `onefite doctor` reports which.
+7. A live, editable preview in the OneFit GUI: the GUI shows plot-go's
+   SVG - the same drawing as the PDF - and edits (ranges, labels, styles,
+   texts) go into the `.agr` and re-render. Both are Artistic 2.0, so the
+   GUI can use plot-go as a library.
 
 ## Clean-room rule
 

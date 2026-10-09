@@ -27,11 +27,13 @@ jobs:
         debian: [trixie, forky]
     steps:
       # git first, so actions/checkout makes a real git checkout; gcc for
-      # the race detector (it needs cgo)
+      # the race detector (it needs cgo); Ghostscript and Poppler for the
+      # pixel comparisons with gracebat's references
       - name: Debian packages
         run: |
           apt-get update -qq
-          apt-get install -y -qq --no-install-recommends git ca-certificates gcc libc6-dev
+          apt-get install -y -qq --no-install-recommends git ca-certificates gcc libc6-dev \
+            ghostscript poppler-utils
 
       - uses: actions/checkout@v4
 

@@ -21,8 +21,11 @@ func TestHelvetica(t *testing.T) {
 	if !near(got.LLX, want.LLX) || !near(got.LLY, want.LLY) || !near(got.URX, want.URX) || !near(got.URY, want.URY) {
 		t.Errorf("ink(0.02) = %+v, want %+v", got, want)
 	}
-	if w := f.Width("'"); w != 0.191 {
-		t.Errorf("apostrophe width %g, want quotesingle's 0.191", w)
+	if w := f.Width("'"); w != 0.222 {
+		t.Errorf("apostrophe width %g, want quoteright's 0.222", w)
+	}
+	if w := f.Width("-"); w != 0.333 {
+		t.Errorf("hyphen width %g, want 0.333 (not minus, 0.584)", w)
 	}
 }
 

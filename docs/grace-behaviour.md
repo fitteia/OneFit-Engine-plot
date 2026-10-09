@@ -61,6 +61,9 @@ Units: viewport units - the page's shorter side is 1, origin bottom left
   baseline; `\0`..`\9` switch to that font number.
 - Strings are laid out run by run with the fonts' advance widths (no
   kerning).
+- Text encoding (gracebat's EPS prolog defines it): Latin-1, except that 39
+  is quoteright, 45 the hyphen (not minus) and 96 the grave accent, as in
+  Adobe Standard. plot-go's EPS, PDF and SVG use the same.
 - Every label is aligned by the box of its whole typeset string: ink,
   except that the box starts at the pen origin rather than the first ink
   (a leading "1" has a wide left margin, and gracebat ignores it):
