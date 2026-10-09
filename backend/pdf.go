@@ -20,6 +20,7 @@ const kappa = 0.5522847498
 // OneFit's PDFs from gracebat's EPS. The standard fonts are named, not
 // embedded.
 func WritePDF(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) error {
+	pageW, pageH = draw.PageSize(pageW, pageH)
 	unit := math.Min(pageW, pageH)
 	bb := BoundingBox(d, unit)
 

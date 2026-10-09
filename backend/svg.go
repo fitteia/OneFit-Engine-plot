@@ -68,6 +68,7 @@ func Unicode(font, s string) string {
 // WriteSVG writes the drawing as SVG, cropped to the same box as the EPS
 // and PDF, in points.
 func WriteSVG(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) error {
+	pageW, pageH = draw.PageSize(pageW, pageH)
 	unit := math.Min(pageW, pageH)
 	bb := BoundingBox(d, unit)
 	wpt, hpt := bb.URX-bb.LLX, bb.URY-bb.LLY

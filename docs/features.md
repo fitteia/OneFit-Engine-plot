@@ -13,6 +13,8 @@ every directive appears in all 704 files.
 ## Page and graph
 
 - One page, `page size 773, 600` (points), white background.
+- Missing, nonpositive or nonfinite page sizes warn and use 792 by 612
+  points consistently in the drawing and PDF, EPS and SVG output.
 - One graph, `g0`, `type XY`, with its viewport (`view xmin ... ymax`) and
   data window (`world xmin ... ymax`) stated - OneFit computes the axis
   ranges itself, so Grace's autoscaling is never needed.

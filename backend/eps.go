@@ -14,6 +14,7 @@ import (
 // pageW x pageH points. It uses the same small vocabulary as gracebat's
 // EPS (m, l, s, SLW, SD, CC, FFSF, EARC, ...), so the files read alike.
 func WriteEPS(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) error {
+	pageW, pageH = draw.PageSize(pageW, pageH)
 	unit := math.Min(pageW, pageH)
 	bb := BoundingBox(d, unit)
 	b := bufio.NewWriter(w)

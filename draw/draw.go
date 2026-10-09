@@ -5,6 +5,18 @@
 // gracebat's output into one for comparison.
 package draw
 
+import "math"
+
+// PageSize supplies the same fallback to the renderer and every backend.
+// A missing or invalid size must not collapse an otherwise valid plot when
+// the backend converts viewport units back to page points.
+func PageSize(width, height float64) (float64, float64) {
+	if width <= 0 || height <= 0 || math.IsNaN(width) || math.IsNaN(height) || math.IsInf(width, 0) || math.IsInf(height, 0) {
+		return 792, 612
+	}
+	return width, height
+}
+
 // Point is a position in viewport units (the page's shorter side is 1).
 type Point struct{ X, Y float64 }
 

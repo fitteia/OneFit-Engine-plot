@@ -85,10 +85,9 @@ func line(pts ...draw.Point) draw.Segment { return draw.Segment{Points: pts} }
 // gracebat would.
 func Render(p *agr.Project) (*draw.Drawing, []string) {
 	r := &renderer{proj: p, d: &draw.Drawing{}}
-	w, h := p.PageWidth, p.PageHeight
-	if w <= 0 || h <= 0 {
-		w, h = 792, 612
-		r.warn("no page size; %gx%g used", w, h)
+	w, h := draw.PageSize(p.PageWidth, p.PageHeight)
+	if w != p.PageWidth || h != p.PageHeight {
+		r.warn("missing or invalid page size; %gx%g used", w, h)
 	}
 	unit := math.Min(w, h)
 	r.d.Width, r.d.Height = w/unit, h/unit
