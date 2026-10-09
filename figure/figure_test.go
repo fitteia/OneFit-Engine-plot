@@ -3,6 +3,7 @@ package figure
 import (
 	"bytes"
 	"errors"
+	"math"
 	"strings"
 	"testing"
 
@@ -102,5 +103,79 @@ func TestSourceOf(t *testing.T) {
 		if _, ok := SourceOf(&agr.Set{Comment: comment}); ok != want {
 			t.Errorf("SourceOf(%q) ok = %v", comment, ok)
 		}
+	}
+}
+
+func TestAddGraphAndLayout(t *testing.T) {
+	fig := FromPlot(load(t, "test3-1.agr"), "a/fit-curves-1.agr")
+	src := load(t, "test7-10.agr")
+	id, err := AddGraph(fig, src, "b/fit-curves-10.agr")
+	if err != nil || id != 1 || len(fig.Graphs) != 2 {
+		t.Fatalf("AddGraph: id %d, %d graphs, %v", id, len(fig.Graphs), err)
+	}
+	g1 := fig.Graphs[1]
+	if len(g1.Sets) != len(src.Graphs[0].Sets) || g1.Sets[0].ID != 0 {
+		t.Errorf("graph 1 sets: %d, first %d", len(g1.Sets), g1.Sets[0].ID)
+	}
+	if ref, ok := SourceOf(g1.Sets[2]); !ok || ref != (Ref{"b/fit-curves-10.agr", 0, 2}) {
+		t.Errorf("source %q", g1.Sets[2].Comment)
+	}
+	labels := 0
+	for _, s := range fig.Strings {
+		if s.LocType == "world" && s.Graph == 1 {
+			labels++
+		}
+	}
+	if labels != 3 {
+		t.Errorf("%d curve labels moved to graph 1, want test7's 3", labels)
+	}
+
+	for _, l := range Layouts {
+		if err := Layout(fig, l); err != nil {
+			t.Fatalf("%s: %v", l, err)
+		}
+		a, b := fig.Graphs[0].View, fig.Graphs[1].View
+		switch l {
+		case "side-by-side":
+			if !(a.XMax < b.XMin && a.YMin == b.YMin) {
+				t.Errorf("side by side: %+v %+v", a, b)
+			}
+		case "stacked":
+			if !(b.YMax < a.YMin && a.XMin == b.XMin) {
+				t.Errorf("stacked: %+v %+v", a, b)
+			}
+		}
+		for _, g := range fig.Graphs {
+			v := g.View
+			if v.XMin <= 0 || v.YMin <= 0 || v.XMax > 773.0/600 || v.YMax > 1 || v.XMin >= v.XMax || v.YMin >= v.YMax {
+				t.Errorf("%s: graph %d view %+v leaves the page", l, g.ID, v)
+			}
+		}
+	}
+	// sizes follow the panel and come back with it
+	if err := Layout(fig, "single"); err != nil {
+		t.Fatal(err)
+	}
+	full := fig.Graphs[0].X.TickLabel.CharSize
+	Layout(fig, "grid")
+	small := fig.Graphs[0].X.TickLabel.CharSize
+	Layout(fig, "single")
+	if !(small < full) || math.Abs(fig.Graphs[0].X.TickLabel.CharSize-full) > 1e-9 {
+		t.Errorf("tick label size: single %g, grid %g, single again %g", full, small, fig.Graphs[0].X.TickLabel.CharSize)
+	}
+	if err := Layout(fig, "diagonal"); err == nil {
+		t.Error("an unknown layout was accepted")
+	}
+
+	if err := RemoveGraph(fig, 1); err != nil || len(fig.Graphs) != 1 {
+		t.Fatalf("RemoveGraph: %v, %d graphs", err, len(fig.Graphs))
+	}
+	for _, s := range fig.Strings {
+		if s.LocType == "world" && s.Graph == 1 {
+			t.Error("a text of the removed graph is left")
+		}
+	}
+	if err := RemoveGraph(fig, 0); err == nil {
+		t.Error("the last graph was removed")
 	}
 }
