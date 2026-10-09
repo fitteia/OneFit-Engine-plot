@@ -12,3 +12,8 @@ used only as an external reference in tests.
 
 The standard PDF fonts plot-go refers to (Times-Roman, Helvetica, Symbol)
 are named, not embedded; the viewer supplies them.
+
+internal/afm/adobe-core14/ holds Adobe's Core 14 AFM font metric files,
+unmodified, with Adobe's MustRead.html, which permits their use, copying
+and distribution for any purpose provided that file accompanies them:
+Copyright (c) 1985-1997 Adobe Systems Incorporated. All Rights Reserved.
