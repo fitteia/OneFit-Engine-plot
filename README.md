@@ -52,8 +52,8 @@ plot-go -settype xydy gnu0.da_ -nxy fit-curves-1 -param fit1.agr-par \
 
 Prebuilt binaries for Linux (amd64, arm64), macOS (Intel, Apple Silicon)
 and Windows are attached to each [release](https://github.com/fitteia/OneFit-Engine-plot/releases)
-(`plot-go_VERSION_OS_ARCH`, with `SHA256SUMS`); put one on the PATH as
-`plot-go`. Or, with Go: `go install github.com/fitteia/OneFit-Engine-plot/cmd/plot-go@latest`.
+(`plot-go_OS_ARCH`, with `SHA256SUMS`; `releases/latest/download/plot-go_linux_amd64`
+is always the newest); put one on the PATH as `plot-go`. Or, with Go: `go install github.com/fitteia/OneFit-Engine-plot/cmd/plot-go@latest`.
 
 OneFit's C core (OneFit-Engine-C) uses plot-go for its plots when it finds
 it on the PATH, and Grace otherwise; `OFE_PLOTTER=grace` forces Grace.
