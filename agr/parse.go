@@ -545,15 +545,20 @@ func init() {
 		r("target W", func(p *parser, a []string) {
 			g, s, ok := parseTarget(a[0])
 			if !ok {
+				// no set is selected: the next "@type" must not write into
+				// the previous one
 				p.warn("bad target %q", a[0])
+				p.target = nil
 				return
 			}
 			p.target = p.graphByID(g).setByID(s)
 		}),
 		r("type W", func(p *parser, a []string) {
 			if p.target == nil {
-				p.warn("\"@type\" without a \"@target\"")
-				return
+				// read the rows into a set that is not kept, so they are
+				// not taken for directives
+				p.warn("\"@type\" without a \"@target\"; its data is skipped")
+				p.target = &Set{}
 			}
 			p.setType(p.target, a[0])
 			p.target.Data = nil
@@ -634,6 +639,7 @@ func Parse(rd io.Reader) (*Project, error) {
 			switch {
 			case line == "&":
 				p.inData = false
+				p.target = nil
 				continue
 			case strings.HasPrefix(line, "@"):
 				p.warn("data of %s ended without \"&\"", "a set")

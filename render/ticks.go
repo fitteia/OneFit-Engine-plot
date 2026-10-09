@@ -15,7 +15,22 @@ const maxTicks = 255
 type ticks struct {
 	majors, minors []float64
 	auto           bool // the file's spacing was replaced (too many ticks)
+	// narrow: the window is too narrow for the precision of its own
+	// values (1e16 to 1e16+2 has no room for steps of 0.02), so no ticks
+	narrow bool
 }
+
+func finite(vs ...float64) bool {
+	for _, v := range vs {
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return false
+		}
+	}
+	return true
+}
+
+// maxSteps bounds every tick loop, whatever the file says.
+const maxSteps = 4*maxTicks + 8
 
 // edgeTol is how close to the window's edge a tick may fall and still count
 // as inside it, relative to the step: only rounding noise. A window starting
@@ -27,6 +42,9 @@ func makeTicks(ax agr.Axis, lo, hi float64) ticks {
 		lo, hi = hi, lo
 	}
 	major, minor := ax.Tick.Major, ax.Tick.MinorTicks
+	if !finite(lo, hi, major) || lo == hi {
+		return ticks{}
+	}
 	if ax.Scale == "Logarithmic" {
 		if major <= 1 || lo <= 0 {
 			return ticks{}
@@ -38,6 +56,9 @@ func makeTicks(ax agr.Axis, lo, hi float64) ticks {
 	}
 	if tooMany(lo, hi, major, minor) {
 		major = autoStep(hi-lo, ax.Tick.Default)
+		if !(major > 0) {
+			return ticks{}
+		}
 		minor = min(minor, 1)
 		t := linTicks(lo, hi, major, minor)
 		t.auto = true
@@ -56,13 +77,17 @@ func tooMany(lo, hi, major float64, minor int) bool {
 // autoStep is the smallest of 1, 2, 5 x 10^n giving at most def+1
 // intervals over span (def is the axis's "tick default", 6 in OneFit's
 // files).
+// It is 0 for a span it cannot step (empty, infinite, not a number).
 func autoStep(span float64, def int) float64 {
+	if !finite(span) || !(span > 0) {
+		return 0
+	}
 	if def <= 0 {
 		def = 6
 	}
 	limit := float64(def + 1)
 	p := math.Pow(10, math.Floor(math.Log10(span/limit)))
-	for {
+	for range 4 {
 		for _, m := range []float64{1, 2, 5} {
 			if span/(m*p) <= limit*(1+edgeTol) {
 				return m * p
@@ -70,14 +95,22 @@ func autoStep(span float64, def int) float64 {
 		}
 		p *= 10
 	}
+	return 0
 }
 
 func linTicks(lo, hi, major float64, minor int) ticks {
 	var t ticks
 	first := math.Floor(lo/major) - 1
 	last := math.Ceil(hi/major) + 1
+	// counted with an integer: past 2^53 a float k never reaches k+1
+	if !finite(first, last) || last-first > maxSteps || first+1 == first || last-1 == last {
+		t.narrow = true
+		return t
+	}
+	n := int(last - first)
 	tol := major * edgeTol
-	for k := first; k <= last; k++ {
+	for i := 0; i <= n; i++ {
+		k := first + float64(i)
 		v := k * major
 		if v >= lo-tol && v <= hi+tol {
 			t.majors = append(t.majors, clean(v, major))
@@ -118,11 +151,12 @@ func logTicks(lo, hi, factor float64, minor int) ticks {
 	lf := math.Log(factor)
 	first := math.Floor(math.Log(lo)/lf) - 1
 	last := math.Ceil(math.Log(hi)/lf) + 1
-	if last-first > 4*maxTicks {
+	if !finite(first, last) || last-first > maxSteps {
 		return t
 	}
 	in := func(v float64) bool { return v >= lo*(1-edgeTol) && v <= hi*(1+edgeTol) }
-	for k := first; k <= last; k++ {
+	for i := 0; i <= int(last-first); i++ {
+		k := first + float64(i)
 		v := math.Pow(factor, k)
 		if r := math.Round(v); math.Abs(v-r) < 1e-9*v {
 			v = r

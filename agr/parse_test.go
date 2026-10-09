@@ -210,3 +210,27 @@ func TestWarnings(t *testing.T) {
 		t.Errorf("data = %v", d)
 	}
 }
+
+// TestBadTargetSelectsNoSet: after a malformed "@target" the next "@type"
+// and its rows must not land in the previously selected set (Codex).
+func TestBadTargetSelectsNoSet(t *testing.T) {
+	p, err := Parse(strings.NewReader(`@target G0.S0
+@type xy
+1 2
+&
+@target nonsense
+@type xy
+9 10
+&
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := p.Graphs[0].Sets
+	if len(s) != 1 || len(s[0].Data) != 1 || s[0].Data[0][0] != 1 {
+		t.Errorf("sets = %+v, want only G0.S0 with its row 1 2", s[0])
+	}
+	if len(p.Warnings) != 2 {
+		t.Errorf("warnings = %+v, want the bad target and the skipped data", p.Warnings)
+	}
+}

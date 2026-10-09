@@ -149,6 +149,11 @@ func (t xform) ok(x, y float64) bool {
 }
 
 func (r *renderer) graph(g *agr.Graph) {
+	w, v := g.World, g.View
+	if !finite(w.XMin, w.XMax, w.YMin, w.YMax, v.XMin, v.XMax, v.YMin, v.YMax) {
+		r.warn("graph %d has a world or view value that is not a finite number; not drawn", g.ID)
+		return
+	}
 	if g.World.XMin == g.World.XMax || g.World.YMin == g.World.YMax {
 		r.warn("graph %d has an empty world window; not drawn", g.ID)
 		return
@@ -364,6 +369,9 @@ func (r *renderer) axis(t xform, isX bool) {
 	tk := makeTicks(*ax, lo, hi)
 	if tk.auto {
 		r.warn("too many ticks on the %s axis; tick spacing chosen automatically", map[bool]string{true: "x", false: "y"}[isX])
+	}
+	if tk.narrow {
+		r.warn("the %s axis's window is too narrow for the precision of its values; no ticks", map[bool]string{true: "x", false: "y"}[isX])
 	}
 	pos := func(w float64) float64 {
 		if isX {
