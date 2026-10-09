@@ -72,7 +72,7 @@ func runGrace(args []string, stdout, stderr io.Writer) int {
 		a := args[i]
 		switch a {
 		case "-version":
-			fmt.Fprintln(stdout, "plot-go: renders Grace project files without Grace; gracebat-compatible (Grace-5.1.25 file format)")
+			fmt.Fprintf(stdout, "plot-go %s: draws Grace projects without Grace; gracebat-compatible (Grace-5.1.25 file format)\n", version)
 			return 0
 		case "-hardcopy", "-batch", "-noask", "-nosafe", "-safe", "-free":
 		case "-settype":

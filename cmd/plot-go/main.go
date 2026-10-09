@@ -28,6 +28,9 @@ import (
 	"github.com/fitteia/OneFit-Engine-plot/render"
 )
 
+// version is set by scripts/build-release.sh (-ldflags -X main.version=...).
+var version = "dev"
+
 type writer func(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) error
 
 var writers = map[string]writer{
@@ -43,11 +46,16 @@ func main() {
 	out := flag.String("o", "", "output file (default: the input with the format's extension)")
 	format := flag.String("format", "", "pdf, eps or svg (default: from -o's extension, else pdf)")
 	quiet := flag.Bool("q", false, "do not print warnings")
+	showVersion := flag.Bool("version", false, "print the version and exit")
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, "usage: plot-go [-o OUT] [-format pdf|eps|svg] [-q] FILE.agr")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+	if *showVersion {
+		fmt.Println("plot-go", version)
+		return
+	}
 	if flag.NArg() != 1 {
 		flag.Usage()
 		os.Exit(2)

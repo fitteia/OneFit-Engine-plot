@@ -48,6 +48,16 @@ plot-go -settype xydy gnu0.da_ -nxy fit-curves-1 -param fit1.agr-par \
    texts) go into the `.agr` and re-render. Both are Artistic 2.0, so the
    GUI can use plot-go as a library.
 
+## Install
+
+Prebuilt binaries for Linux (amd64, arm64), macOS (Intel, Apple Silicon)
+and Windows are attached to each [release](https://github.com/fitteia/OneFit-Engine-plot/releases)
+(`plot-go_VERSION_OS_ARCH`, with `SHA256SUMS`); put one on the PATH as
+`plot-go`. Or, with Go: `go install github.com/fitteia/OneFit-Engine-plot/cmd/plot-go@latest`.
+
+OneFit's C core (OneFit-Engine-C) uses plot-go for its plots when it finds
+it on the PATH, and Grace otherwise; `OFE_PLOTTER=grace` forces Grace.
+
 ## Clean-room rule
 
 plot-go is distributed under the Artistic License 2.0 (see
