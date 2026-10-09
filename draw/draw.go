@@ -43,6 +43,10 @@ type Arc struct {
 
 // Path is a stroked or filled path.
 type Path struct {
+	// ID names what the path draws, for an editor to select it: "page",
+	// "g0.s3.line", "g0.s3.symbols", "g0.x.tick", "g0.frame", ... (see
+	// render). Readers of other programs' output leave it empty.
+	ID       string
 	Segments []Segment
 	Fill     bool
 	Style    Style
@@ -51,6 +55,9 @@ type Path struct {
 // Text is a string shown at a point: Matrix is the font matrix (a b c d)
 // in viewport units, so Matrix[0] is the font size for unrotated text.
 type Text struct {
+	// ID names what the text belongs to: "g0.x.ticklabel", "g0.y.label",
+	// "string.2", ... (see render).
+	ID     string
 	At     Point
 	Matrix [4]float64
 	Font   string // PostScript font name: Helvetica, Symbol, ...

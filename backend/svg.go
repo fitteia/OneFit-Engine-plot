@@ -76,11 +76,27 @@ func WriteSVGWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 	rgb := func(c [3]float64) string {
 		return fmt.Sprintf("#%02x%02x%02x", int(math.Round(c[0]*255)), int(math.Round(c[1]*255)), int(math.Round(c[2]*255)))
 	}
+	// consecutive elements drawing the same thing go in one group, whose
+	// data-id names it (render's IDs) - what an editor selects by
+	group := ""
+	enter := func(id string) {
+		if id == group {
+			return
+		}
+		if group != "" {
+			p("</g>\n")
+		}
+		if id != "" {
+			p("<g data-id=\"%s\">\n", html.EscapeString(id))
+		}
+		group = id
+	}
 	pi, ti := 0, 0
 	for _, kind := range d.Order {
 		if kind == 't' {
 			t := d.Texts[ti]
 			ti++
+			enter(t.ID)
 			if opt.TextAsPaths {
 				if path, ok := textPath(t, X, Y); ok {
 					p(`<path d="%s" fill="%s"/>`+"\n", path, rgb(t.Color))
@@ -100,6 +116,7 @@ func WriteSVGWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 		}
 		path := d.Paths[pi]
 		pi++
+		enter(path.ID)
 		st := path.Style
 		attrs := ""
 		if path.Fill {
@@ -140,6 +157,7 @@ func WriteSVGWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 			p(`<path d="%s" %s/>`+"\n", dpath.String(), attrs)
 		}
 	}
+	enter("")
 	p("</svg>\n")
 	return b.Flush()
 }

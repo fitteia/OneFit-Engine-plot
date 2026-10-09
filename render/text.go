@@ -165,6 +165,7 @@ func (r *renderer) emit(ts typeset, ox, oy, deg float64, color int) {
 	for _, rn := range ts.runs {
 		dx, dy := rotate(rn.x, rn.y, deg)
 		r.d.Texts = append(r.d.Texts, draw.Text{
+			ID:     r.id,
 			At:     draw.Point{X: ox + dx, Y: oy + dy},
 			Matrix: [4]float64{rn.size * c, rn.size * s, -rn.size * s, rn.size * c},
 			Font:   rn.font,

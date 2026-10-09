@@ -38,6 +38,19 @@ type renderer struct {
 	proj     *agr.Project
 	d        *draw.Drawing
 	warnings []string
+	// id names what is being drawn; every path and text is stamped with
+	// it. The names, for an editor to map a drawn element to what it
+	// edits (agr's names: graph g0, set s3, string by its index in the
+	// file):
+	//
+	//	page                      the page background
+	//	g0.s3.line, g0.s3.symbols a set's line and its symbols
+	//	g0.x.tick, g0.y.tick      an axis's tick marks (major and minor)
+	//	g0.x.ticklabel            an axis's tick labels
+	//	g0.x.label                an axis's label
+	//	g0.frame                  the frame
+	//	string.2                  the third "@with string" in the file
+	id string
 }
 
 func (r *renderer) warn(format string, a ...any) {
@@ -75,7 +88,7 @@ func (r *renderer) style(color int, width float64, linestyle int) (draw.Style, b
 }
 
 func (r *renderer) path(st draw.Style, fill bool, segs ...draw.Segment) {
-	r.d.Paths = append(r.d.Paths, draw.Path{Segments: segs, Fill: fill, Style: st})
+	r.d.Paths = append(r.d.Paths, draw.Path{ID: r.id, Segments: segs, Fill: fill, Style: st})
 	r.d.Order = append(r.d.Order, 'p')
 }
 
@@ -92,6 +105,7 @@ func Render(p *agr.Project) (*draw.Drawing, []string) {
 	unit := math.Min(w, h)
 	r.d.Width, r.d.Height = w/unit, h/unit
 	if p.PageFill {
+		r.id = "page"
 		r.path(draw.Style{Color: r.color(p.BackgroundColor)}, true, draw.Segment{
 			Points: []draw.Point{{X: 0, Y: 0}, {X: 0, Y: r.d.Height}, {X: r.d.Width, Y: r.d.Height}, {X: r.d.Width, Y: 0}},
 			Closed: true,
@@ -104,8 +118,9 @@ func Render(p *agr.Project) (*draw.Drawing, []string) {
 	}
 	// strings in world coordinates were drawn with their graph; the ones
 	// placed on the page come last (gracebat's order)
-	for _, s := range p.Strings {
+	for i, s := range p.Strings {
 		if s.LocType != "world" {
+			r.id = fmt.Sprintf("string.%d", i)
 			r.text(s)
 		}
 	}
@@ -166,8 +181,9 @@ func (r *renderer) graph(g *agr.Graph) {
 	r.axis(t, true)
 	r.axis(t, false)
 	r.frame(g)
-	for _, s := range r.proj.Strings {
+	for i, s := range r.proj.Strings {
 		if s.LocType == "world" && s.Graph == g.ID {
+			r.id = fmt.Sprintf("string.%d", i)
 			r.text(s)
 		}
 	}
@@ -204,6 +220,7 @@ func (r *renderer) set(t xform, s *agr.Set) {
 				breaks = append(breaks, false)
 			}
 			if segs := clipPolyline(pts, breaks, t.g.View); len(segs) > 0 {
+				r.id = fmt.Sprintf("g%d.s%d.line", t.g.ID, s.ID)
 				r.path(st, false, segs...)
 			}
 		}
@@ -217,6 +234,7 @@ func (r *renderer) set(t xform, s *agr.Set) {
 			r.warn("set %d: symbol fills are not drawn", s.ID)
 		}
 		rad := s.Symbol.Size * symbolUnit
+		r.id = fmt.Sprintf("g%d.s%d.symbols", t.g.ID, s.ID)
 		w := t.g.World
 		for _, row := range s.Data {
 			x, y := row[0], row[1]
@@ -314,6 +332,7 @@ func (r *renderer) frame(g *agr.Graph) {
 		return
 	}
 	v := g.View
+	r.id = fmt.Sprintf("g%d.frame", g.ID)
 	r.path(st, false, draw.Segment{Points: []draw.Point{
 		{X: v.XMin, Y: v.YMin}, {X: v.XMin, Y: v.YMax}, {X: v.XMax, Y: v.YMax}, {X: v.XMax, Y: v.YMin}, {X: v.XMin, Y: v.YMin},
 	}, Closed: true})
@@ -365,6 +384,8 @@ func (r *renderer) axis(t xform, isX bool) {
 		r.warn("inverted axes are drawn not inverted")
 	}
 	v := g.View
+	axisName := map[bool]string{true: "x", false: "y"}[isX]
+	part := func(name string) string { return fmt.Sprintf("g%d.%s.%s", g.ID, axisName, name) }
 	tk := makeTicks(*ax, lo, hi)
 	if tk.auto {
 		r.warn("too many ticks on the %s axis; tick spacing chosen automatically", map[bool]string{true: "x", false: "y"}[isX])
@@ -414,6 +435,7 @@ func (r *renderer) axis(t xform, isX bool) {
 				}
 			}
 		}
+		r.id = part("tick")
 		drawTicks(tk.minors, minorLen, ax.Tick.MinorMarks)
 		drawTicks(tk.majors, majorLen, ax.Tick.MajorMarks)
 	}
@@ -431,6 +453,7 @@ func (r *renderer) axis(t xform, isX bool) {
 			r.warn("tick labels are drawn on the normal side only")
 		}
 		size := ax.TickLabel.CharSize * charUnit
+		r.id = part("ticklabel")
 		for _, w := range tk.majors {
 			ts := r.layout(r.label(w, ax.TickLabel), ax.TickLabel.Font, size)
 			if ts.ink.Empty() {
@@ -453,6 +476,7 @@ func (r *renderer) axis(t xform, isX bool) {
 
 	// the axis label, beyond the tick labels
 	if ax.Label.Text != "" {
+		r.id = part("label")
 		size := ax.Label.CharSize * charUnit
 		ts := r.layout(ax.Label.Text, ax.Label.Font, size)
 		if !ts.ink.Empty() {

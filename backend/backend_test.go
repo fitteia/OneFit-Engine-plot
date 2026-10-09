@@ -160,6 +160,16 @@ func TestSVGIsWellFormed(t *testing.T) {
 		if strings.Contains(f, "test3-1") && !strings.Contains(b.String(), ">Δ<") {
 			t.Errorf("%s: no Greek Delta in the SVG", f)
 		}
+		// render's element IDs, as groups an editor selects by (not every
+		// file draws symbols: test1-13's one point is outside its window)
+		for _, id := range []string{`<g data-id="page">`, `<g data-id="g0.frame">`, `<g data-id="g0.x.ticklabel">`, `<g data-id="g0.y.label">`} {
+			if !strings.Contains(b.String(), id) {
+				t.Errorf("%s: no %s", f, id)
+			}
+		}
+		if o, c := strings.Count(b.String(), "<g "), strings.Count(b.String(), "</g>"); o != c {
+			t.Errorf("%s: %d groups opened, %d closed", f, o, c)
+		}
 	}
 }
 
