@@ -75,8 +75,16 @@ Units: viewport units - the page's shorter side is 1, origin bottom left
   - axis labels: centred on the viewport side; 0.01 beyond the outer ink
     edge of all that axis's tick labels; the y label rotated 90 degrees.
 - `power` tick labels are "10" with the exponent as a superscript.
-  gracebat rejects an unknown tick label format as a syntax error and keeps
-  its default, `general` (%g-like: "100", not "100.00000").
+  gracebat rejects an unknown tick label format name as a syntax error and
+  keeps its default, `general` (%g-like: "100", not "100.00000").
+- A format may also be given by number: 0 decimal, 1 exponential, 2
+  general, 3 power, 4 scientific, 5 engineering, 6 computing, 7 and up dates
+  and times. A number Grace does not know (OneFit wrote 60) draws as
+  decimal - and is saved as "unknown", which gracebat then rejects when it
+  reads its own project back, so that project no longer draws what it
+  printed. plot-go saves the format by name.
+- Defaults for what a file leaves out: format general, precision 5 (a
+  "ticklabel prec" line without a value is ignored, leaving 5).
 - Strings (`with string`) start at their point (left justified), in view
   or world coordinates.
 
@@ -115,3 +123,14 @@ make the first curve the data set). A saved project (-saveall) is Grace's
 whole state: settings, then each set's data as "@target G0.Sn", "@type T",
 rows in "%16.8g", "&". World and view are saved as one line each ("world
 xmin, ymin, xmax, ymax"), whatever form the parameter file used.
+
+## End to end
+
+With plot-go standing in for `grace` on the PATH (for one command only),
+all nine OneFit-Engine test suites were fitted on a OneFit server twice -
+with Grace and with plot-go: the same 110 plots, PDFs and zip archives
+come out, and every plot matches gracebat's pixel for pixel (worst 0.014%
+of inked pixels, allowing for text up to 0.7 pt apart). Two cases found
+this way are now tests: a window edge just past a tick (no tick at 0 for
+a window starting at 1e-06), and the numeric tick label format above
+(testdata/gracebat-call-format60).

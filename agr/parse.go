@@ -161,7 +161,13 @@ func (p *parser) graphByID(id int) *Graph {
 			return g
 		}
 	}
+	// Grace's defaults for what a file may leave out (measured): tick
+	// labels in general format with precision 5
 	g := &Graph{ID: id}
+	for _, ax := range []*Axis{&g.X, &g.Y} {
+		ax.TickLabel.Format = "general"
+		ax.TickLabel.Prec = 5
+	}
 	p.proj.Graphs = append(p.proj.Graphs, g)
 	return g
 }
@@ -214,6 +220,14 @@ func unsupportedWhenOn(what string, arg int) func(p *parser, a []string) {
 }
 
 var ignore = func(*parser, []string) {}
+
+// formatCodes are Grace's tick label formats by number (measured from
+// gracebat); "" marks the date and time formats, 7 and above.
+var formatCodes = map[int]string{
+	0: "decimal", 1: "exponential", 2: "general", 3: "power", 4: "scientific", 5: "engineering",
+	6: "computing", 7: "", 8: "", 9: "", 10: "", 11: "", 12: "", 13: "", 14: "", 15: "", 16: "",
+	17: "", 18: "", 19: "", 20: "", 21: "",
+}
 
 var tickLabelFormats = map[string]bool{
 	"decimal": true, "power": true, "general": true, "exponential": true,
@@ -386,7 +400,9 @@ func init() {
 		r("AXIS tick minor linewidth N", func(p *parser, a []string) { p.axis(a[0]).Tick.MinorMarks.LineWidth = p.num(a[1]) }),
 		r("AXIS tick minor linestyle N", func(p *parser, a []string) { p.axis(a[0]).Tick.MinorMarks.LineStyle = p.int(a[1]) }),
 		r("AXIS tick minor grid W", func(p *parser, a []string) { p.axis(a[0]).Tick.MinorMarks.Grid = p.bool(a[1]) }),
-		r("AXIS ticklabel prec", func(p *parser, a []string) { p.warn("tick label precision has no value; ignored") }),
+		r("AXIS ticklabel prec", func(p *parser, a []string) {
+			p.warn("tick label precision has no value; ignored, as gracebat does (the default is 5)")
+		}),
 		r("AXIS ticklabel W", func(p *parser, a []string) { p.axis(a[0]).TickLabel.On = p.bool(a[1]) }),
 		// an unknown format is a syntax error to gracebat: it ignores the
 		// line and keeps the format it had (its default, general)
@@ -397,8 +413,20 @@ func init() {
 			}
 			p.axis(a[0]).TickLabel.Format = a[1]
 		}),
+		// a format by number: Grace's codes, measured; one it does not know
+		// (OneFit wrote 60) is drawn as decimal
 		r("AXIS ticklabel format N", func(p *parser, a []string) {
-			p.warn("unknown tick label format %q; ignored, as gracebat does", a[1])
+			code := p.int(a[1])
+			f, ok := formatCodes[code]
+			switch {
+			case !ok:
+				p.warn("tick label format %d is not one of Grace's; decimal used, as gracebat does", code)
+				f = "decimal"
+			case f == "":
+				p.warn("tick label format %d (a date or time format) is not supported; decimal used", code)
+				f = "decimal"
+			}
+			p.axis(a[0]).TickLabel.Format = f
 		}),
 		r("AXIS ticklabel prec N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Prec = p.int(a[1]) }),
 		r("AXIS ticklabel formula S", func(p *parser, a []string) {

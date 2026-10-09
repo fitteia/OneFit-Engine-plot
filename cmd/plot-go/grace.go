@@ -402,6 +402,8 @@ func writeFile(name string, write func(io.Writer) error) error {
 // ("world xmin 1e-05", "view ymax 0.85", ...) as the one-line forms gracebat
 // saves ("world 1e-05, 0, 0.11, 0.11"), with the values the project ended
 // up with: readers of saved projects (the OneFit GUI's) know only those.
+// Tick label formats given by number are saved by name, and a precision
+// without a value with the one used.
 func canonical(settings string, p *agr.Project) string {
 	var g *agr.Graph
 	for _, gr := range p.Graphs {
@@ -420,6 +422,28 @@ func canonical(settings string, p *agr.Project) string {
 	done := map[string]bool{}
 	for _, line := range strings.SplitAfter(settings, "\n") {
 		f := strings.Fields(strings.TrimPrefix(strings.TrimSpace(line), "@"))
+		// a tick label format given by number is saved by name: gracebat
+		// saves an unknown one as "unknown", which it then rejects on
+		// reading, so its own project no longer draws what it printed
+		// a precision without a value is saved with the one used
+		if len(f) == 3 && (f[0] == "xaxis" || f[0] == "yaxis") && f[1] == "ticklabel" && f[2] == "prec" {
+			ax := g.X
+			if f[0] == "yaxis" {
+				ax = g.Y
+			}
+			b.WriteString("@    " + f[0] + "  ticklabel prec " + strconv.Itoa(ax.TickLabel.Prec) + "\n")
+			continue
+		}
+		if len(f) == 4 && (f[0] == "xaxis" || f[0] == "yaxis") && f[1] == "ticklabel" && f[2] == "format" {
+			if _, err := strconv.Atoi(f[3]); err == nil {
+				ax := g.X
+				if f[0] == "yaxis" {
+					ax = g.Y
+				}
+				b.WriteString("@    " + f[0] + "  ticklabel format " + ax.TickLabel.Format + "\n")
+				continue
+			}
+		}
 		if len(f) == 3 && (f[0] == "world" || f[0] == "view") {
 			switch f[1] {
 			case "xmin", "xmax", "ymin", "ymax":

@@ -11,8 +11,10 @@ SVG) without Grace; the renderer matches gracebat primitive by primitive,
 and the output matches gracebat's page pixel for pixel, allowing for text
 placed up to 0.7 pt apart (see docs/grace-behaviour.md). plot-go also takes
 gracebat's own command line - the one OneFit's C core gives Grace, recorded
-from a real fit in testdata/gracebat-call - and writes the same EPS and an
-equivalent saved project. Next: making OneFit use it (step 6).
+from real fits in testdata/gracebat-call* - and writes the same EPS and a
+saved project that redraws it. With plot-go in Grace's place, all nine
+OneFit-Engine test suites produce the same 110 plots as with Grace. Next:
+making OneFit use it (step 6).
 
 ```bash
 go install ./cmd/plot-go

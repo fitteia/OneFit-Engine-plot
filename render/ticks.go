@@ -18,8 +18,9 @@ type ticks struct {
 }
 
 // edgeTol is how close to the window's edge a tick may fall and still count
-// as inside it, relative to the step.
-const edgeTol = 1e-6
+// as inside it, relative to the step: only rounding noise. A window starting
+// at 1e-06 with ticks every 5 has no tick at 0 (a real OneFit plot).
+const edgeTol = 1e-9
 
 func makeTicks(ax agr.Axis, lo, hi float64) ticks {
 	if lo > hi {

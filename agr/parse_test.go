@@ -141,6 +141,7 @@ func TestParseWholeCorpus(t *testing.T) {
 			n++
 			for _, w := range p.Warnings {
 				known := strings.Contains(w.Msg, "unknown tick label format") ||
+					strings.Contains(w.Msg, "is not one of Grace's") ||
 					strings.Contains(w.Msg, "precision has no value")
 				if !known {
 					t.Errorf("%s:%d: %s (%s)", path, w.Line, w.Msg, w.Text)

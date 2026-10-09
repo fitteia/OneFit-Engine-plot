@@ -316,7 +316,7 @@ func (r *renderer) frame(g *agr.Graph) {
 }
 
 // label formats a tick value.
-func label(v float64, tl agr.TickLabels) string {
+func (r *renderer) label(v float64, tl agr.TickLabels) string {
 	var s string
 	switch tl.Format {
 	case "power":
@@ -332,7 +332,12 @@ func label(v float64, tl agr.TickLabels) string {
 		// gracebat's default format; also what it keeps when the file's
 		// format is one it rejects
 		s = strconv.FormatFloat(v, 'g', max(tl.Prec, 1), 64)
+	case "exponential":
+		s = fmt.Sprintf("%.*e", max(tl.Prec, 0), v)
+	case "decimal":
+		s = strconv.FormatFloat(v, 'f', max(tl.Prec, 0), 64)
 	default:
+		r.warn("tick label format %s is drawn as decimal", tl.Format)
 		s = strconv.FormatFloat(v, 'f', max(tl.Prec, 0), 64)
 		if s[0] == '-' && strconv.FormatFloat(-v, 'f', max(tl.Prec, 0), 64) == s[1:] && -v == 0 {
 			s = s[1:]
@@ -420,7 +425,7 @@ func (r *renderer) axis(t xform, isX bool) {
 		}
 		size := ax.TickLabel.CharSize * charUnit
 		for _, w := range tk.majors {
-			ts := r.layout(label(w, ax.TickLabel), ax.TickLabel.Font, size)
+			ts := r.layout(r.label(w, ax.TickLabel), ax.TickLabel.Font, size)
 			if ts.ink.Empty() {
 				continue
 			}
