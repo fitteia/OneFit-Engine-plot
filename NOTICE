@@ -1,0 +1,14 @@
+OneFit-Engine-plot
+
+Copyright (c) 2026 Pedro Sebastiao.
+
+This project is distributed under the Artistic License 2.0; see LICENSE.
+
+plot-go reads and renders the project file format of Grace (xmgrace), a
+separate program distributed under the GNU GPL, version 2 or later. It is
+an independent implementation written from the file format and Grace's
+documentation; it contains no Grace source code. Grace's own gracebat is
+used only as an external reference in tests.
+
+The standard PDF fonts plot-go refers to (Times-Roman, Helvetica, Symbol)
+are named, not embedded; the viewer supplies them.

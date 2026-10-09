@@ -1,0 +1,47 @@
+name: CI
+
+# Every pull request and push to main, and once a week: the tests inside
+# Debian containers - trixie (stable, must pass) and forky (testing, the
+# next stable: allowed to fail, an early warning; the weekly run catches it
+# moving between pushes).
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (debian ${{ matrix.debian }})
+    runs-on: ubuntu-24.04
+    container: debian:${{ matrix.debian }}
+    continue-on-error: ${{ matrix.debian == 'forky' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        debian: [trixie, forky]
+    steps:
+      # git first, so actions/checkout makes a real git checkout; gcc for
+      # the race detector (it needs cgo)
+      - name: Debian packages
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends git ca-certificates gcc libc6-dev
+
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test (race detector)
+        run: go test -race ./...
