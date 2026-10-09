@@ -19,3 +19,13 @@ and distribution for any purpose provided that file accompanies them:
 Copyright (c) 1985-1997 Adobe Systems Incorporated. All Rights Reserved.
 These metrics are embedded in the plot-go program; so is MustRead.html,
 which `plot-go -notices` prints together with this NOTICE and the LICENSE.
+
+To draw text as shapes (plot-go -outline-text, and the OneFit GUI's
+preview), plot-go embeds the Liberation fonts - metric-compatible with
+Helvetica, Times and Courier - from github.com/go-fonts/liberation:
+Digitized data copyright (c) 2010 Google Corporation, with Reserved Font
+Arimo, Tinos and Cousine; Copyright (c) 2012 Red Hat, Inc., with Reserved
+Font Name Liberation. They are licensed under the SIL Open Font License
+1.1 (internal/glyph/OFL.txt); the go-fonts package under a BSD license
+(internal/glyph/go-fonts-LICENSE). plot-go -notices prints both. The fonts
+are used unmodified and are not sold on their own.

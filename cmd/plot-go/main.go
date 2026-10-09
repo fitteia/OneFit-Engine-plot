@@ -27,6 +27,7 @@ import (
 	"github.com/fitteia/OneFit-Engine-plot/backend"
 	"github.com/fitteia/OneFit-Engine-plot/draw"
 	"github.com/fitteia/OneFit-Engine-plot/internal/afm"
+	"github.com/fitteia/OneFit-Engine-plot/internal/glyph"
 	"github.com/fitteia/OneFit-Engine-plot/render"
 )
 
@@ -44,7 +45,10 @@ var notice string
 var license string
 
 func printNotices() {
-	fmt.Print(notice, "\n", "---- Adobe Core 14 AFM files (embedded font metrics): MustRead.html ----\n\n", afm.AdobeNotice(), "\n\n---- LICENSE ----\n\n", license)
+	fmt.Print(notice, "\n", "---- Adobe Core 14 AFM files (embedded font metrics): MustRead.html ----\n\n", afm.AdobeNotice(),
+		"\n\n---- Liberation fonts (embedded): SIL Open Font License 1.1 ----\n\n", glyph.FontLicense,
+		"\n---- github.com/go-fonts/liberation (embedded): BSD license ----\n\n", glyph.PackageLicense,
+		"\n---- LICENSE ----\n\n", license)
 }
 
 type writer func(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) error
@@ -64,6 +68,7 @@ func main() {
 	quiet := flag.Bool("q", false, "do not print warnings")
 	showVersion := flag.Bool("version", false, "print the version and exit")
 	showNotices := flag.Bool("notices", false, "print the license and third-party notices and exit")
+	outlineText := flag.Bool("outline-text", false, "SVG: draw text as glyph outlines (the same in every browser) instead of <text>")
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, "usage: plot-go [-o OUT] [-format pdf|eps|svg] [-q] FILE.agr")
 		flag.PrintDefaults()
@@ -90,6 +95,11 @@ func main() {
 		}
 	}
 	write := writers[f]
+	if f == "svg" && *outlineText {
+		write = func(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) error {
+			return backend.WriteSVGWith(w, d, pageW, pageH, title, backend.SVGOptions{TextAsPaths: true})
+		}
+	}
 	if write == nil {
 		fail(fmt.Errorf("unknown format %q (pdf, eps or svg)", f))
 	}

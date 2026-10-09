@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/fitteia/OneFit-Engine-plot/draw"
+	"github.com/fitteia/OneFit-Engine-plot/internal/afm"
+	"github.com/fitteia/OneFit-Engine-plot/internal/glyph"
 )
 
 // families maps the standard fonts to CSS font families; a browser has no
@@ -29,45 +31,34 @@ var families = map[string]string{
 	"Symbol":                "'Times New Roman', Times, 'Liberation Serif', serif",
 }
 
-// symbolGreek is the Symbol font's letters as the Greek characters they
-// draw (Adobe's Symbol.afm names them: Alpha, Beta, Chi, ...; theta1,
-// sigma1, phi1, omega1 are the variant forms).
-var symbolGreek = map[byte]rune{
-	'A': 'Α', 'B': 'Β', 'C': 'Χ', 'D': 'Δ', 'E': 'Ε', 'F': 'Φ', 'G': 'Γ', 'H': 'Η',
-	'I': 'Ι', 'J': 'ϑ', 'K': 'Κ', 'L': 'Λ', 'M': 'Μ', 'N': 'Ν', 'O': 'Ο', 'P': 'Π',
-	'Q': 'Θ', 'R': 'Ρ', 'S': 'Σ', 'T': 'Τ', 'U': 'Υ', 'V': 'ς', 'W': 'Ω', 'X': 'Ξ',
-	'Y': 'Ψ', 'Z': 'Ζ',
-	'a': 'α', 'b': 'β', 'c': 'χ', 'd': 'δ', 'e': 'ε', 'f': 'φ', 'g': 'γ', 'h': 'η',
-	'i': 'ι', 'j': 'ϕ', 'k': 'κ', 'l': 'λ', 'm': 'μ', 'n': 'ν', 'o': 'ο', 'p': 'π',
-	'q': 'θ', 'r': 'ρ', 's': 'σ', 't': 'τ', 'u': 'υ', 'v': 'ϖ', 'w': 'ω', 'x': 'ξ',
-	'y': 'ψ', 'z': 'ζ',
-}
-
 // Unicode turns a string in one of the standard fonts' encodings into
-// Unicode text: Symbol letters become Greek, Latin-1 bytes their
-// characters.
+// Unicode text: Symbol letters become Greek, 39 quoteright, the rest
+// Latin-1 (glyph.Rune).
 func Unicode(font, s string) string {
 	var b strings.Builder
 	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if font == "Symbol" {
-			if g, ok := symbolGreek[c]; ok {
-				b.WriteRune(g)
-				continue
-			}
-		}
-		if c == '\'' && font != "Symbol" && font != "ZapfDingbats" {
-			b.WriteRune('’') // quoteright in gracebat's encoding
-			continue
-		}
-		b.WriteRune(rune(c))
+		b.WriteRune(glyph.Rune(font, s[i]))
 	}
 	return b.String()
+}
+
+// SVGOptions change how WriteSVGWith draws.
+type SVGOptions struct {
+	// TextAsPaths draws text as glyph outlines (internal/glyph) instead
+	// of <text>: the same shapes in every browser, whatever fonts it has -
+	// what an editor's preview needs. Plain <text> is smaller and
+	// selectable.
+	TextAsPaths bool
 }
 
 // WriteSVG writes the drawing as SVG, cropped to the same box as the EPS
 // and PDF, in points.
 func WriteSVG(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) error {
+	return WriteSVGWith(w, d, pageW, pageH, title, SVGOptions{})
+}
+
+// WriteSVGWith is WriteSVG with options.
+func WriteSVGWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string, opt SVGOptions) error {
 	pageW, pageH = draw.PageSize(pageW, pageH)
 	unit := math.Min(pageW, pageH)
 	bb := BoundingBox(d, unit)
@@ -90,6 +81,12 @@ func WriteSVG(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) 
 		if kind == 't' {
 			t := d.Texts[ti]
 			ti++
+			if opt.TextAsPaths {
+				if path, ok := textPath(t, X, Y); ok {
+					p(`<path d="%s" fill="%s"/>`+"\n", path, rgb(t.Color))
+					continue
+				}
+			}
 			size := math.Hypot(t.Matrix[0], t.Matrix[1])
 			angle := math.Atan2(t.Matrix[1], t.Matrix[0]) * 180 / math.Pi
 			tr := ""
@@ -164,4 +161,41 @@ func style(font string) string {
 		s += ` font-style="italic"`
 	}
 	return s
+}
+
+// textPath is a text's glyph outlines as an SVG path, placed as the text
+// is: characters at Adobe's advances, through the text's matrix (size and
+// rotation), from its origin. ok is false for a font without outlines,
+// which is then drawn as <text>.
+func textPath(t draw.Text, X, Y func(float64) string) (string, bool) {
+	m, err := afm.Get(t.Font)
+	if err != nil {
+		return "", false
+	}
+	a, b, c, dd := t.Matrix[0], t.Matrix[1], t.Matrix[2], t.Matrix[3]
+	at := func(x, y float64) string { // ems in text space -> SVG points
+		return X(t.At.X+a*x+c*y) + " " + Y(t.At.Y+b*x+dd*y)
+	}
+	var path strings.Builder
+	pen := 0.0
+	for i := 0; i < len(t.Str); i++ {
+		segs, err := glyph.Outline(t.Font, t.Str[i])
+		if err != nil {
+			return "", false
+		}
+		for _, sg := range segs {
+			path.WriteByte(byte(sg.Op))
+			for k, pt := range sg.Pts {
+				if k > 0 {
+					path.WriteByte(' ')
+				}
+				path.WriteString(at(pen+pt[0], pt[1]))
+			}
+		}
+		pen += m.Width(t.Str[i : i+1])
+	}
+	if path.Len() == 0 {
+		return "", false
+	}
+	return path.String(), true
 }
