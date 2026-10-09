@@ -138,7 +138,7 @@ type Ticks struct {
 // TickLabels are the numbers written at major ticks.
 type TickLabels struct {
 	On       bool
-	Format   string // "decimal", "power", ...
+	Format   string // "decimal", "power", ...; empty is Grace's default, general
 	Prec     int
 	Append   string
 	Prepend  string

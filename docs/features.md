@@ -65,7 +65,8 @@ A few files have values Grace itself would reject or ignore:
 `xaxis ticklabel format unknown` (2 files), `xaxis ticklabel format 60` (1)
 and `xaxis ticklabel prec` with no value (4 parameter files). plot-go warns
 and keeps going, as gracebat does; for an unknown format gracebat draws
-plain decimals (testdata/ref/test1-13.png), and so does plot-go.
+numbers in its default `general` format ("100"; testdata/ref/test1-13.png),
+and so does plot-go.
 
 Parameter files (`.agr-par`) write their directives without the leading
 `@`; Grace accepts both, and so does plot-go.

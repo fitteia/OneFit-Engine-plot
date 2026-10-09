@@ -7,8 +7,10 @@ part of the Grace format OneFit uses, not a clone of xmgrace; interactive
 plots are the OneFit GUI's job.
 
 Status: steps 1 and 2 are done - the feature inventory, and the parser
-(`agr`), which reads all 735 OneFit files of the inventory corpus. The
-reference images for step 4 are in `testdata/ref`. No renderer yet.
+(`agr`), which reads all 735 OneFit files of the inventory corpus. Step 3's
+renderer (`render`) draws every reference file the way gracebat does,
+primitive by primitive (see docs/grace-behaviour.md); it does not write
+files yet (PDF, SVG and PNG backends are next).
 
 ## Plan
 

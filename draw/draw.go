@@ -48,8 +48,11 @@ type Text struct {
 
 // Drawing is everything a page draws, in order.
 type Drawing struct {
-	Paths []Path
-	Texts []Text
+	// Width and Height are the page's size in viewport units (one of them
+	// is 1).
+	Width, Height float64
+	Paths         []Path
+	Texts         []Text
 	// Order lists primitives as drawn: 'p' for the next path, 't' for the
 	// next text.
 	Order []byte

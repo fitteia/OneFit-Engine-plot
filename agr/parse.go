@@ -388,16 +388,17 @@ func init() {
 		r("AXIS tick minor grid W", func(p *parser, a []string) { p.axis(a[0]).Tick.MinorMarks.Grid = p.bool(a[1]) }),
 		r("AXIS ticklabel prec", func(p *parser, a []string) { p.warn("tick label precision has no value; ignored") }),
 		r("AXIS ticklabel W", func(p *parser, a []string) { p.axis(a[0]).TickLabel.On = p.bool(a[1]) }),
+		// an unknown format is a syntax error to gracebat: it ignores the
+		// line and keeps the format it had (its default, general)
 		r("AXIS ticklabel format W", func(p *parser, a []string) {
 			if !tickLabelFormats[a[1]] {
-				p.warn("unknown tick label format %q; decimal used", a[1])
-				a[1] = "decimal"
+				p.warn("unknown tick label format %q; ignored, as gracebat does", a[1])
+				return
 			}
 			p.axis(a[0]).TickLabel.Format = a[1]
 		}),
 		r("AXIS ticklabel format N", func(p *parser, a []string) {
-			p.warn("unknown tick label format %q; decimal used", a[1])
-			p.axis(a[0]).TickLabel.Format = "decimal"
+			p.warn("unknown tick label format %q; ignored, as gracebat does", a[1])
 		}),
 		r("AXIS ticklabel prec N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Prec = p.int(a[1]) }),
 		r("AXIS ticklabel formula S", func(p *parser, a []string) {

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Renders each testdata/corpus/*.agr with Grace's gracebat - the reference
-# plot-go is compared against - into testdata/ref/NAME.png: gracebat writes
-# EPS (it has no PDF device; OneFit's C core does the same, then epstopdf),
-# and Ghostscript renders the whole page, 773x600 points, at 144 dpi.
+# plot-go is compared against: testdata/ref/NAME.eps is gracebat's EPS (it
+# has no PDF device; OneFit's C core does the same, then epstopdf), read by
+# the render tests primitive by primitive, and testdata/ref/NAME.png is
+# Ghostscript's rendering of the whole page, 773x600 points, at 144 dpi.
 #
 # gracebat is used only as a black box (see AGENTS.md). Needs gracebat and gs.
 #
@@ -19,13 +20,15 @@ files=("$@")
 
 for agr in "${files[@]}"; do
   name=$(basename "$agr" .agr)
-  gracebat -hdevice EPS -printfile "$tmp/$name.eps" "$agr" > "$tmp/$name.log" 2>&1 || {
+  gracebat -hdevice EPS -printfile "testdata/ref/$name.eps" "$agr" > "$tmp/$name.log" 2>&1 || {
     echo "gracebat failed on $agr:" >&2
     cat "$tmp/$name.log" >&2
     exit 1
   }
+  # the creation date would make every regeneration differ
+  sed -i.bak '/^%%CreationDate:/d' "testdata/ref/$name.eps" && rm -f "testdata/ref/$name.eps.bak"
   gs -q -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r144 -g1546x1200 -dFIXEDMEDIA \
     -dTextAlphaBits=4 -dGraphicsAlphaBits=4 \
-    -sOutputFile="testdata/ref/$name.png" "$tmp/$name.eps"
-  echo "testdata/ref/$name.png"
+    -sOutputFile="testdata/ref/$name.png" "testdata/ref/$name.eps"
+  echo "testdata/ref/$name.eps testdata/ref/$name.png"
 done

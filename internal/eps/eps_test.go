@@ -8,10 +8,10 @@ import (
 	"github.com/fitteia/OneFit-Engine-plot/draw"
 )
 
-// testdata/test3-1.eps is gracebat 5.1.25's EPS of
+// testdata/ref/test3-1.eps is gracebat 5.1.25's EPS of
 // testdata/corpus/test3-1.agr.
 func TestParseGracebatEPS(t *testing.T) {
-	f, err := os.Open("testdata/test3-1.eps")
+	f, err := os.Open("../../testdata/ref/test3-1.eps")
 	if err != nil {
 		t.Fatal(err)
 	}
