@@ -35,14 +35,16 @@ every directive appears in all 704 files.
   linewidth 2.0, colors 1-6, linestyles 1, 3, 4, 5, 6, 7 (solid and
   dashed patterns).
 - One `xydy` set per graph: the data - symbol 1 (circle), size 1.0 or
-  0.5, no line (type 0), error bars on both sides, size 1.0.
+  0.5, no line (type 0). Error bars are off in every file (`errorbar
+  off`), so dy is read but not drawn.
 - Legend strings per set (empty in every file of the corpus); avalues,
   fill, baseline and droplines are all off.
 
 ## Legend and strings
 
-- Legend at view coordinates (0.977, 0.8), char size 1.5, font 4, a box
-  with linestyle 1.
+- Legend on, at view coordinates (0.977, 0.8), char size 1.5, font 4,
+  but its box is not drawn (`legend box pattern 0`) and every set's legend
+  text is empty - in practice no legend appears.
 - Text strings (`with string`): one at view coordinates (the run's name,
   font 4, size 1.0, blue) and, in 427 files, labels in world coordinates
   next to the curves (font 0, size 1.5). No rotation, left justified.
@@ -61,8 +63,12 @@ every directive appears in all 704 files.
 
 A few files have values Grace itself would reject or ignore:
 `xaxis ticklabel format unknown` (2 files), `xaxis ticklabel format 60` (1)
-and `xaxis ticklabel prec` with no value (1). plot-go should warn and keep
-going, as gracebat does.
+and `xaxis ticklabel prec` with no value (4 parameter files). plot-go warns
+and keeps going, as gracebat does; for an unknown format gracebat draws
+plain decimals (testdata/ref/test1-13.png), and so does plot-go.
+
+Parameter files (`.agr-par`) write their directives without the leading
+`@`; Grace accepts both, and so does plot-go.
 
 ## Not needed
 

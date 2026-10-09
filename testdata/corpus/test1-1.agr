@@ -1,0 +1,2205 @@
+# Grace project file
+#
+@version 50125
+@page size 773, 600
+@page scroll 5%
+@page inout 5%
+@link page off
+@map font 0 to "Times-Roman", "Times-Roman"
+@map font 2 to "Times-Italic", "Times-Italic"
+@map font 1 to "Times-Bold", "Times-Bold"
+@map font 3 to "Times-BoldItalic", "Times-BoldItalic"
+@map font 4 to "Helvetica", "Helvetica"
+@map font 6 to "Helvetica-Oblique", "Helvetica-Oblique"
+@map font 5 to "Helvetica-Bold", "Helvetica-Bold"
+@map font 7 to "Helvetica-BoldOblique", "Helvetica-BoldOblique"
+@map font 10 to "Courier-Bold", "Courier-Bold"
+@map font 11 to "Courier-BoldOblique", "Courier-BoldOblique"
+@map font 8 to "Symbol", "Symbol"
+@map font 9 to "ZapfDingbats", "ZapfDingbats"
+@map color 0 to (255, 255, 255), "white"
+@map color 1 to (0, 0, 0), "black"
+@map color 2 to (255, 0, 0), "red"
+@map color 3 to (0, 255, 0), "green"
+@map color 4 to (0, 0, 255), "blue"
+@map color 5 to (255, 255, 0), "yellow"
+@map color 6 to (188, 143, 143), "brown"
+@map color 7 to (220, 220, 220), "grey"
+@map color 8 to (148, 0, 211), "violet"
+@map color 9 to (0, 255, 255), "cyan"
+@map color 10 to (255, 0, 255), "magenta"
+@map color 11 to (255, 165, 0), "orange"
+@map color 12 to (114, 33, 188), "indigo"
+@map color 13 to (103, 7, 72), "maroon"
+@map color 14 to (64, 224, 208), "turquoise"
+@map color 15 to (0, 139, 0), "green4"
+@reference date 0
+@date wrap on
+@date wrap year 1900
+@default linewidth 1.0
+@default linestyle 1
+@default color 1
+@default pattern 1
+@default font 4
+@default char size 1.000000
+@default symbol size 0.500000
+@default sformat "%16.8g"
+@background color 0
+@page background fill on
+@timestamp off
+@timestamp 0.03, 0.03
+@timestamp color 1
+@timestamp rot 0
+@timestamp font 4
+@timestamp char size 1.000000
+@timestamp def "Fri Sep  4 16:08:00 2026"
+@with string
+@    string on
+@    string loctype view
+@    string 0.05, 0.05
+@    string color 4
+@    string rot 0
+@    string font 4
+@    string just 0
+@    string char size 1.000000
+@    string def "[NId]"
+@r0 off
+@link r0 to g0
+@r0 type above
+@r0 linestyle 1
+@r0 linewidth 1.0
+@r0 color 1
+@r0 line 0, 0, 0, 0
+@r1 off
+@link r1 to g0
+@r1 type above
+@r1 linestyle 1
+@r1 linewidth 1.0
+@r1 color 1
+@r1 line 0, 0, 0, 0
+@r2 off
+@link r2 to g0
+@r2 type above
+@r2 linestyle 1
+@r2 linewidth 1.0
+@r2 color 1
+@r2 line 0, 0, 0, 0
+@r3 off
+@link r3 to g0
+@r3 type above
+@r3 linestyle 1
+@r3 linewidth 1.0
+@r3 color 1
+@r3 line 0, 0, 0, 0
+@r4 off
+@link r4 to g0
+@r4 type above
+@r4 linestyle 1
+@r4 linewidth 1.0
+@r4 color 1
+@r4 line 0, 0, 0, 0
+@g0 on
+@g0 hidden false
+@g0 type XY
+@g0 stacked false
+@g0 bar hgap 0.000000
+@g0 fixedpoint off
+@g0 fixedpoint type 0
+@g0 fixedpoint xy 0.000000, 0.000000
+@g0 fixedpoint format general general
+@g0 fixedpoint prec 6, 6
+@with g0
+@    world 56, 1, 500, 100000
+@    stack world 0, 0, 0, 0
+@    znorm 1
+@    view 0.183247, 0.149994, 1.038397, 0.849964
+@    title ""
+@    title font 4
+@    title size 1.500000
+@    title color 1
+@    subtitle ""
+@    subtitle font 4
+@    subtitle size 1.000000
+@    subtitle color 1
+@    xaxes scale Normal
+@    yaxes scale Logarithmic
+@    xaxes invert off
+@    yaxes invert off
+@    xaxis  on
+@    xaxis  type zero false
+@    xaxis  offset 0.000000 , 0.000000
+@    xaxis  bar off
+@    xaxis  bar color 1
+@    xaxis  bar linestyle 1
+@    xaxis  bar linewidth 2.0
+@    xaxis  label "time (year's day) "
+@    xaxis  label layout para
+@    xaxis  label place auto
+@    xaxis  label char size 1.500000
+@    xaxis  label font 4
+@    xaxis  label color 1
+@    xaxis  label place normal
+@    xaxis  tick on
+@    xaxis  tick major 60
+@    xaxis  tick minor ticks 1
+@    xaxis  tick default 6
+@    xaxis  tick place rounded true
+@    xaxis  tick in
+@    xaxis  tick major size 1.500000
+@    xaxis  tick major color 1
+@    xaxis  tick major linewidth 2.0
+@    xaxis  tick major linestyle 1
+@    xaxis  tick major grid off
+@    xaxis  tick minor color 1
+@    xaxis  tick minor linewidth 2.0
+@    xaxis  tick minor linestyle 1
+@    xaxis  tick minor grid off
+@    xaxis  tick minor size 1.000000
+@    xaxis  ticklabel on
+@    xaxis  ticklabel format decimal
+@    xaxis  ticklabel prec 0
+@    xaxis  ticklabel formula ""
+@    xaxis  ticklabel append ""
+@    xaxis  ticklabel prepend ""
+@    xaxis  ticklabel angle 0
+@    xaxis  ticklabel skip 0
+@    xaxis  ticklabel stagger 0
+@    xaxis  ticklabel place normal
+@    xaxis  ticklabel offset auto
+@    xaxis  ticklabel offset 0.000000 , 0.010000
+@    xaxis  ticklabel start type auto
+@    xaxis  ticklabel start 0.000000
+@    xaxis  ticklabel stop type auto
+@    xaxis  ticklabel stop 0.000000
+@    xaxis  ticklabel char size 1.500000
+@    xaxis  ticklabel font 4
+@    xaxis  ticklabel color 1
+@    xaxis  tick place both
+@    xaxis  tick spec type none
+@    yaxis  on
+@    yaxis  type zero false
+@    yaxis  offset 0.000000 , 0.000000
+@    yaxis  bar off
+@    yaxis  bar color 1
+@    yaxis  bar linestyle 1
+@    yaxis  bar linewidth 1.0
+@    yaxis  label "N\sI\sd\N (detected daily new cases) "
+@    yaxis  label layout para
+@    yaxis  label place auto
+@    yaxis  label char size 1.500000
+@    yaxis  label font 4
+@    yaxis  label color 1
+@    yaxis  label place normal
+@    yaxis  tick on
+@    yaxis  tick major 10
+@    yaxis  tick minor ticks 9
+@    yaxis  tick default 6
+@    yaxis  tick place rounded true
+@    yaxis  tick in
+@    yaxis  tick major size 1.500000
+@    yaxis  tick major color 1
+@    yaxis  tick major linewidth 2.0
+@    yaxis  tick major linestyle 1
+@    yaxis  tick major grid off
+@    yaxis  tick minor color 1
+@    yaxis  tick minor linewidth 2.0
+@    yaxis  tick minor linestyle 1
+@    yaxis  tick minor grid off
+@    yaxis  tick minor size 1.000000
+@    yaxis  ticklabel on
+@    yaxis  ticklabel format power
+@    yaxis  ticklabel prec 0
+@    yaxis  ticklabel formula ""
+@    yaxis  ticklabel append ""
+@    yaxis  ticklabel prepend ""
+@    yaxis  ticklabel angle 0
+@    yaxis  ticklabel skip 0
+@    yaxis  ticklabel stagger 0
+@    yaxis  ticklabel place normal
+@    yaxis  ticklabel offset auto
+@    yaxis  ticklabel offset 0.000000 , 0.010000
+@    yaxis  ticklabel start type auto
+@    yaxis  ticklabel start 0.000000
+@    yaxis  ticklabel stop type auto
+@    yaxis  ticklabel stop 0.000000
+@    yaxis  ticklabel char size 1.500000
+@    yaxis  ticklabel font 4
+@    yaxis  ticklabel color 1
+@    yaxis  tick place both
+@    yaxis  tick spec type none
+@    altxaxis  off
+@    altyaxis  off
+@    legend on
+@    legend loctype view
+@    legend 0.977315227809, 0.799966426
+@    legend box color 1
+@    legend box pattern 0
+@    legend box linewidth 1.0
+@    legend box linestyle 1
+@    legend box fill color 0
+@    legend box fill pattern 1
+@    legend font 4
+@    legend char size 1.500000
+@    legend color 1
+@    legend length 4
+@    legend vgap 1
+@    legend hgap 1
+@    legend invert false
+@    frame type 0
+@    frame linestyle 1
+@    frame linewidth 2.0
+@    frame color 1
+@    frame pattern 1
+@    frame background color 0
+@    frame background pattern 0
+@    s0 hidden false
+@    s0 type xydy
+@    s0 symbol 1
+@    s0 symbol size 0.500000
+@    s0 symbol color 1
+@    s0 symbol pattern 1
+@    s0 symbol fill color 1
+@    s0 symbol fill pattern 0
+@    s0 symbol linewidth 2.0
+@    s0 symbol linestyle 1
+@    s0 symbol char 65
+@    s0 symbol char font 4
+@    s0 symbol skip 0
+@    s0 line type 0
+@    s0 line linestyle 1
+@    s0 line linewidth 2.0
+@    s0 line color 1
+@    s0 line pattern 1
+@    s0 baseline type 0
+@    s0 baseline off
+@    s0 dropline off
+@    s0 fill type 0
+@    s0 fill rule 0
+@    s0 fill color 1
+@    s0 fill pattern 1
+@    s0 avalue off
+@    s0 avalue type 2
+@    s0 avalue char size 1.000000
+@    s0 avalue font 4
+@    s0 avalue color 1
+@    s0 avalue rot 0
+@    s0 avalue format general
+@    s0 avalue prec 3
+@    s0 avalue prepend ""
+@    s0 avalue append ""
+@    s0 avalue offset 0.000000 , 0.000000
+@    s0 errorbar off
+@    s0 errorbar place both
+@    s0 errorbar color 1
+@    s0 errorbar pattern 1
+@    s0 errorbar size 1.000000
+@    s0 errorbar linewidth 1.0
+@    s0 errorbar linestyle 1
+@    s0 errorbar riser linewidth 1.0
+@    s0 errorbar riser linestyle 1
+@    s0 errorbar riser clip off
+@    s0 errorbar riser clip length 0.100000
+@    s0 comment "sm1-gph.agr"
+@    s0 legend  ""
+@    s1 hidden false
+@    s1 type xy
+@    s1 symbol 0
+@    s1 symbol size 1.000000
+@    s1 symbol color 1
+@    s1 symbol pattern 1
+@    s1 symbol fill color 1
+@    s1 symbol fill pattern 0
+@    s1 symbol linewidth 2.0
+@    s1 symbol linestyle 1
+@    s1 symbol char 65
+@    s1 symbol char font 4
+@    s1 symbol skip 0
+@    s1 line type 1
+@    s1 line linestyle 3
+@    s1 line linewidth 2.0
+@    s1 line color 2
+@    s1 line pattern 1
+@    s1 baseline type 0
+@    s1 baseline off
+@    s1 dropline off
+@    s1 fill type 0
+@    s1 fill rule 0
+@    s1 fill color 1
+@    s1 fill pattern 1
+@    s1 avalue off
+@    s1 avalue type 2
+@    s1 avalue char size 1.000000
+@    s1 avalue font 4
+@    s1 avalue color 1
+@    s1 avalue rot 0
+@    s1 avalue format general
+@    s1 avalue prec 3
+@    s1 avalue prepend ""
+@    s1 avalue append ""
+@    s1 avalue offset 0.000000 , 0.000000
+@    s1 errorbar off
+@    s1 errorbar place both
+@    s1 errorbar color 1
+@    s1 errorbar pattern 1
+@    s1 errorbar size 1.000000
+@    s1 errorbar linewidth 1.0
+@    s1 errorbar linestyle 1
+@    s1 errorbar riser linewidth 1.0
+@    s1 errorbar riser linestyle 1
+@    s1 errorbar riser clip off
+@    s1 errorbar riser clip length 0.100000
+@    s1 comment "sm1-gph.agr"
+@    s1 legend  ""
+@    s2 hidden false
+@    s2 type xy
+@    s2 symbol 0
+@    s2 symbol size 1.000000
+@    s2 symbol color 1
+@    s2 symbol pattern 1
+@    s2 symbol fill color 1
+@    s2 symbol fill pattern 0
+@    s2 symbol linewidth 2.0
+@    s2 symbol linestyle 1
+@    s2 symbol char 65
+@    s2 symbol char font 4
+@    s2 symbol skip 0
+@    s2 line type 1
+@    s2 line linestyle 1
+@    s2 line linewidth 2.0
+@    s2 line color 1
+@    s2 line pattern 1
+@    s2 baseline type 0
+@    s2 baseline off
+@    s2 dropline off
+@    s2 fill type 0
+@    s2 fill rule 0
+@    s2 fill color 1
+@    s2 fill pattern 1
+@    s2 avalue off
+@    s2 avalue type 2
+@    s2 avalue char size 1.000000
+@    s2 avalue font 4
+@    s2 avalue color 1
+@    s2 avalue rot 0
+@    s2 avalue format general
+@    s2 avalue prec 3
+@    s2 avalue prepend ""
+@    s2 avalue append ""
+@    s2 avalue offset 0.000000 , 0.000000
+@    s2 errorbar off
+@    s2 errorbar place both
+@    s2 errorbar color 1
+@    s2 errorbar pattern 1
+@    s2 errorbar size 1.000000
+@    s2 errorbar linewidth 1.0
+@    s2 errorbar linestyle 1
+@    s2 errorbar riser linewidth 1.0
+@    s2 errorbar riser linestyle 1
+@    s2 errorbar riser clip off
+@    s2 errorbar riser clip length 0.100000
+@    s2 comment "sm1-gph.agr"
+@    s2 legend  ""
+@target G0.S0
+@type xydy
+              62                2              0.2
+              64                3              0.3
+              65                3              0.3
+              66                5              0.5
+              67                7              0.7
+              68               10                1
+              70               11              1.1
+              71               18              1.8
+              73               53              5.3
+              74               57              5.7
+              75               76              7.6
+              76               86              8.6
+              77              117             11.7
+              79              337             33.7
+              80              235             23.5
+              81              260               26
+              82              320               32
+              83              460               46
+              84              302             30.2
+              85              633             63.3
+              86              549             54.9
+              87              724             72.4
+              88              902             90.2
+              89              792             79.2
+              90              446             44.6
+              91             1035            103.5
+              92              808             80.8
+              93              783             78.3
+              94              852             85.2
+              95              638             63.8
+              96              754             75.4
+              97              452             45.2
+              98              712             71.2
+              99              699             69.9
+             100              815             81.5
+             101             1516            151.6
+             102              515             51.5
+             103              598             59.8
+             104              349             34.9
+             105              514             51.4
+             106              643             64.3
+             107              750               75
+             108              181             18.1
+             109              663             66.3
+             110              521             52.1
+             111              657             65.7
+             112              516             51.6
+             113              603             60.3
+             114              371             37.1
+             115              444             44.4
+             116              595             59.5
+             117              472             47.2
+             118              163             16.3
+             119              295             29.5
+             120              183             18.3
+             121              540               54
+             122              306             30.6
+             124               92              9.2
+             125              242             24.2
+             126              178             17.8
+             127              480               48
+             128              533             53.3
+             129              553             55.3
+             130              138             13.8
+             131              175             17.5
+             132               98              9.8
+             133              234             23.4
+             134              219             21.9
+             135              187             18.7
+             136              264             26.4
+             137              227             22.7
+             138              226             22.6
+             139              173             17.3
+             140              223             22.3
+             141              228             22.8
+             142              252             25.2
+             143              288             28.8
+             144              271             27.1
+             145              152             15.2
+             146              165             16.5
+             147              219             21.9
+             148              285             28.5
+             149              304             30.4
+             150              350               35
+             151              257             25.7
+             152              297             29.7
+             153              200               20
+             154              195             19.5
+             155              366             36.6
+             156              331             33.1
+             157              377             37.7
+             158              382             38.2
+             159              342             34.2
+             160              192             19.2
+             161              421             42.1
+             162              294             29.4
+             163              310               31
+             164              270               27
+             165              283             28.3
+             166              227             22.7
+             167              346             34.6
+             168              300               30
+             169              336             33.6
+             170              417             41.7
+             171              375             37.5
+             172              377             37.7
+             173              292             29.2
+             174              259             25.9
+             175              345             34.5
+             176              367             36.7
+             177              311             31.1
+             178              451             45.1
+             179              323             32.3
+             180              457             45.7
+             181              266             26.6
+             182              229             22.9
+             183              313             31.3
+             184              328             32.8
+             185              374             37.4
+             186              413             41.3
+             187              328             32.8
+             188              232             23.2
+             189              287             28.7
+             190              443             44.3
+             191              418             41.8
+             192              402             40.2
+             193              542             54.2
+             194              291             29.1
+             195              306             30.6
+             196              233             23.3
+             197              375             37.5
+             198              339             33.9
+             199              312             31.2
+             200              313             31.3
+             201              246             24.6
+             202              135             13.5
+             203              127             12.7
+             204              252             25.2
+             205              229             22.9
+             206              313             31.3
+             207              263             26.3
+             208              209             20.9
+             209              135             13.5
+             210              111             11.1
+             211              203             20.3
+             212              255             25.5
+             213              204             20.4
+             214              238             23.8
+             215              153             15.3
+             216              106             10.6
+             217              112             11.2
+             218              167             16.7
+             219              213             21.3
+             220              290               29
+             221              186             18.6
+             222              131             13.1
+             223              157             15.7
+             224              120               12
+             225              278             27.8
+             226              325             32.5
+             227              235             23.5
+             228              198             19.8
+             229              121             12.1
+             230              132             13.2
+             231              214             21.4
+             232              253             25.3
+             233              291             29.1
+             234              219             21.9
+             235              241             24.1
+             236              145             14.5
+             237              123             12.3
+             238              192             19.2
+             239              362             36.2
+             240              399             39.9
+             241              401             40.1
+             242              374             37.4
+             243              320               32
+             244              244             24.4
+             245              231             23.1
+             246              390               39
+             247              418             41.8
+             248              406             40.6
+             249              486             48.6
+             250              315             31.5
+             251              249             24.9
+             252              388             38.8
+             253              646             64.6
+             254              585             58.5
+             255              687             68.7
+             256              497             49.7
+             257              673             67.3
+             258              613             61.3
+             259              425             42.5
+             260              605             60.5
+             261              770               77
+             262              780               78
+             263              849             84.9
+             264              552             55.2
+             265              623             62.3
+             266              463             46.3
+             267              802             80.2
+             268              691             69.1
+             269              899             89.9
+             270              884             88.4
+             271              665             66.5
+             272              425             42.5
+             273              688             68.8
+             274              825             82.5
+             275              854             85.4
+             276              888             88.8
+             277              963             96.3
+             278              904             90.4
+             279              734             73.4
+             280              427             42.7
+             281              944             94.4
+             282             1278            127.8
+             283             1394            139.4
+             284             1646            164.6
+             285             1090              109
+             286             1249            124.9
+             287             1208            120.8
+             288             2072            207.2
+             289             2101            210.1
+             290             2608            260.8
+             291             2153            215.3
+             292             1856            185.6
+             293             1949            194.9
+             294             1876            187.6
+             295             2535            253.5
+             296             3270              327
+             297             2899            289.9
+             298             3669            366.9
+             299             2577            257.7
+             300             2447            244.7
+             301             3299            329.9
+             302             3960              396
+             303             4224            422.4
+             304             4656            465.6
+             305             4007            400.7
+             306             3062            306.2
+             307             2506            250.6
+             308             2596            259.6
+             309             7497            749.7
+             310             4410              441
+             311             5550              555
+             312             6640              664
+             313             5784            578.4
+             314             4096            409.6
+             315             3817            381.7
+             316             4935            493.5
+             317             5839            583.9
+             318             6653            665.3
+             319             6602            660.2
+             320             6035            603.5
+             321             3996            399.6
+             322             4452            445.2
+             323             5891            589.1
+             324             6994            699.4
+             325             6489            648.9
+             326             6472            647.2
+             327             4788            478.8
+             328             4044            404.4
+             329             3919            391.9
+             330             5290              529
+             331             6383            638.3
+             332             5444            544.4
+             333             4868            486.8
+             334             4093            409.3
+             335             3262            326.2
+             336             2401            240.1
+             337             3384            338.4
+             338             3772            377.2
+             339             4935            493.5
+             340             6087            608.7
+             341             3834            383.4
+             342             2597            259.7
+             343             2905            290.5
+             344             4097            409.7
+             345             3134            313.4
+             346             5080              508
+             347             4413            441.3
+             348             4044            404.4
+             349             2194            219.4
+             350             2638            263.8
+             351             4720              472
+             352             4320              432
+             353             4336            433.6
+             354             3835            383.5
+             355             3334            333.4
+             356             2099            209.9
+             357             2436            243.6
+             358             4602            460.2
+             359             4378            437.8
+             360             4146            414.6
+             361             1214            121.4
+             362             1577            157.7
+             363             2093            209.3
+             364             3336            333.6
+             365             6049            604.9
+             366             7627            762.7
+             367             6951            695.1
+             368             3241            324.1
+             369             3384            338.4
+             370             4369            436.9
+             371             4956            495.6
+             372            10027           1002.7
+             373             9927            992.7
+             374            10176           1017.6
+             375             9478            947.8
+             376             7502            750.2
+             377             5604            560.4
+             378             7259            725.9
+             379            10556           1055.6
+             380            10698           1069.8
+             381            10663           1066.3
+             382            10947           1094.7
+             383            10385           1038.5
+             384             6702            670.2
+             385            10455           1045.5
+             386            14647           1464.7
+             387            13544           1354.4
+             388            13987           1398.7
+             389            15333           1533.3
+             390            11721           1172.1
+             391             6923            692.3
+             392            10765           1076.5
+             393            15073           1507.3
+             394            16432           1643.2
+             395            13200             1320
+             396            12435           1243.5
+             397             9498            949.8
+             398             5805            580.5
+             399             5540              554
+             400             9083            908.3
+             401             7914            791.4
+             402             6916            691.6
+             403             6132            613.2
+             404             3508            350.8
+             405             2505            250.5
+             406             2583            258.3
+             407             4387            438.7
+             408             3480              348
+             409             2854            285.4
+             410             2856            285.6
+             411             1677            167.7
+             412             1303            130.3
+             413             1502            150.2
+             414             2324            232.4
+             415             1944            194.4
+             416             1940              194
+             417             1570              157
+             418             1186            118.6
+             419              549             54.9
+             420             1032            103.2
+             421             1480              148
+&
+@target G0.S1
+@type xy
+              56                0
+         56.6175      0.005552293
+          57.235       0.02067663
+         57.8526       0.04403236
+         58.4701       0.07526333
+         59.0876         0.114762
+         59.7051         0.163542
+         60.3227        0.2231908
+         60.9402        0.2958777
+         61.5577        0.3844091
+         62.1752        0.4923205
+         62.7928         0.624014
+         63.4103        0.7849349
+         64.0278        0.9817997
+         64.6453         1.222873
+         65.2629         1.518321
+         65.8804         1.880644
+         66.4979         2.325213
+         67.1154         2.870915
+          67.733         3.540962
+         68.3505          4.36389
+          68.968         5.374781
+         69.5855         6.616736
+         70.2031         8.142734
+         70.8206         10.01789
+         71.4381         12.32227
+         72.0556         15.15424
+         72.6732         18.63467
+         73.2907         22.91217
+         73.9082         28.16937
+         74.5257         34.63066
+         75.1433         42.57173
+         75.7608         52.33131
+         76.3783         64.32556
+         76.9958         79.06528
+         77.6134         97.17722
+         78.2309         119.4296
+         78.8484         146.7624
+         79.4659         180.3201
+         80.0834          221.485
+          80.701         271.8922
+         81.3185         333.3746
+          81.936         407.6536
+         82.5535         495.2366
+         83.1711         592.6464
+         83.7886         689.8698
+         84.4061         774.8093
+         85.0236         840.8496
+         85.6412         887.3953
+         86.2587         916.6998
+         86.8762         931.6894
+         87.4937         935.1153
+         88.1113         929.3388
+         88.7288         916.3295
+         89.3463         897.7153
+         89.9638         874.8356
+         90.5814         848.7889
+         91.1989         820.4729
+         91.8164          792.162
+         92.4339         769.2679
+         93.0515          751.238
+          93.669         736.6614
+         94.2865         724.4777
+          94.904         713.9115
+         95.5216         704.3969
+         96.1391         695.5222
+         96.7566         686.9898
+         97.3741         678.5881
+         97.9917         670.1689
+         98.6092         661.6325
+         99.2267         652.9147
+         99.8442         643.9784
+         100.462         634.8065
+         101.079         625.3963
+         101.697          615.756
+         102.314         605.9013
+         102.932         595.8531
+         103.549         585.6358
+         104.167         575.2758
+         104.784         564.8005
+         105.402         554.2374
+         106.019         543.6139
+         106.637         532.9562
+         107.255         522.2897
+         107.872         511.6383
+          108.49         501.0244
+         109.107         490.4688
+         109.725         479.9909
+         110.342         469.6082
+          110.96         459.3368
+         111.577         449.1911
+         112.195         439.1841
+         112.812         429.3272
+          113.43         419.6307
+         114.047         410.1034
+         114.665         400.7529
+         115.282         391.5857
+           115.9         382.6073
+         116.517         373.8222
+         117.135         365.2338
+         117.752         356.8449
+          118.37         348.6575
+         118.987         340.6729
+         119.605         332.8917
+         120.223          325.314
+          120.84         317.9394
+         121.458         310.7669
+         122.075         303.7953
+         122.693         297.0229
+          123.31         290.4477
+         123.928         284.0674
+         124.545         277.8795
+         125.163         271.8811
+          125.78         266.0695
+         126.398         260.4416
+         127.015          254.994
+         127.633         249.7236
+          128.25         244.6268
+         128.868         239.7003
+         129.485         234.9405
+         130.103         230.3439
+          130.72         225.9069
+         131.338         221.6259
+         131.955         217.4975
+         132.573         213.8769
+         133.191         211.3603
+         133.808         209.8055
+         134.426         209.0296
+         135.043         208.8869
+         135.661         209.2632
+         136.278          210.069
+         136.896         211.2339
+         137.513         212.7022
+         138.131         214.4301
+         138.748         216.3822
+         139.366         218.5306
+         139.983          220.852
+         140.601         223.3277
+         141.218         225.9417
+         141.836         228.6803
+         142.453         231.5317
+         143.071          234.485
+         143.688         237.5305
+         144.306         240.6589
+         144.924         243.8612
+         145.541         247.1289
+         146.159         250.4534
+         146.776         253.8261
+         147.394         257.2387
+         148.011         260.6824
+         148.629         264.1487
+         149.246         267.6287
+         149.864         271.1136
+         150.481         274.5945
+         151.099         278.0626
+         151.716          281.509
+         152.334         284.9247
+         152.951         288.3009
+         153.569         291.6291
+         154.186         294.9006
+         154.804         298.1071
+         155.421         301.2405
+         156.039         304.2931
+         156.656         307.2573
+         157.274         310.1261
+         157.892         312.8925
+         158.509         315.5505
+         159.127          318.094
+         159.744         320.5177
+         160.362         322.8167
+         160.979         324.9866
+         161.597         327.0234
+         162.214         328.9239
+         162.832         330.6852
+         163.449          332.305
+         164.067         333.7814
+         164.684         335.1134
+         165.302            336.3
+         165.919          337.341
+         166.537         338.2367
+         167.154         338.9876
+         167.772         339.5949
+         168.389         340.0601
+         169.007          340.385
+         169.624         340.5719
+         170.242         340.6235
+          170.86         340.5425
+         171.477         340.3322
+         172.095         339.9961
+         172.712         339.5377
+          173.33         338.9611
+         173.947         338.2701
+         174.565          337.469
+         175.182         336.5622
+           175.8         335.5541
+         176.417         334.4492
+         177.035          333.252
+         177.652         331.9672
+          178.27         330.5995
+         178.887         329.1534
+         179.505         327.6337
+         180.122         326.0448
+          180.74         324.3915
+         181.357         322.6781
+         181.975         320.9091
+         182.592         319.0889
+          183.21         317.2218
+         183.828         315.3119
+         184.445         313.3633
+         185.063           311.38
+          185.68         309.3659
+         186.298         307.3248
+         186.915         305.2601
+         187.533         303.1755
+          188.15         301.0743
+         188.768         298.9597
+         189.385          296.835
+         190.003         294.7029
+          190.62         292.5665
+         191.238         290.4285
+         191.855         288.2914
+         192.473         286.1577
+          193.09         284.0298
+         193.708           281.91
+         194.325         279.8002
+         194.943         277.7026
+         195.561          275.619
+         196.178         273.5512
+         196.796         271.5008
+         197.413         269.4694
+         198.031         267.4585
+         198.648         265.4693
+         199.266         263.5032
+         199.883         261.5613
+         200.501         259.6447
+         201.118         257.7543
+         201.736         255.8912
+         202.353          254.056
+         202.971         252.2495
+         203.588         250.4725
+         204.206         248.7255
+         204.823          247.009
+         205.441         245.3236
+         206.058         243.6696
+         206.676         242.0473
+         207.293         240.4572
+         207.911         238.8993
+         208.529          237.374
+         209.146         235.8812
+         209.764         234.4212
+         210.381          232.994
+         210.999         231.5996
+         211.616         230.2379
+         212.234         228.9089
+         212.851         227.6125
+         213.469         226.3485
+         214.086         225.1168
+         214.704         223.9171
+         215.321         222.7493
+         215.939          221.613
+         216.556         220.5081
+         217.174         219.4341
+         217.791         218.3907
+         218.409         217.3777
+         219.026         216.3946
+         219.644          215.441
+         220.261         214.5165
+         220.879         213.6207
+         221.497         212.7532
+         222.114         211.9134
+         222.732          211.101
+         223.349         210.3154
+         223.967         209.5562
+         224.584         208.8228
+         225.202         208.1147
+         225.819         207.4313
+         226.437         206.7722
+         227.054         206.1369
+         227.672         205.5246
+         228.289         204.9349
+         228.907         204.3673
+         229.524         203.8211
+         230.142         203.2958
+         230.759         202.7908
+         231.377         202.3054
+         231.994         201.8392
+         232.612         201.3915
+         233.229         200.9618
+         233.847         200.5494
+         234.465         200.1537
+         235.082         199.7743
+           235.7         199.4103
+         236.317         199.0614
+         236.935         198.7268
+         237.552         198.4061
+          238.17         198.0985
+         238.787         197.8036
+         239.405         197.5207
+         240.022         197.2493
+          240.64         196.9888
+         241.257         196.7387
+         241.875         196.4983
+         242.492         196.2672
+          243.11         196.0448
+         243.727         195.8305
+         244.345         196.1742
+         244.962         202.9047
+          245.58         217.5266
+         246.197         239.1976
+         246.815           267.39
+         247.433         301.7292
+          248.05         334.7664
+         248.668         363.6343
+         249.285         389.3699
+         249.903         412.7448
+          250.52         434.3304
+         251.138         454.5463
+         251.755         473.6981
+         252.373          492.005
+          252.99         509.6214
+         253.608          526.653
+         254.225         543.1694
+         254.843         559.2132
+          255.46         574.8068
+         256.078         589.9585
+         256.695         604.6661
+         257.313         618.9201
+          257.93         632.7065
+         258.548         646.0082
+         259.166         658.8068
+         259.783         671.0833
+         260.401         682.8195
+         261.018          693.998
+         261.636          704.603
+         262.253         714.6208
+         262.871         724.0397
+         263.488         732.8502
+         264.106         741.0453
+         264.723         748.6203
+         265.341          755.573
+         265.958         761.9034
+         266.576         767.6139
+         267.193         772.7089
+         267.811         777.1949
+         268.428         781.0804
+         269.046         784.3756
+         269.663         787.0922
+         270.281         789.2436
+         270.898         790.8443
+         271.516         791.9101
+         272.134         792.4577
+         272.751         792.5049
+         273.369           792.07
+         273.986         791.1721
+         274.604         789.8304
+         275.221          788.065
+         275.839         785.8958
+         276.456          783.343
+         277.074         780.4269
+         277.691         777.1677
+         278.309         773.5853
+         278.926         769.6997
+         279.544         765.8921
+         280.161         770.9284
+         280.779         786.8226
+         281.396         811.4998
+         282.014         843.4429
+         282.631         881.5536
+         283.249         925.0438
+         283.866         973.3549
+         284.484         1026.098
+         285.102         1083.006
+         285.719         1143.905
+         286.337         1208.683
+         286.954         1277.271
+         287.572         1349.628
+         288.189          1425.73
+         288.807          1505.56
+         289.424         1589.098
+         290.042         1676.317
+         290.659         1767.175
+         291.277         1861.614
+         291.894         1959.552
+         292.512         2060.883
+         293.129         2165.472
+         293.747         2273.156
+         294.364          2383.74
+         294.982         2496.994
+         295.599         2612.661
+         296.217         2730.447
+         296.834         2850.031
+         297.452         2971.061
+          298.07         3093.161
+         298.687         3215.928
+         299.305         3338.944
+         299.922         3461.773
+          300.54         3583.967
+         301.157         3705.074
+         301.775         3824.639
+         302.392         3942.211
+          303.01         4057.348
+         303.627         4169.618
+         304.245         4278.608
+         304.862         4383.928
+          305.48         4485.209
+         306.097         4582.112
+         306.715         4674.328
+         307.332         4761.581
+          307.95         4843.627
+         308.567         4920.258
+         309.185         4991.303
+         309.803         5056.624
+          310.42          5116.12
+         311.038         5169.723
+         311.655         5217.399
+         312.273         5259.145
+          312.89         5294.989
+         313.508         5324.985
+         314.125         5349.215
+         314.743         5367.785
+          315.36         5380.822
+         315.978         5388.471
+         316.595         5390.896
+         317.213         5388.277
+          317.83         5380.803
+         318.448         5368.677
+         319.065         5352.108
+         319.683         5331.314
+           320.3         5306.517
+         320.918         5277.941
+         321.535         5245.812
+         322.153         5210.359
+         322.771         5171.805
+         323.388         5130.376
+         324.006          5086.29
+         324.623         5039.764
+         325.241         4991.009
+         325.858          4940.23
+         326.476         4887.627
+         327.093         4833.392
+         327.711          4777.71
+         328.328         4720.759
+         328.946          4662.71
+         329.563         4603.725
+         330.181         4543.959
+         330.798         4483.558
+         331.416         4422.663
+         332.033         4361.403
+         332.651         4299.902
+         333.268         4238.277
+         333.886         4176.635
+         334.503         4115.078
+         335.121         4053.701
+         335.739          3992.59
+         336.356         3931.827
+         336.974         3871.487
+         337.591         3811.637
+         338.209         3752.342
+         338.826         3693.657
+         339.444         3635.636
+         340.061         3578.326
+         340.679         3521.768
+         341.296         3466.001
+         341.914         3411.059
+         342.531         3356.971
+         343.149         3303.764
+         343.766         3251.459
+         344.384         3200.077
+         345.001          3149.64
+         345.619         3100.169
+         346.236         3051.682
+         346.854          3004.19
+         347.471         2957.703
+         348.089         2912.225
+         348.707          2867.76
+         349.324         2824.306
+         349.942         2781.863
+         350.559         2740.425
+         351.177         2699.988
+         351.794         2660.545
+         352.412         2622.086
+         353.029         2584.602
+         353.647         2548.084
+         354.264         2512.519
+         354.882         2477.896
+         355.499         2444.201
+         356.117         2411.422
+         356.734         2379.545
+         357.352         2348.556
+         357.969         2318.441
+         358.587         2262.447
+         359.204         2208.514
+         359.822         2175.404
+         360.439         2165.544
+         361.057         2175.018
+         361.675         2200.975
+         362.292         2241.367
+          362.91         2294.754
+         363.527         2360.149
+         364.145         2436.915
+         364.762         2524.677
+          365.38         2623.265
+         365.997         2732.666
+         366.615         2852.988
+         367.232         2984.434
+          367.85         3127.284
+         368.467          3281.88
+         369.085         3448.607
+         369.702         3627.891
+          370.32         3820.185
+         370.937         4025.965
+         371.555         4245.721
+         372.172         4479.949
+          372.79         4729.146
+         373.408         4993.804
+         374.025         5274.397
+         374.643         5571.379
+          375.26         5885.171
+         375.878         6216.151
+         376.495         6564.649
+         377.113         6930.927
+          377.73         7315.176
+         378.348         7717.502
+         378.965         8137.909
+         379.583          8576.29
+           380.2         9032.418
+         380.818          9505.93
+         381.435         9996.316
+         382.053         10502.92
+          382.67          11024.9
+         383.288         11561.29
+         383.905         12110.91
+         384.523          12638.1
+          385.14         12976.53
+         385.758         13138.77
+         386.376         13159.52
+         386.993         13067.55
+         387.611         12886.65
+         388.228         12636.51
+         388.846         12333.33
+         389.463         11990.47
+         390.081         11618.87
+         390.698         11227.46
+         391.316         10823.53
+         391.933         10412.96
+         392.551         10000.49
+         393.168         9589.921
+         393.786          9184.24
+         394.403         8785.795
+         395.021         8396.391
+         395.638         8017.389
+         396.256         7649.787
+         396.873         7294.284
+         397.491         6951.337
+         398.108         6621.207
+         398.726         6303.994
+         399.344          5987.63
+         399.961         5675.114
+         400.579         5376.318
+         401.196          5091.09
+         401.814         4819.186
+         402.431         4560.295
+         403.049          4314.05
+         403.666         4080.046
+         404.284         3857.853
+         404.901         3647.021
+         405.519         3447.095
+         406.136         3257.611
+         406.754          3078.11
+         407.371         2908.137
+         407.989         2747.247
+         408.606         2595.004
+         409.224         2450.985
+         409.841         2314.781
+         410.459         2185.996
+         411.076         2064.252
+         411.694         1949.183
+         412.312          1840.44
+         412.929         1737.691
+         413.547         1640.616
+         414.164         1548.913
+         414.782         1462.292
+         415.399         1380.479
+         416.017         1303.213
+         416.634         1230.246
+         417.252         1161.343
+         417.869         1096.282
+         418.487          1034.85
+         419.104         976.8481
+         419.722         922.0865
+         420.339         870.3861
+         420.957         821.5771
+         421.574          775.499
+         422.192         731.9999
+         422.809         690.9364
+         423.427         652.1728
+         424.045         615.5809
+         424.662         581.0396
+          425.28         548.4342
+         425.897         517.6568
+         426.515          488.605
+         427.132         461.1823
+          427.75         435.2977
+         428.367          410.865
+         428.985          387.803
+         429.602         366.0348
+          430.22         345.4879
+         430.837          326.094
+         431.455         307.7885
+         432.072         290.5101
+          432.69         274.2015
+         433.307         258.8082
+         433.925         244.2789
+         434.542         230.5651
+          435.16          217.621
+         435.777         205.4036
+         436.395         193.8719
+         437.013         182.9876
+          437.63         172.7143
+         438.248         163.0177
+         438.865         153.8654
+         439.483          145.227
+           440.1         137.0734
+         440.718         129.3777
+         441.335          122.114
+         441.953          115.258
+          442.57          108.787
+         443.188         102.6793
+         443.805         96.91443
+         444.423         91.47325
+          445.04         86.33754
+         445.658         81.49019
+         446.275         76.91497
+         446.893         72.59662
+          447.51         68.52072
+         448.128         64.67365
+         448.745         61.04258
+         449.363         57.61537
+         449.981         54.38057
+         450.598         51.32739
+         451.216         48.44563
+         451.833         45.72566
+         452.451          43.1584
+         453.068         40.73529
+         453.686         38.44821
+         454.303         36.28955
+         454.921         34.25207
+         455.538           32.329
+         456.156         30.51389
+         456.773          28.8007
+         457.391         27.18368
+         458.008         25.65746
+         458.626         24.21693
+         459.243         22.85727
+         459.861         21.57395
+         460.478         20.36268
+         461.096         19.21942
+         461.713         18.14035
+         462.331         17.12186
+         462.949         16.16056
+         463.566         15.25323
+         464.184         14.39683
+         464.801         13.58853
+         465.419          12.8256
+         466.036         12.10551
+         466.654         11.42584
+         467.271         10.78434
+         467.889         10.17886
+         468.506         9.607365
+         469.124         9.067961
+         469.741          8.55884
+         470.359         8.078305
+         470.976          7.62475
+         471.594         7.196659
+         472.211         6.792603
+         472.829         6.411233
+         473.446         6.051275
+         474.064         5.711527
+         474.682         5.390853
+         475.299         5.088184
+         475.917         4.802509
+         476.534         4.532872
+         477.152         4.278374
+         477.769         4.038165
+         478.387         3.811443
+         479.004          3.59745
+         479.622         3.395471
+         480.239         3.204833
+         480.857         3.024898
+         481.474         2.855065
+         482.092         2.694768
+         482.709          2.54347
+         483.327         2.400667
+         483.944         2.265882
+         484.562         2.138664
+         485.179         2.018589
+         485.797         1.905256
+         486.414         1.798285
+         487.032         1.697321
+          487.65         1.602025
+         488.267         1.512079
+         488.885         1.427184
+         489.502         1.347055
+          490.12         1.271424
+         490.737          1.20004
+         491.355         1.132664
+         491.972         1.069071
+          492.59         1.009048
+         493.207        0.9523951
+         493.825         0.898923
+         494.442         0.848453
+          495.06        0.8008166
+         495.677        0.7558549
+         496.295        0.7134175
+         496.912        0.6733627
+          497.53        0.6355568
+         498.147        0.5998735
+         498.765        0.5661937
+         499.382        0.5344048
+             500        0.5044006
+&
+@target G0.S2
+@type xy
+              56                0
+         56.6175      0.005552293
+          57.235       0.02067663
+         57.8526       0.04403236
+         58.4701       0.07526333
+         59.0876         0.114762
+         59.7051         0.163542
+         60.3227        0.2231908
+         60.9402        0.2958777
+         61.5577        0.3844091
+         62.1752        0.4923205
+         62.7928         0.624014
+         63.4103        0.7849349
+         64.0278        0.9817997
+         64.6453         1.222873
+         65.2629         1.518321
+         65.8804         1.880644
+         66.4979         2.325213
+         67.1154         2.870915
+          67.733         3.540962
+         68.3505          4.36389
+          68.968         5.374781
+         69.5855         6.616736
+         70.2031         8.142734
+         70.8206         10.01789
+         71.4381         12.32227
+         72.0556         15.15424
+         72.6732         18.63467
+         73.2907         22.91217
+         73.9082         28.16937
+         74.5257         34.63066
+         75.1433         42.57173
+         75.7608         52.33131
+         76.3783         64.32556
+         76.9958         79.06528
+         77.6134         97.17722
+         78.2309         119.4296
+         78.8484         146.7624
+         79.4659         180.3201
+         80.0834          221.485
+          80.701         271.8922
+         81.3185         333.3746
+          81.936         407.6536
+         82.5535         495.2366
+         83.1711         592.6464
+         83.7886         689.8698
+         84.4061         774.8093
+         85.0236         840.8496
+         85.6412         887.3953
+         86.2587         916.6998
+         86.8762         931.6894
+         87.4937         935.1153
+         88.1113         929.3388
+         88.7288         916.3295
+         89.3463         897.7153
+         89.9638         874.8356
+         90.5814         848.7889
+         91.1989         820.4729
+         91.8164          792.162
+         92.4339         769.2679
+         93.0515          751.238
+          93.669         736.6614
+         94.2865         724.4777
+          94.904         713.9115
+         95.5216         704.3969
+         96.1391         695.5222
+         96.7566         686.9898
+         97.3741         678.5881
+         97.9917         670.1689
+         98.6092         661.6325
+         99.2267         652.9147
+         99.8442         643.9784
+         100.462         634.8065
+         101.079         625.3963
+         101.697          615.756
+         102.314         605.9013
+         102.932         595.8531
+         103.549         585.6358
+         104.167         575.2758
+         104.784         564.8005
+         105.402         554.2374
+         106.019         543.6139
+         106.637         532.9562
+         107.255         522.2897
+         107.872         511.6383
+          108.49         501.0244
+         109.107         490.4688
+         109.725         479.9909
+         110.342         469.6082
+          110.96         459.3368
+         111.577         449.1911
+         112.195         439.1841
+         112.812         429.3272
+          113.43         419.6307
+         114.047         410.1034
+         114.665         400.7529
+         115.282         391.5857
+           115.9         382.6073
+         116.517         373.8222
+         117.135         365.2338
+         117.752         356.8449
+          118.37         348.6575
+         118.987         340.6729
+         119.605         332.8917
+         120.223          325.314
+          120.84         317.9394
+         121.458         310.7669
+         122.075         303.7953
+         122.693         297.0229
+          123.31         290.4477
+         123.928         284.0674
+         124.545         277.8795
+         125.163         271.8811
+          125.78         266.0695
+         126.398         260.4416
+         127.015          254.994
+         127.633         249.7236
+          128.25         244.6268
+         128.868         239.7003
+         129.485         234.9405
+         130.103         230.3439
+          130.72         225.9069
+         131.338         221.6259
+         131.955         217.4975
+         132.573         213.8769
+         133.191         211.3603
+         133.808         209.8055
+         134.426         209.0296
+         135.043         208.8869
+         135.661         209.2632
+         136.278          210.069
+         136.896         211.2339
+         137.513         212.7022
+         138.131         214.4301
+         138.748         216.3822
+         139.366         218.5306
+         139.983          220.852
+         140.601         223.3277
+         141.218         225.9417
+         141.836         228.6803
+         142.453         231.5317
+         143.071          234.485
+         143.688         237.5305
+         144.306         240.6589
+         144.924         243.8612
+         145.541         247.1289
+         146.159         250.4534
+         146.776         253.8261
+         147.394         257.2387
+         148.011         260.6824
+         148.629         264.1487
+         149.246         267.6287
+         149.864         271.1136
+         150.481         274.5945
+         151.099         278.0626
+         151.716          281.509
+         152.334         284.9247
+         152.951         288.3009
+         153.569         291.6291
+         154.186         294.9006
+         154.804         298.1071
+         155.421         301.2405
+         156.039         304.2931
+         156.656         307.2573
+         157.274         310.1261
+         157.892         312.8925
+         158.509         315.5505
+         159.127          318.094
+         159.744         320.5177
+         160.362         322.8167
+         160.979         324.9866
+         161.597         327.0234
+         162.214         328.9239
+         162.832         330.6852
+         163.449          332.305
+         164.067         333.7814
+         164.684         335.1134
+         165.302            336.3
+         165.919          337.341
+         166.537         338.2367
+         167.154         338.9876
+         167.772         339.5949
+         168.389         340.0601
+         169.007          340.385
+         169.624         340.5719
+         170.242         340.6235
+          170.86         340.5425
+         171.477         340.3322
+         172.095         339.9961
+         172.712         339.5377
+          173.33         338.9611
+         173.947         338.2701
+         174.565          337.469
+         175.182         336.5622
+           175.8         335.5541
+         176.417         334.4492
+         177.035          333.252
+         177.652         331.9672
+          178.27         330.5995
+         178.887         329.1534
+         179.505         327.6337
+         180.122         326.0448
+          180.74         324.3915
+         181.357         322.6781
+         181.975         320.9091
+         182.592         319.0889
+          183.21         317.2218
+         183.828         315.3119
+         184.445         313.3633
+         185.063           311.38
+          185.68         309.3659
+         186.298         307.3248
+         186.915         305.2601
+         187.533         303.1755
+          188.15         301.0743
+         188.768         298.9597
+         189.385          296.835
+         190.003         294.7029
+          190.62         292.5665
+         191.238         290.4285
+         191.855         288.2914
+         192.473         286.1577
+          193.09         284.0298
+         193.708           281.91
+         194.325         279.8002
+         194.943         277.7026
+         195.561          275.619
+         196.178         273.5512
+         196.796         271.5008
+         197.413         269.4694
+         198.031         267.4585
+         198.648         265.4693
+         199.266         263.5032
+         199.883         261.5613
+         200.501         259.6447
+         201.118         257.7543
+         201.736         255.8912
+         202.353          254.056
+         202.971         252.2495
+         203.588         250.4725
+         204.206         248.7255
+         204.823          247.009
+         205.441         245.3236
+         206.058         243.6696
+         206.676         242.0473
+         207.293         240.4572
+         207.911         238.8993
+         208.529          237.374
+         209.146         235.8812
+         209.764         234.4212
+         210.381          232.994
+         210.999         231.5996
+         211.616         230.2379
+         212.234         228.9089
+         212.851         227.6125
+         213.469         226.3485
+         214.086         225.1168
+         214.704         223.9171
+         215.321         222.7493
+         215.939          221.613
+         216.556         220.5081
+         217.174         219.4341
+         217.791         218.3907
+         218.409         217.3777
+         219.026         216.3946
+         219.644          215.441
+         220.261         214.5165
+         220.879         213.6207
+         221.497         212.7532
+         222.114         211.9134
+         222.732          211.101
+         223.349         210.3154
+         223.967         209.5562
+         224.584         208.8228
+         225.202         208.1147
+         225.819         207.4313
+         226.437         206.7722
+         227.054         206.1369
+         227.672         205.5246
+         228.289         204.9349
+         228.907         204.3673
+         229.524         203.8211
+         230.142         203.2958
+         230.759         202.7908
+         231.377         202.3054
+         231.994         201.8392
+         232.612         201.3915
+         233.229         200.9618
+         233.847         200.5494
+         234.465         200.1537
+         235.082         199.7743
+           235.7         199.4103
+         236.317         199.0614
+         236.935         198.7268
+         237.552         198.4061
+          238.17         198.0985
+         238.787         197.8036
+         239.405         197.5207
+         240.022         197.2493
+          240.64         196.9888
+         241.257         196.7387
+         241.875         196.4983
+         242.492         196.2672
+          243.11         196.0448
+         243.727         195.8305
+         244.345         196.1742
+         244.962         202.9047
+          245.58         217.5266
+         246.197         239.1976
+         246.815           267.39
+         247.433         301.7292
+          248.05         334.7664
+         248.668         363.6343
+         249.285         389.3699
+         249.903         412.7448
+          250.52         434.3304
+         251.138         454.5463
+         251.755         473.6981
+         252.373          492.005
+          252.99         509.6214
+         253.608          526.653
+         254.225         543.1694
+         254.843         559.2132
+          255.46         574.8068
+         256.078         589.9585
+         256.695         604.6661
+         257.313         618.9201
+          257.93         632.7065
+         258.548         646.0082
+         259.166         658.8068
+         259.783         671.0833
+         260.401         682.8195
+         261.018          693.998
+         261.636          704.603
+         262.253         714.6208
+         262.871         724.0397
+         263.488         732.8502
+         264.106         741.0453
+         264.723         748.6203
+         265.341          755.573
+         265.958         761.9034
+         266.576         767.6139
+         267.193         772.7089
+         267.811         777.1949
+         268.428         781.0804
+         269.046         784.3756
+         269.663         787.0922
+         270.281         789.2436
+         270.898         790.8443
+         271.516         791.9101
+         272.134         792.4577
+         272.751         792.5049
+         273.369           792.07
+         273.986         791.1721
+         274.604         789.8304
+         275.221          788.065
+         275.839         785.8958
+         276.456          783.343
+         277.074         780.4269
+         277.691         777.1677
+         278.309         773.5853
+         278.926         769.6997
+         279.544         765.8921
+         280.161         770.9284
+         280.779         786.8226
+         281.396         811.4998
+         282.014         843.4429
+         282.631         881.5536
+         283.249         925.0438
+         283.866         973.3549
+         284.484         1026.098
+         285.102         1083.006
+         285.719         1143.905
+         286.337         1208.683
+         286.954         1277.271
+         287.572         1349.628
+         288.189          1425.73
+         288.807          1505.56
+         289.424         1589.098
+         290.042         1676.317
+         290.659         1767.175
+         291.277         1861.614
+         291.894         1959.552
+         292.512         2060.883
+         293.129         2165.472
+         293.747         2273.156
+         294.364          2383.74
+         294.982         2496.994
+         295.599         2612.661
+         296.217         2730.447
+         296.834         2850.031
+         297.452         2971.061
+          298.07         3093.161
+         298.687         3215.928
+         299.305         3338.944
+         299.922         3461.773
+          300.54         3583.967
+         301.157         3705.074
+         301.775         3824.639
+         302.392         3942.211
+          303.01         4057.348
+         303.627         4169.618
+         304.245         4278.608
+         304.862         4383.928
+          305.48         4485.209
+         306.097         4582.112
+         306.715         4674.328
+         307.332         4761.581
+          307.95         4843.627
+         308.567         4920.258
+         309.185         4991.303
+         309.803         5056.624
+          310.42          5116.12
+         311.038         5169.723
+         311.655         5217.399
+         312.273         5259.145
+          312.89         5294.989
+         313.508         5324.985
+         314.125         5349.215
+         314.743         5367.785
+          315.36         5380.822
+         315.978         5388.471
+         316.595         5390.896
+         317.213         5388.277
+          317.83         5380.803
+         318.448         5368.677
+         319.065         5352.108
+         319.683         5331.314
+           320.3         5306.517
+         320.918         5277.941
+         321.535         5245.812
+         322.153         5210.359
+         322.771         5171.805
+         323.388         5130.376
+         324.006          5086.29
+         324.623         5039.764
+         325.241         4991.009
+         325.858          4940.23
+         326.476         4887.627
+         327.093         4833.392
+         327.711          4777.71
+         328.328         4720.759
+         328.946          4662.71
+         329.563         4603.725
+         330.181         4543.959
+         330.798         4483.558
+         331.416         4422.663
+         332.033         4361.403
+         332.651         4299.902
+         333.268         4238.277
+         333.886         4176.635
+         334.503         4115.078
+         335.121         4053.701
+         335.739          3992.59
+         336.356         3931.827
+         336.974         3871.487
+         337.591         3811.637
+         338.209         3752.342
+         338.826         3693.657
+         339.444         3635.636
+         340.061         3578.326
+         340.679         3521.768
+         341.296         3466.001
+         341.914         3411.059
+         342.531         3356.971
+         343.149         3303.764
+         343.766         3251.459
+         344.384         3200.077
+         345.001          3149.64
+         345.619         3100.169
+         346.236         3051.682
+         346.854          3004.19
+         347.471         2957.703
+         348.089         2912.225
+         348.707          2867.76
+         349.324         2824.306
+         349.942         2781.863
+         350.559         2740.425
+         351.177         2699.988
+         351.794         2660.545
+         352.412         2622.086
+         353.029         2584.602
+         353.647         2548.084
+         354.264         2512.519
+         354.882         2477.896
+         355.499         2444.201
+         356.117         2411.422
+         356.734         2379.545
+         357.352         2348.556
+         357.969         2318.441
+         358.587         2262.447
+         359.204         2208.514
+         359.822         2175.404
+         360.439         2165.544
+         361.057         2175.018
+         361.675         2200.975
+         362.292         2241.367
+          362.91         2294.754
+         363.527         2360.149
+         364.145         2436.915
+         364.762         2524.677
+          365.38         2623.265
+         365.997         2732.666
+         366.615         2852.988
+         367.232         2984.434
+          367.85         3127.284
+         368.467          3281.88
+         369.085         3448.607
+         369.702         3627.891
+          370.32         3820.185
+         370.937         4025.965
+         371.555         4245.721
+         372.172         4479.949
+          372.79         4729.146
+         373.408         4993.804
+         374.025         5274.397
+         374.643         5571.379
+          375.26         5885.171
+         375.878         6216.151
+         376.495         6564.649
+         377.113         6930.927
+          377.73         7315.176
+         378.348         7717.502
+         378.965         8137.909
+         379.583          8576.29
+           380.2         9032.418
+         380.818          9505.93
+         381.435         9996.316
+         382.053         10502.92
+          382.67          11024.9
+         383.288         11561.29
+         383.905         12110.91
+         384.523          12638.1
+          385.14         12976.53
+         385.758         13138.77
+         386.376         13159.52
+         386.993         13067.55
+         387.611         12886.65
+         388.228         12636.51
+         388.846         12333.33
+         389.463         11990.47
+         390.081         11618.87
+         390.698         11227.46
+         391.316         10823.53
+         391.933         10412.96
+         392.551         10000.49
+         393.168         9589.921
+         393.786          9184.24
+         394.403         8785.795
+         395.021         8396.391
+         395.638         8017.389
+         396.256         7649.787
+         396.873         7294.284
+         397.491         6951.337
+         398.108         6621.207
+         398.726         6303.994
+         399.344          5987.63
+         399.961         5675.114
+         400.579         5376.318
+         401.196          5091.09
+         401.814         4819.186
+         402.431         4560.295
+         403.049          4314.05
+         403.666         4080.046
+         404.284         3857.853
+         404.901         3647.021
+         405.519         3447.095
+         406.136         3257.611
+         406.754          3078.11
+         407.371         2908.137
+         407.989         2747.247
+         408.606         2595.004
+         409.224         2450.985
+         409.841         2314.781
+         410.459         2185.996
+         411.076         2064.252
+         411.694         1949.183
+         412.312          1840.44
+         412.929         1737.691
+         413.547         1640.616
+         414.164         1548.913
+         414.782         1462.292
+         415.399         1380.479
+         416.017         1303.213
+         416.634         1230.246
+         417.252         1161.343
+         417.869         1096.282
+         418.487          1034.85
+         419.104         976.8481
+         419.722         922.0865
+         420.339         870.3861
+         420.957         821.5771
+         421.574          775.499
+         422.192         731.9999
+         422.809         690.9364
+         423.427         652.1728
+         424.045         615.5809
+         424.662         581.0396
+          425.28         548.4342
+         425.897         517.6568
+         426.515          488.605
+         427.132         461.1823
+          427.75         435.2977
+         428.367          410.865
+         428.985          387.803
+         429.602         366.0348
+          430.22         345.4879
+         430.837          326.094
+         431.455         307.7885
+         432.072         290.5101
+          432.69         274.2015
+         433.307         258.8082
+         433.925         244.2789
+         434.542         230.5651
+          435.16          217.621
+         435.777         205.4036
+         436.395         193.8719
+         437.013         182.9876
+          437.63         172.7143
+         438.248         163.0177
+         438.865         153.8654
+         439.483          145.227
+           440.1         137.0734
+         440.718         129.3777
+         441.335          122.114
+         441.953          115.258
+          442.57          108.787
+         443.188         102.6793
+         443.805         96.91443
+         444.423         91.47325
+          445.04         86.33754
+         445.658         81.49019
+         446.275         76.91497
+         446.893         72.59662
+          447.51         68.52072
+         448.128         64.67365
+         448.745         61.04258
+         449.363         57.61537
+         449.981         54.38057
+         450.598         51.32739
+         451.216         48.44563
+         451.833         45.72566
+         452.451          43.1584
+         453.068         40.73529
+         453.686         38.44821
+         454.303         36.28955
+         454.921         34.25207
+         455.538           32.329
+         456.156         30.51389
+         456.773          28.8007
+         457.391         27.18368
+         458.008         25.65746
+         458.626         24.21693
+         459.243         22.85727
+         459.861         21.57395
+         460.478         20.36268
+         461.096         19.21942
+         461.713         18.14035
+         462.331         17.12186
+         462.949         16.16056
+         463.566         15.25323
+         464.184         14.39683
+         464.801         13.58853
+         465.419          12.8256
+         466.036         12.10551
+         466.654         11.42584
+         467.271         10.78434
+         467.889         10.17886
+         468.506         9.607365
+         469.124         9.067961
+         469.741          8.55884
+         470.359         8.078305
+         470.976          7.62475
+         471.594         7.196659
+         472.211         6.792603
+         472.829         6.411233
+         473.446         6.051275
+         474.064         5.711527
+         474.682         5.390853
+         475.299         5.088184
+         475.917         4.802509
+         476.534         4.532872
+         477.152         4.278374
+         477.769         4.038165
+         478.387         3.811443
+         479.004          3.59745
+         479.622         3.395471
+         480.239         3.204833
+         480.857         3.024898
+         481.474         2.855065
+         482.092         2.694768
+         482.709          2.54347
+         483.327         2.400667
+         483.944         2.265882
+         484.562         2.138664
+         485.179         2.018589
+         485.797         1.905256
+         486.414         1.798285
+         487.032         1.697321
+          487.65         1.602025
+         488.267         1.512079
+         488.885         1.427184
+         489.502         1.347055
+          490.12         1.271424
+         490.737          1.20004
+         491.355         1.132664
+         491.972         1.069071
+          492.59         1.009048
+         493.207        0.9523951
+         493.825         0.898923
+         494.442         0.848453
+          495.06        0.8008166
+         495.677        0.7558549
+         496.295        0.7134175
+         496.912        0.6733627
+          497.53        0.6355568
+         498.147        0.5998735
+         498.765        0.5661937
+         499.382        0.5344048
+             500        0.5044006
+&

@@ -6,8 +6,9 @@ without Grace, Ghostscript or `epstopdf`. It is a batch renderer for the
 part of the Grace format OneFit uses, not a clone of xmgrace; interactive
 plots are the OneFit GUI's job.
 
-Status: step 1 of the plan below - the feature inventory - is done. No
-renderer yet.
+Status: steps 1 and 2 are done - the feature inventory, and the parser
+(`agr`), which reads all 735 OneFit files of the inventory corpus. The
+reference images for step 4 are in `testdata/ref`. No renderer yet.
 
 ## Plan
 
@@ -34,10 +35,23 @@ written from the format itself and Grace's documentation (the User's
 Guide), never from Grace's source code. `gracebat` is used only as a
 black box: its output is the reference the tests compare against.
 
+## Test data
+
+- `testdata/corpus/`: nine real OneFit plots chosen to cover the format's
+  variety - normal and log axes, decimal and power tick labels, 3 to 7
+  sets, curve labels, every text escape, small symbols, and one malformed
+  tick label format. They come from the OneFit-Engine test suites and the
+  p96-10 sample that is already public in OneFit-Engine-assistant.
+- `testdata/ref/`: gracebat's rendering of each, made by
+  `scripts/make-references.sh` (gracebat -> EPS -> Ghostscript, the whole
+  page at 144 dpi). Regenerating gives byte-identical files.
+
 ## Development
 
 ```bash
 go vet ./...
 go test ./...
 go run ./cmd/agr-inventory -o docs/inventory.md DIR...
+PLOT_GO_CORPUS=DIR:DIR go test ./agr/   # also parse a whole local corpus
+scripts/make-references.sh               # needs gracebat and gs
 ```
