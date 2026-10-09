@@ -6,6 +6,12 @@
 // Without -o the output is FILE.pdf (or .eps, .svg) next to the input.
 // Lines plot-go cannot use, and features it does not draw, are warnings on
 // stderr; it still writes the file, as gracebat does.
+//
+// It also takes gracebat's own command line (see grace.go), so OneFit can
+// call it in Grace's place:
+//
+//	plot-go -settype xydy DATA -nxy CURVES -param PAR.agr-par \
+//	  -hdevice EPS -hardcopy -printfile OUT.eps -saveall OUT.agr
 package main
 
 import (
@@ -31,6 +37,9 @@ var writers = map[string]writer{
 }
 
 func main() {
+	if isGrace(os.Args[1:]) {
+		os.Exit(runGrace(os.Args[1:], os.Stdout, os.Stderr))
+	}
 	out := flag.String("o", "", "output file (default: the input with the format's extension)")
 	format := flag.String("format", "", "pdf, eps or svg (default: from -o's extension, else pdf)")
 	quiet := flag.Bool("q", false, "do not print warnings")
@@ -72,21 +81,9 @@ func main() {
 			fmt.Fprintf(os.Stderr, "plot-go: %s: %s\n", in, w)
 		}
 	}
-	tmp := *out + ".tmp"
-	file, err := os.Create(tmp)
-	if err != nil {
-		fail(err)
-	}
-	if err := write(file, d, p.PageWidth, p.PageHeight, in); err != nil {
-		file.Close()
-		os.Remove(tmp)
-		fail(err)
-	}
-	if err := file.Close(); err != nil {
-		os.Remove(tmp)
-		fail(err)
-	}
-	if err := os.Rename(tmp, *out); err != nil {
+	if err := writeFile(*out, func(w io.Writer) error {
+		return write(w, d, p.PageWidth, p.PageHeight, in)
+	}); err != nil {
 		fail(err)
 	}
 }

@@ -97,3 +97,21 @@ normal side, then the opposite one.
 `render`'s test draws every corpus file and compares it with gracebat's
 EPS primitive by primitive: all paths, arcs, texts, fonts, sizes and colors
 agree, texts within 0.0012 and points within 0.0001 (the EPS's rounding).
+
+## The command line OneFit uses
+
+Recorded from a real fit (OneFit-Engine test 3 on a OneFit server, with a
+logging stand-in for `grace` on the PATH); it is testdata/gracebat-call:
+
+    grace -version
+    grace -settype xydy gnu0.da_ -nxy fit-curves-1 -param fit1.agr-par \
+      -hdevice EPS -hardcopy -printfile fit-curves-1.eps -saveall fit-curves-1.agr
+
+then `epstopdf fit-curves-1.eps`. Arguments are taken in order: the data
+file becomes set 0 (xydy, from -settype), each y column of the curves file
+another xy set, and the parameter file's settings then apply to them (in
+an order with the curves first, the parameter file's "s0 type xydy" would
+make the first curve the data set). A saved project (-saveall) is Grace's
+whole state: settings, then each set's data as "@target G0.Sn", "@type T",
+rows in "%16.8g", "&". World and view are saved as one line each ("world
+xmin, ymin, xmax, ymax"), whatever form the parameter file used.

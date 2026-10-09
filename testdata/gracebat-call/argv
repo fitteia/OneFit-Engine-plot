@@ -1,0 +1,1 @@
+grace -settype xydy gnu0.da_ -nxy fit-curves-1 -param fit1.agr-par -hdevice EPS -hardcopy -printfile fit-curves-1.eps -saveall fit-curves-1.agr

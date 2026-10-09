@@ -6,17 +6,23 @@ without Grace, Ghostscript or `epstopdf`. It is a batch renderer for the
 part of the Grace format OneFit uses, not a clone of xmgrace; interactive
 plots are the OneFit GUI's job.
 
-Status: steps 1 to 4 are done. `plot-go FILE.agr` writes a PDF (or EPS,
+Status: steps 1 to 5 are done. `plot-go FILE.agr` writes a PDF (or EPS,
 SVG) without Grace; the renderer matches gracebat primitive by primitive,
 and the output matches gracebat's page pixel for pixel, allowing for text
-placed up to 0.7 pt apart (see docs/grace-behaviour.md). Next: the
-gracebat-compatible command line (step 5).
+placed up to 0.7 pt apart (see docs/grace-behaviour.md). plot-go also takes
+gracebat's own command line - the one OneFit's C core gives Grace, recorded
+from a real fit in testdata/gracebat-call - and writes the same EPS and an
+equivalent saved project. Next: making OneFit use it (step 6).
 
 ```bash
 go install ./cmd/plot-go
 plot-go fit-curves-1.agr                  # -> fit-curves-1.pdf
 plot-go -o plot.svg fit-curves-1.agr      # format from the extension
 plot-go -format eps fit-curves-1.agr      # what OneFit's C core asks for
+
+# gracebat's command line, as OneFit's C core calls Grace:
+plot-go -settype xydy gnu0.da_ -nxy fit-curves-1 -param fit1.agr-par \
+  -hdevice EPS -hardcopy -printfile fit-curves-1.eps -saveall fit-curves-1.agr
 ```
 
 ## Plan
