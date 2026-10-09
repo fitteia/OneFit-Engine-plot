@@ -282,9 +282,11 @@ func Layout(fig *agr.Project, layout string) error {
 	default:
 		return fmt.Errorf("unknown layout %q (%s)", layout, strings.Join(Layouts, ", "))
 	}
-	// left for the y numbers and label, bottom for the x ones; the gaps
-	// between panels hold the next panel's numbers and labels
-	const left, right, bottom, top, gapX, gapY = 0.14, 0.04, 0.11, 0.05, 0.13, 0.11
+	// left for the y numbers and label, bottom for the x ones and below
+	// them the run's name OneFit puts at (0.05, 0.05) - the outer margins
+	// are OneFit's own (its viewport starts at 0.18, 0.15); the gaps between
+	// panels hold the next panel's numbers and labels
+	const left, right, bottom, top, gapX, gapY = 0.18, 0.04, 0.15, 0.05, 0.13, 0.11
 	cw := (pw - left - right - gapX*float64(cols-1)) / float64(cols)
 	ch := (ph - bottom - top - gapY*float64(rows-1)) / float64(rows)
 	if cw <= 0.05 || ch <= 0.05 {
