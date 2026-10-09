@@ -9,6 +9,7 @@ package figure
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -169,4 +170,164 @@ func Update(fig *agr.Project, load func(path string) (*agr.Project, error)) (int
 		}
 	}
 	return updated, warnings
+}
+
+// AddGraph adds graph 0 of a plot (recorded as path) to the figure as a new
+// graph - its axes, frame and sets (data copied, each remembering its
+// source) and the texts placed in its world coordinates - numbered after
+// the figure's last. The page's own texts (the run's name) stay out. The
+// new graph keeps the plot's viewport; Layout places the graphs.
+func AddGraph(fig *agr.Project, src *agr.Project, path string) (int, error) {
+	from := graph(src, 0)
+	if from == nil {
+		return 0, fmt.Errorf("%s has no graph 0", path)
+	}
+	id := 0
+	for _, g := range fig.Graphs {
+		id = max(id, g.ID+1)
+	}
+	g := *from
+	g.ID = id
+	g.Sets = nil
+	fig.Graphs = append(fig.Graphs, &g)
+	sets := make([]int, 0, len(from.Sets))
+	for _, s := range from.Sets {
+		sets = append(sets, s.ID)
+	}
+	if _, err := AddSets(fig, id, src, path, sets); err != nil {
+		return id, err
+	}
+	// AddSets numbers sets after the graph's last; a new graph starts at 0,
+	// as the plot's own numbering did
+	for _, s := range src.Strings {
+		if s.LocType == "world" && s.Graph == 0 {
+			c := *s
+			c.Graph = id
+			fig.Strings = append(fig.Strings, &c)
+		}
+	}
+	for n, c := range src.Fonts {
+		if _, ok := fig.Fonts[n]; !ok {
+			if fig.Fonts == nil {
+				fig.Fonts = map[int]agr.Font{}
+			}
+			fig.Fonts[n] = c
+		}
+	}
+	return id, nil
+}
+
+// RemoveGraph takes a graph and the texts placed in it out of the figure.
+func RemoveGraph(fig *agr.Project, id int) error {
+	if len(fig.Graphs) == 1 {
+		return fmt.Errorf("a figure keeps at least one graph")
+	}
+	i := -1
+	for k, g := range fig.Graphs {
+		if g.ID == id {
+			i = k
+		}
+	}
+	if i < 0 {
+		return fmt.Errorf("no graph %d", id)
+	}
+	fig.Graphs = append(fig.Graphs[:i], fig.Graphs[i+1:]...)
+	kept := fig.Strings[:0]
+	for _, s := range fig.Strings {
+		if !(s.LocType == "world" && s.Graph == id) {
+			kept = append(kept, s)
+		}
+	}
+	fig.Strings = kept
+	return nil
+}
+
+// Layouts are the arrangements Layout knows.
+var Layouts = []string{"single", "side-by-side", "stacked", "grid"}
+
+// Layout places the figure's graphs on the page, in order: one per row of a
+// column ("stacked"), one per column of a row ("side-by-side"), in a grid
+// as square as it can be ("grid"), or each over the whole page ("single",
+// what OneFit's one-graph plots use). Margins leave room for the axes'
+// numbers and labels.
+func Layout(fig *agr.Project, layout string) error {
+	n := len(fig.Graphs)
+	if n == 0 {
+		return fmt.Errorf("the figure has no graphs")
+	}
+	w, h := fig.PageWidth, fig.PageHeight
+	if w <= 0 || h <= 0 {
+		w, h = 773, 600
+	}
+	unit := min(w, h)
+	pw, ph := w/unit, h/unit // the page in viewport units
+	var cols, rows int
+	switch layout {
+	case "single":
+		for _, g := range fig.Graphs {
+			// OneFit's own one-graph viewport, on a page its shape
+			resize(fig, g, agr.Rect{XMin: 0.183247 * pw / (773.0 / 600), YMin: 0.149994 * ph, XMax: 1.038397 * pw / (773.0 / 600), YMax: 0.849964 * ph})
+		}
+		return nil
+	case "side-by-side":
+		cols, rows = n, 1
+	case "stacked":
+		cols, rows = 1, n
+	case "grid":
+		cols = 1
+		for cols*cols < n {
+			cols++
+		}
+		rows = (n + cols - 1) / cols
+	default:
+		return fmt.Errorf("unknown layout %q (%s)", layout, strings.Join(Layouts, ", "))
+	}
+	// left for the y numbers and label, bottom for the x ones; the gaps
+	// between panels hold the next panel's numbers and labels
+	const left, right, bottom, top, gapX, gapY = 0.14, 0.04, 0.11, 0.05, 0.13, 0.11
+	cw := (pw - left - right - gapX*float64(cols-1)) / float64(cols)
+	ch := (ph - bottom - top - gapY*float64(rows-1)) / float64(rows)
+	if cw <= 0.05 || ch <= 0.05 {
+		return fmt.Errorf("%d graphs do not fit %s on this page", n, layout)
+	}
+	for i, g := range fig.Graphs {
+		c, r := i%cols, i/cols
+		x0 := left + float64(c)*(cw+gapX)
+		y1 := ph - top - float64(r)*(ch+gapY)
+		resize(fig, g, agr.Rect{XMin: x0, YMin: y1 - ch, XMax: x0 + cw, YMax: y1})
+	}
+	return nil
+}
+
+// resize gives a graph a new viewport and scales what is drawn at a size of
+// its own - axis numbers and labels, ticks, symbols, the texts placed in it
+// - by the square root of the change in area (kept between 1/2 and 2), so a
+// smaller panel is not crowded. It is relative to the graph's size before,
+// so going back to a bigger layout restores the sizes.
+func resize(fig *agr.Project, g *agr.Graph, v agr.Rect) {
+	old := (g.View.XMax - g.View.XMin) * (g.View.YMax - g.View.YMin)
+	area := (v.XMax - v.XMin) * (v.YMax - v.YMin)
+	g.View = v
+	if old <= 0 || area <= 0 {
+		return
+	}
+	f := math.Sqrt(area / old)
+	f = min(max(f, 0.5), 2)
+	if math.Abs(f-1) < 1e-9 {
+		return
+	}
+	for _, a := range []*agr.Axis{&g.X, &g.Y} {
+		a.Label.CharSize *= f
+		a.TickLabel.CharSize *= f
+		a.Tick.MajorMarks.Size *= f
+		a.Tick.MinorMarks.Size *= f
+	}
+	for _, s := range g.Sets {
+		s.Symbol.Size *= f
+	}
+	for _, s := range fig.Strings {
+		if s.LocType == "world" && s.Graph == g.ID {
+			s.CharSize *= f
+		}
+	}
 }
