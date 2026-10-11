@@ -87,6 +87,14 @@ Units: viewport units - the page's shorter side is 1, origin bottom left
   1, size 1, font 0. Sets are drawn in number order, whatever order the
   file names them in.
 
+## Grid lines
+
+- `tick major grid on` / `tick minor grid on` (measured with `style-grids`
+  and `style-grids-noticks`): a line across the viewport at each major /
+  minor tick inside the window, in that tick mark's color, linewidth and
+  linestyle; drawn first in the graph, before the sets: x minor, x major,
+  y minor, y major. An axis that is off has none; ticks off do not matter.
+
 ## Ticks
 
 - Length 0.02 per unit of tick size (major 1.5 -> 0.03, minor 1.0 -> 0.02),
