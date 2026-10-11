@@ -109,6 +109,13 @@ func TestParseCorpus(t *testing.T) {
 			}
 			t.Errorf("%s:%d: %s (%s)", name, w.Line, w.Msg, w.Text)
 		}
+		if strings.HasPrefix(name, "style-formats-") {
+			// one graph per case, a single tick label each, no data
+			if len(p.Graphs) < 2 {
+				t.Errorf("%s: %d graphs", name, len(p.Graphs))
+			}
+			continue
+		}
 		if len(p.Graphs) != 1 || len(p.Graphs[0].Sets) == 0 {
 			t.Errorf("%s: %d graphs", name, len(p.Graphs))
 			continue
