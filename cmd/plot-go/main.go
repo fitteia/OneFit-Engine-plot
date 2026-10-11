@@ -44,10 +44,19 @@ var notice string
 //go:embed LICENSE
 var license string
 
-func printNotices() {
-	fmt.Print(notice, "\n", "---- Adobe Core 14 AFM files (embedded font metrics): MustRead.html ----\n\n", afm.AdobeNotice(),
+func printNotices() { fmt.Print(notices()) }
+
+// notices is everything plot-go -notices prints: the NOTICE, the license
+// of each third party whose work is compiled into the binary, and plot-go's
+// own LICENSE.
+func notices() string {
+	return fmt.Sprint(notice, "\n", "---- Adobe Core 14 AFM files (embedded font metrics): MustRead.html ----\n\n", afm.AdobeNotice(),
 		"\n\n---- Liberation fonts (embedded): SIL Open Font License 1.1 ----\n\n", glyph.FontLicense,
 		"\n---- github.com/go-fonts/liberation (embedded): BSD license ----\n\n", glyph.PackageLicense,
+		"\n---- golang.org/x/image (compiled in): BSD license ----\n\n", glyph.XImageLicense,
+		"\n---- golang.org/x/image: patent grant ----\n\n", glyph.XImagePatents,
+		"\n---- golang.org/x/text (compiled in): BSD license ----\n\n", glyph.XTextLicense,
+		"\n---- golang.org/x/text: patent grant ----\n\n", glyph.XTextPatents,
 		"\n---- LICENSE ----\n\n", license)
 }
 
