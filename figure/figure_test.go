@@ -265,3 +265,20 @@ func TestExtend(t *testing.T) {
 		t.Errorf("log x max = %g, want 10000", lg.World.XMax)
 	}
 }
+
+func TestUseColor(t *testing.T) {
+	fig := &agr.Project{}
+	if err := UseColor(fig, 11); err != nil || fig.Colors[11].Name != "orange" {
+		t.Errorf("orange: %v %+v", err, fig.Colors)
+	}
+	fig.Colors[20] = agr.Color{R: 1, Name: "mine"}
+	if err := UseColor(fig, 20); err != nil {
+		t.Errorf("the figure's own color 20: %v", err)
+	}
+	if err := UseColor(fig, 21); err == nil {
+		t.Error("color 21 accepted")
+	}
+	if len(DefaultColors) != 16 {
+		t.Errorf("%d default colors", len(DefaultColors))
+	}
+}

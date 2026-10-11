@@ -339,13 +339,34 @@ func resize(fig *agr.Project, g *agr.Graph, v agr.Rect) {
 // OneFit draws the first fit in).
 var palette = []int{2, 4, 15, 8, 11, 10, 13, 14, 12, 6, 3, 9}
 
-var defaultColors = map[int]agr.Color{
+// DefaultColors is Grace's default color map, the one OneFit's plots carry:
+// what a figure may use without defining colors of its own.
+var DefaultColors = map[int]agr.Color{
+	0: {R: 255, G: 255, B: 255, Name: "white"}, 1: {Name: "black"},
 	2: {R: 255, Name: "red"}, 3: {G: 255, Name: "green"}, 4: {B: 255, Name: "blue"},
-	6: {R: 188, G: 143, B: 143, Name: "brown"}, 8: {R: 148, B: 211, Name: "violet"},
+	5: {R: 255, G: 255, Name: "yellow"}, 6: {R: 188, G: 143, B: 143, Name: "brown"},
+	7: {R: 220, G: 220, B: 220, Name: "grey"}, 8: {R: 148, B: 211, Name: "violet"},
 	9: {G: 255, B: 255, Name: "cyan"}, 10: {R: 255, B: 255, Name: "magenta"},
 	11: {R: 255, G: 165, Name: "orange"}, 12: {R: 114, G: 33, B: 188, Name: "indigo"},
 	13: {R: 103, G: 7, B: 72, Name: "maroon"}, 14: {R: 64, G: 224, B: 208, Name: "turquoise"},
 	15: {G: 139, Name: "green4"},
+}
+
+// UseColor makes sure color n is in the figure's map, taking it from
+// DefaultColors when the figure lacks it; a color in neither is an error.
+func UseColor(fig *agr.Project, n int) error {
+	if _, ok := fig.Colors[n]; ok {
+		return nil
+	}
+	c, ok := DefaultColors[n]
+	if !ok {
+		return fmt.Errorf("no color %d (Grace's are 0 to 15)", n)
+	}
+	if fig.Colors == nil {
+		fig.Colors = map[int]agr.Color{}
+	}
+	fig.Colors[n] = c
+	return nil
 }
 
 // Distinct draws sets of graph g - the ones a plot just brought in - in one
@@ -378,11 +399,8 @@ func Distinct(fig *agr.Project, g int, sets []int) (int, error) {
 				s.Line.Color, s.Symbol.Color, s.Symbol.FillColor, s.ErrorBar.Color = c, c, c, c
 			}
 		}
-		if _, ok := fig.Colors[c]; !ok {
-			if fig.Colors == nil {
-				fig.Colors = map[int]agr.Color{}
-			}
-			fig.Colors[c] = defaultColors[c]
+		if err := UseColor(fig, c); err != nil {
+			return -1, err
 		}
 		return c, nil
 	}
