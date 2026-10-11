@@ -123,6 +123,30 @@ Units: viewport units - the page's shorter side is 1, origin bottom left
   smallest of 1, 2, 5 x 10^n giving at most `tick default`+1 intervals
   (default 6 -> 7), and at most one minor tick per interval.
 
+## Axis sides, offsets, labels
+
+Measured with `style-axes-sides`, `-perp`, `-angle`, `-noticks` and
+`-offsets`.
+
+- Each axis has a normal side (bottom/left) and an opposite one
+  (top/right); `tick place`, `ticklabel place` and `label place` each say
+  which: normal, opposite or both - the opposite side mirrors the normal.
+  `offset a, b` moves the axis out from the frame, a on the normal side and
+  b on the opposite: its ticks and labels move with it, the frame does not.
+- Tick labels: 0.01 beyond the ticks reaching out on their side (or, with
+  `ticklabel offset spec`, moved along the axis by its first value and out
+  by its second); centred on their tick by their box - at an `angle`, the
+  box of their turned glyphs; every (skip+1)th tick only; with `stagger n`
+  the label of tick k goes in row k%(n+1), moved out by row x (0.02 x char
+  size + 0.01) - a fixed height, whatever the text.
+- The axis label goes 0.01 beyond everything drawn on its side: the tick
+  labels' ink, or else the ticks' box, their line's half width included (so
+  0.0115 from a frame whose ticks point in). `layout para` lays it along the
+  axis (the y label turned 90 degrees), `perp` across it (the x label
+  turned 90 degrees, its end towards the axis); centred on the axis by its
+  ink. `label place spec` with `label place a, b` instead puts its ink
+  centre at a along the axis from its middle and b out from the axis.
+
 ## Text
 
 - Font size: 0.028 per unit of char size (1.5 -> 0.042).

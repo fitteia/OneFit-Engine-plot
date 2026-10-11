@@ -132,6 +132,26 @@ func TestPDFPixelsMatchGracebat(t *testing.T) {
 			// edge) has the page's white there, not nothing
 			draw.Draw(want, want.Bounds(), image.White, image.Point{}, draw.Src)
 			draw.Draw(want, want.Bounds(), ref, image.Pt(x0, y0), draw.Src)
+			if bb.LLX < 0 || bb.LLY < 0 || bb.URX > p.PageWidth || bb.URY > p.PageHeight {
+				// ink past the page, which the page's reference image
+				// cannot show: compare with gracebat's EPS cropped to its
+				// box, as epstopdf crops it for OneFit's PDFs
+				// (its box is "atend", which -dEPSCrop cannot read: a page
+				// the box's size, the drawing shifted by its corner)
+				crop := filepath.Join(dir, "ref.png")
+				if out, err := exec.Command("gs", "-q", "-dSAFER", "-dBATCH", "-dNOPAUSE", "-sDEVICE=png16m", "-r144",
+					fmt.Sprintf("-dDEVICEWIDTHPOINTS=%g", bb.URX-bb.LLX), fmt.Sprintf("-dDEVICEHEIGHTPOINTS=%g", bb.URY-bb.LLY), "-dFIXEDMEDIA",
+					"-dTextAlphaBits=4", "-dGraphicsAlphaBits=4", "-sOutputFile="+crop,
+					"-c", fmt.Sprintf("%g %g translate", -bb.LLX, -bb.LLY),
+					"-f", filepath.Join("..", "testdata", "ref", name+".eps")).CombinedOutput(); err != nil || len(out) > 0 {
+					t.Fatalf("gs: %v %s", err, out)
+				}
+				c := readPNG(t, crop)
+				if c.Bounds().Size() != got.Bounds().Size() {
+					t.Fatalf("size %v, gracebat's cropped EPS %v", got.Bounds().Size(), c.Bounds().Size())
+				}
+				draw.Draw(want, want.Bounds(), c, c.Bounds().Min, draw.Src)
+			}
 			diff, ink := differing(got, want, 96, 2)
 			frac := float64(diff) / float64(ink)
 			t.Logf("%d of %d inked pixels differ (%.2f%%)", diff, ink, 100*frac)
