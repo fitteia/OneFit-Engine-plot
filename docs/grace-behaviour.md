@@ -55,8 +55,37 @@ Units: viewport units - the page's shorter side is 1, origin bottom left
   drawn, of one is not). Each segment of types 4 and 5 is a path of its
   own.
 - Lines are clipped where they cross the viewport (a curve leaving the top
-  ends exactly on the frame); symbols outside the world window are not
-  drawn.
+  ends on the frame - gracebat's clip box is about 0.00015 larger than the
+  viewport, plot-go clips at the viewport); each visible piece is a path of
+  its own. Symbols and error bars of points outside the world window are
+  not drawn.
+- Error bars (`errorbar on`, xydy sets; measured with `style-errorbars`
+  and `style-errorbars-log`), drawn after the set's line and before its
+  symbols, point by point:
+  - the riser from the point to y+dy, the cap across its end (left to
+    right), the riser down to y-dy, its cap (right to left); `place normal`
+    draws only the upper half, `opposite` only the lower one. The sign of
+    dy does not matter; dy 0 draws nothing.
+  - cap half length 0.01 x `errorbar size` (size 0 still strokes a
+    zero-length cap); caps use `errorbar linewidth`/`linestyle`, risers
+    `riser linewidth`/`linestyle`; style 0 leaves that part out;
+    `errorbar pattern 0` draws nothing at all.
+  - an end out of the viewport (or that a log axis cannot place: at or
+    below 0) has no cap: the riser runs to the frame; with `riser clip on`
+    it runs `riser clip length` instead and ends in an arrowhead - from
+    (x+h, tip-2h) through the tip to (x-h, tip-2h) going up, the other way
+    down, h the cap half length, always solid, at the cap's width.
+  - every part is cut at the frame (an arrowhead past it is cut or gone).
+- A set the file says nothing more about (measured with `style-defaults`):
+  straight line, no symbol, error bars on (place both, size 1, riser clip
+  off with length 0.1), every color the set's number through the color map
+  but white - set n is color n mod (colors-1) + 1, so 1 to 15 with Grace's
+  16, then 1 again; widths and line styles (line, symbol outline, caps,
+  risers) from `@default linewidth`/`linestyle`, symbol size from
+  `@default symbol size`, the symbol character "A" in `@default font`
+  (`@default color` is not used). Without `@default` lines: width 1, style
+  1, size 1, font 0. Sets are drawn in number order, whatever order the
+  file names them in.
 
 ## Ticks
 

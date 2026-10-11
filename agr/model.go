@@ -234,6 +234,27 @@ type ErrorBar struct {
 	RiserClipSize float64
 }
 
+// NewSet is set id as Grace makes it when a file says nothing more about
+// it (measured from gracebat): a straight line, no symbol, error bars on
+// (they show for xydy data), the widths, line styles, symbol size and
+// character font from the project's defaults, and a color by its number -
+// 1, 2, ... through the color map's colors but white (0), then 1 again.
+// colors is how many the map has (Grace's default map: 16).
+func NewSet(id int, d Defaults, colors int) *Set {
+	if colors < 2 {
+		colors = 16
+	}
+	c := id%(colors-1) + 1
+	return &Set{
+		ID:     id,
+		Type:   "xy",
+		Line:   Line{Type: 1, LineStyle: d.LineStyle, LineWidth: d.LineWidth, Color: c, Pattern: 1},
+		Symbol: Symbol{Size: d.SymbolSize, Color: c, Pattern: 1, FillColor: c, LineWidth: d.LineWidth, LineStyle: d.LineStyle, Char: 'A', CharFont: d.Font},
+		ErrorBar: ErrorBar{On: true, Place: "both", Color: c, Pattern: 1, Size: 1,
+			LineWidth: d.LineWidth, LineStyle: d.LineStyle, RiserWidth: d.LineWidth, RiserStyle: d.LineStyle, RiserClipSize: 0.1},
+	}
+}
+
 // Warning is a line plot-go could not use: unknown, malformed, or a
 // feature it does not draw. Like gracebat, reading continues.
 type Warning struct {

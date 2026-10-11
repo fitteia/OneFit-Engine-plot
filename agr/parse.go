@@ -180,18 +180,26 @@ func (p *parser) currentGraph() *Graph {
 	return p.graph
 }
 
-func (g *Graph) setByID(id int) *Set {
+func (g *Graph) setByID(id int, d Defaults, colors int) *Set {
 	for _, s := range g.Sets {
 		if s.ID == id {
 			return s
 		}
 	}
-	s := &Set{ID: id}
-	g.Sets = append(g.Sets, s)
+	s := NewSet(id, d, colors)
+	// in number order, the order Grace draws them in, whatever order the
+	// file first names them in
+	i := len(g.Sets)
+	for i > 0 && g.Sets[i-1].ID > id {
+		i--
+	}
+	g.Sets = append(g.Sets[:i], append([]*Set{s}, g.Sets[i:]...)...)
 	return s
 }
 
-func (p *parser) set(a []string) *Set { return p.currentGraph().setByID(p.index(a[0])) }
+func (p *parser) set(a []string) *Set {
+	return p.currentGraph().setByID(p.index(a[0]), p.proj.Defaults, len(p.proj.Colors))
+}
 
 func (p *parser) axis(name string) *Axis {
 	if strings.HasPrefix(name, "x") {
@@ -551,7 +559,7 @@ func init() {
 				p.target = nil
 				return
 			}
-			p.target = p.graphByID(g).setByID(s)
+			p.target = p.graphByID(g).setByID(s, p.proj.Defaults, len(p.proj.Colors))
 		}),
 		r("type W", func(p *parser, a []string) {
 			if p.target == nil {
@@ -628,7 +636,9 @@ func (p *parser) directive(line string) {
 // Parse reads a Grace project. It fails only on a read error; anything it
 // cannot use is a Warning in the Project, and reading goes on.
 func Parse(rd io.Reader) (*Project, error) {
-	p := &parser{proj: &Project{Fonts: map[int]Font{}, Colors: map[int]Color{}}}
+	// Grace's own defaults, which a file's "@default" lines change
+	p := &parser{proj: &Project{Fonts: map[int]Font{}, Colors: map[int]Color{},
+		Defaults: Defaults{LineWidth: 1, LineStyle: 1, Color: 1, Pattern: 1, CharSize: 1, SymbolSize: 1}}}
 	sc := bufio.NewScanner(rd)
 	sc.Buffer(make([]byte, 1<<20), 1<<20)
 	for sc.Scan() {
