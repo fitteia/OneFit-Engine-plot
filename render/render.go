@@ -13,6 +13,7 @@ import (
 	"github.com/fitteia/OneFit-Engine-plot/agr"
 	"github.com/fitteia/OneFit-Engine-plot/draw"
 	"github.com/fitteia/OneFit-Engine-plot/internal/afm"
+	"github.com/fitteia/OneFit-Engine-plot/internal/glyph"
 )
 
 // Units, in viewport units (docs/grace-behaviour.md).
@@ -989,9 +990,90 @@ func (r *renderer) text(s *agr.Text) {
 		}
 		x, y = t.x(x), t.y(y)
 	}
-	if s.Just != 0 {
-		r.warn("string justification %d is drawn left justified", s.Just)
-	}
 	ts := r.layout(s.Text, s.Font, s.CharSize*charUnit)
-	r.emit(ts, x, y, s.Rot, s.Color)
+	dx, dy, ok := r.justify(ts, s.Just, s.Rot)
+	if !ok {
+		r.warn("string %q: justification %d is not one of Grace's; not drawn, as gracebat does", s.Text, s.Just)
+		return
+	}
+	r.emit(ts, x+dx, y+dy, s.Rot, s.Color)
+}
+
+// justify is where a string's pen origin goes relative to its point, for
+// Grace's justification (docs/grace-behaviour.md): its low two bits
+// horizontal - 0 left, 1 right, 2 centre (3 draws nothing) - the next two
+// vertical - 0 the baseline, 1 bottom, 2 top, 3 middle. On the baseline
+// the string moves along its own direction by its advance width; aligned
+// vertically, by the page's box of its rotated glyphs and pen origin.
+func (r *renderer) justify(ts typeset, just int, deg float64) (dx, dy float64, ok bool) {
+	h, v := just&3, (just>>2)&3
+	if h == 3 || just < 0 || just > 15 {
+		return 0, 0, false
+	}
+	if v == 0 {
+		along := map[int]float64{0: 0, 1: -ts.width, 2: -ts.width / 2}[h]
+		dx, dy = rotate(along, 0, deg)
+		return dx, dy, true
+	}
+	b := r.turnedBox(ts, deg)
+	dx = map[int]float64{0: -b.LLX, 1: -b.URX, 2: -(b.LLX + b.URX) / 2}[h]
+	dy = map[int]float64{1: -b.LLY, 2: -b.URY, 3: -(b.LLY + b.URY) / 2}[v]
+	return dx, dy, true
+}
+
+// turnedBox is the box, on the page, of a typeset string's glyphs turned
+// by deg about its pen origin, the pen origin included: unturned, its ink
+// box; turned, the box of its glyphs' turned outlines (tighter than the
+// turned ink box, as gracebat measures it).
+func (r *renderer) turnedBox(ts typeset, deg float64) afm.Box {
+	b := afm.Box{}
+	if math.Mod(deg, 360) == 0 {
+		if !ts.ink.Empty() {
+			b = afm.Box{LLX: min(ts.ink.LLX, 0), LLY: min(ts.ink.LLY, 0), URX: max(ts.ink.URX, 0), URY: max(ts.ink.URY, 0)}
+		}
+		return b
+	}
+	add := func(x, y float64) {
+		x, y = rotate(x, y, deg)
+		b.LLX, b.LLY, b.URX, b.URY = min(b.LLX, x), min(b.LLY, y), max(b.URX, x), max(b.URY, y)
+	}
+	for _, rn := range ts.runs {
+		m := r.metrics(rn.font)
+		px := rn.x
+		for i := 0; i < len(rn.str); i++ {
+			segs, err := glyph.Outline(rn.font, rn.str[i])
+			if err != nil {
+				segs = nil
+			}
+			at := func(p [2]float64) (float64, float64) { return px + p[0]*rn.size, rn.y + p[1]*rn.size }
+			var cur [2]float64
+			for _, sg := range segs {
+				switch sg.Op {
+				case glyph.MoveTo, glyph.LineTo:
+					cur = sg.Pts[0]
+					add(at(cur))
+				default:
+					// sample the curve: its control points may lie outside it
+					ctl := append([][2]float64{cur}, sg.Pts...)
+					for k := 1; k <= 16; k++ {
+						add(at(bezier(ctl, float64(k)/16)))
+					}
+					cur = sg.Pts[len(sg.Pts)-1]
+				}
+			}
+			px += m.Width(rn.str[i:i+1]) * rn.size
+		}
+	}
+	return b
+}
+
+// bezier is the point at t of the Bezier curve with control points pts.
+func bezier(pts [][2]float64, t float64) [2]float64 {
+	p := append([][2]float64(nil), pts...)
+	for n := len(p) - 1; n > 0; n-- {
+		for i := 0; i < n; i++ {
+			p[i] = [2]float64{p[i][0] + (p[i+1][0]-p[i][0])*t, p[i][1] + (p[i+1][1]-p[i][1])*t}
+		}
+	}
+	return p[0]
 }

@@ -211,10 +211,24 @@ func (p *parser) axis(name string) *Axis {
 func (p *parser) currentString() *Text {
 	if p.str == nil {
 		p.warn("string setting before any \"@with string\"")
-		p.str = &Text{}
-		p.proj.Strings = append(p.proj.Strings, p.str)
+		p.newString()
 	}
 	return p.str
+}
+
+// newString starts a string as gracebat does (measured): a copy of the
+// previous string's settings - place, color, rotation, font,
+// justification, size, coordinates - off and without text; the first one
+// at 0, 0 in view coordinates, in the project's default color, font and
+// char size.
+func (p *parser) newString() {
+	t := Text{LocType: "view", Color: p.proj.Defaults.Color, Font: p.proj.Defaults.Font, CharSize: p.proj.Defaults.CharSize}
+	if p.str != nil {
+		t = *p.str
+		t.On, t.Text = false, ""
+	}
+	p.str = &t
+	p.proj.Strings = append(p.proj.Strings, p.str)
 }
 
 // unsupportedWhenOn accepts a feature plot-go does not draw while it is
@@ -286,17 +300,22 @@ func init() {
 		r("timestamp font N", func(p *parser, a []string) { p.proj.Timestamp.Font = p.int(a[0]) }),
 		r("timestamp char size N", func(p *parser, a []string) { p.proj.Timestamp.CharSize = p.num(a[0]) }),
 		r("timestamp def S", func(p *parser, a []string) { p.proj.Timestamp.Text = a[0] }),
-		r("with string", func(p *parser, a []string) {
-			p.str = &Text{}
-			p.proj.Strings = append(p.proj.Strings, p.str)
-		}),
+		r("with string", func(p *parser, a []string) { p.newString() }),
 		// "string G#" before "string W": W matches any word, g0 included
 		r("string G#", func(p *parser, a []string) { p.currentString().Graph = p.index(a[0]) }),
 		r("string W", func(p *parser, a []string) { p.currentString().On = p.bool(a[0]) }),
 		r("string loctype W", func(p *parser, a []string) { p.currentString().LocType = a[0] }),
 		r("string N N", func(p *parser, a []string) { s := p.currentString(); s.X, s.Y = p.num(a[0]), p.num(a[1]) }),
 		r("string color N", func(p *parser, a []string) { p.currentString().Color = p.int(a[0]) }),
-		r("string rot N", func(p *parser, a []string) { p.currentString().Rot = p.num(a[0]) }),
+		r("string rot N", func(p *parser, a []string) {
+			if v := p.num(a[0]); v < 0 {
+				// gracebat rejects it ("Negative value supplied for
+				// non-negative") and keeps the rotation the string had
+				p.warn("negative rotation; ignored, as gracebat does")
+			} else {
+				p.currentString().Rot = v
+			}
+		}),
 		r("string font N", func(p *parser, a []string) { p.currentString().Font = p.int(a[0]) }),
 		r("string just N", func(p *parser, a []string) { p.currentString().Just = p.int(a[0]) }),
 		r("string char size N", func(p *parser, a []string) { p.currentString().CharSize = p.num(a[0]) }),

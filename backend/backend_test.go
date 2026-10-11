@@ -128,6 +128,9 @@ func TestPDFPixelsMatchGracebat(t *testing.T) {
 			// the box in the reference's pixels (144 dpi, y down)
 			x0, y0 := int(bb.LLX*2), int((p.PageHeight-bb.URY)*2)
 			want := image.NewRGBA(got.Bounds())
+			// white first: a box reaching past the page (a string at its
+			// edge) has the page's white there, not nothing
+			draw.Draw(want, want.Bounds(), image.White, image.Point{}, draw.Src)
 			draw.Draw(want, want.Bounds(), ref, image.Pt(x0, y0), draw.Src)
 			diff, ink := differing(got, want, 96, 2)
 			frac := float64(diff) / float64(ink)
