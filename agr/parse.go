@@ -388,14 +388,23 @@ func init() {
 		r("altyaxis W", unsupportedWhenOn("an alternate y axis", 0)),
 		r("AXIS W", func(p *parser, a []string) { p.axis(a[0]).On = p.bool(a[1]) }),
 		r("AXIS type zero W", unsupportedWhenOn("an axis at zero", 1)),
-		r("AXIS offset N N", ignore),
+		r("AXIS offset N N", func(p *parser, a []string) { p.axis(a[0]).Offset = [2]float64{p.num(a[1]), p.num(a[2])} }),
 		r("AXIS bar W", unsupportedWhenOn("an axis bar", 1)),
 		r("AXIS bar color N", ignore),
 		r("AXIS bar linestyle N", ignore),
 		r("AXIS bar linewidth N", ignore),
 		r("AXIS label S", func(p *parser, a []string) { p.axis(a[0]).Label.Text = a[1] }),
 		r("AXIS label layout W", func(p *parser, a []string) { p.axis(a[0]).Label.Layout = a[1] }),
-		r("AXIS label place W", func(p *parser, a []string) { p.axis(a[0]).Label.Place = a[1] }),
+		r("AXIS label place N N", func(p *parser, a []string) { p.axis(a[0]).Label.SpecAt = [2]float64{p.num(a[1]), p.num(a[2])} }),
+		r("AXIS label place W", func(p *parser, a []string) {
+			// "auto"/"spec": how; "normal"/"opposite"/"both": the side
+			switch l := &p.axis(a[0]).Label; a[1] {
+			case "auto", "spec":
+				l.Spec = a[1] == "spec"
+			default:
+				l.Place = a[1]
+			}
+		}),
 		r("AXIS label char size N", func(p *parser, a []string) { p.axis(a[0]).Label.CharSize = p.num(a[1]) }),
 		r("AXIS label font N", func(p *parser, a []string) { p.axis(a[0]).Label.Font = p.int(a[1]) }),
 		r("AXIS label color N", func(p *parser, a []string) { p.axis(a[0]).Label.Color = p.int(a[1]) }),
@@ -467,8 +476,10 @@ func init() {
 		r("AXIS ticklabel skip N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Skip = p.int(a[1]) }),
 		r("AXIS ticklabel stagger N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Stagger = p.int(a[1]) }),
 		r("AXIS ticklabel place W", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Place = a[1] }),
-		r("AXIS ticklabel offset W", ignore),
-		r("AXIS ticklabel offset N N", ignore),
+		r("AXIS ticklabel offset W", func(p *parser, a []string) { p.axis(a[0]).TickLabel.OffsetSpec = a[1] == "spec" }),
+		r("AXIS ticklabel offset N N", func(p *parser, a []string) {
+			p.axis(a[0]).TickLabel.Offset = [2]float64{p.num(a[1]), p.num(a[2])}
+		}),
 		r("AXIS ticklabel start type W", func(p *parser, a []string) {
 			if a[1] != "auto" {
 				p.warn("tick label start/stop are not applied by plot-go")

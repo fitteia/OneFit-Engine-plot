@@ -24,6 +24,7 @@ const (
 	symbolUnit  = 0.01   // circle radius per unit of symbol size
 	legendUnit  = 0.01   // legend gaps and sample length per unit
 	titleGap    = 0.06   // a title's ink above the viewport
+	staggerUnit = 0.02   // a staggered tick label row's height per unit of char size
 	subtitleGap = 0.02   // a subtitle's
 	labelOffset = 0.01   // tick labels from the axis, axis labels from them
 )
@@ -860,14 +861,9 @@ func (r *renderer) axis(t xform, isX bool) {
 		}
 		return t.y(w)
 	}
-	// out: how far ticks reach outside the frame on the normal side.
-	out := 0.0
 	if ax.Tick.On {
 		majorLen := ax.Tick.MajorMarks.Size * tickUnit
 		minorLen := ax.Tick.MinorMarks.Size * tickUnit
-		if ax.Tick.Direction == "out" || ax.Tick.Direction == "both" {
-			out = max(majorLen, minorLen)
-		}
 		drawTicks := func(vals []float64, length float64, m agr.TickMarks) {
 			st, ok := r.style(m.Color, m.LineWidth, m.LineStyle)
 			if !ok {
@@ -880,16 +876,17 @@ func (r *renderer) axis(t xform, isX bool) {
 					if side == 1 { // opposite side: mirror
 						a, b = -a, -b
 					}
+					// at the axis, which "offset" moves out from the frame
 					if isX {
-						base := v.YMin
+						base := v.YMin - ax.Offset[0]
 						if side == 1 {
-							base = v.YMax
+							base = v.YMax + ax.Offset[1]
 						}
 						r.path(st, false, line(draw.Point{X: p, Y: base + a}, draw.Point{X: p, Y: base + b}))
 					} else {
-						base := v.XMin
+						base := v.XMin - ax.Offset[0]
 						if side == 1 {
-							base = v.XMax
+							base = v.XMax + ax.Offset[1]
 						}
 						r.path(st, false, line(draw.Point{X: base + a, Y: p}, draw.Point{X: base + b, Y: p}))
 					}
@@ -901,59 +898,199 @@ func (r *renderer) axis(t xform, isX bool) {
 		drawTicks(tk.majors, majorLen, ax.Tick.MajorMarks)
 	}
 
-	// tick labels, aligned by their ink: x labels hang below the axis,
-	// centred; y labels end left of it, centred vertically.
-	edge := math.Inf(1) // the outer ink edge of all tick labels
-	if isX {
-		edge = v.YMin - out
-	} else {
-		edge = v.XMin - out
+	// per side (0 normal: bottom/left; 1 opposite: top/right): where the
+	// axis is, which way is out, and how far the ticks drawn there reach
+	dir := func(sd int) float64 { return float64(2*sd - 1) }
+	base := func(sd int) float64 { // the axis, moved out by its offset
+		f := map[bool][2]float64{true: {v.YMin, v.YMax}, false: {v.XMin, v.XMax}}[isX][sd]
+		return f + dir(sd)*ax.Offset[sd]
 	}
-	if ax.TickLabel.On {
-		if ax.TickLabel.Place != "" && ax.TickLabel.Place != "normal" {
-			r.warn("tick labels are drawn on the normal side only")
+	ticksOn := func(sd int) bool {
+		if !ax.Tick.On {
+			return false
 		}
-		size := ax.TickLabel.CharSize * charUnit
-		r.id = part("ticklabel")
-		for _, w := range tk.majors {
-			ts := r.layout(r.label(w, ax.TickLabel), ax.TickLabel.Font, size)
-			if ts.ink.Empty() {
-				continue
+		for _, x := range r.tickSides(ax.Tick.Place) {
+			if x == sd {
+				return true
 			}
-			p := pos(w)
-			var ox, oy float64
-			if isX {
-				ox = p - (ts.ink.LLX+ts.ink.URX)/2
-				oy = v.YMin - out - labelOffset - ts.ink.URY
-				edge = min(edge, oy+ts.ink.LLY)
-			} else {
-				ox = v.XMin - out - labelOffset - ts.ink.URX
-				oy = p - (ts.ink.LLY+ts.ink.URY)/2
-				edge = min(edge, ox+ts.ink.LLX)
-			}
-			r.emit(ts, ox, oy, ax.TickLabel.Angle, ax.TickLabel.Color)
+		}
+		return false
+	}
+	reach := func(sd int) float64 { // the ticks' length outward
+		if ticksOn(sd) && (ax.Tick.Direction == "out" || ax.Tick.Direction == "both") {
+			return max(ax.Tick.MajorMarks.Size, ax.Tick.MinorMarks.Size) * tickUnit
+		}
+		return 0
+	}
+	// edge: the outer side of all drawn on a side so far - the ticks' box,
+	// their line's half width included (gracebat measures it so) - which the
+	// axis label goes beyond
+	var edge [2]float64
+	for sd := range 2 {
+		edge[sd] = base(sd)
+		if ticksOn(sd) {
+			hw := max(ax.Tick.MajorMarks.LineWidth, ax.Tick.MinorMarks.LineWidth) * lineUnit / 2
+			edge[sd] += dir(sd) * (reach(sd) + hw)
+		}
+	}
+	far := func(sd int, x float64) {
+		if sd == 0 {
+			edge[sd] = min(edge[sd], x)
+		} else {
+			edge[sd] = max(edge[sd], x)
 		}
 	}
 
-	// the axis label, beyond the tick labels
+	// tick labels (docs/grace-behaviour.md): on the sides "ticklabel place"
+	// says, 0.01 beyond the ticks reaching out there; centred on their tick
+	// by their box (their turned glyphs' when at an angle); every
+	// (skip+1)th tick; staggered over stagger+1 rows, the label of tick k in
+	// row k%(stagger+1), moved out by row x (0.02 x char size + 0.01)
+	if ax.TickLabel.On {
+		size := ax.TickLabel.CharSize * charUnit
+		step := max(ax.TickLabel.Skip, 0) + 1
+		rows := max(ax.TickLabel.Stagger, 0) + 1
+		type placed struct {
+			ts     typeset
+			ox, oy float64
+			ok     bool
+		}
+		at := make([][2]placed, len(tk.majors))
+		along, out := 0.0, labelOffset // "ticklabel offset spec": the file's
+		if ax.TickLabel.OffsetSpec {
+			along, out = ax.TickLabel.Offset[0], ax.TickLabel.Offset[1]
+		}
+		for _, sd := range r.sides(ax.TickLabel.Place, "tick labels") {
+			start0 := base(sd) + dir(sd)*(reach(sd)+out)
+			{
+				rowFar := start0
+				for k, w := range tk.majors {
+					if k%step != 0 {
+						continue
+					}
+					ts := r.layout(r.label(w, ax.TickLabel), ax.TickLabel.Font, size)
+					if ts.ink.Empty() {
+						continue
+					}
+					b := ts.ink
+					if math.Mod(ax.TickLabel.Angle, 360) != 0 {
+						b = r.turnedBox(ts, ax.TickLabel.Angle)
+					}
+					p := pos(w) + along
+					var pl placed
+					pl.ts, pl.ok = ts, true
+					// gracebat's row height: 0.02 per unit of char size, on
+					// either axis, whatever the label (superscripts included)
+					start := start0 + dir(sd)*float64(k%rows)*(ax.TickLabel.CharSize*staggerUnit+labelOffset)
+					if isX {
+						pl.ox = p - (b.LLX+b.URX)/2
+						if sd == 0 {
+							pl.oy = start - b.URY
+							rowFar = min(rowFar, pl.oy+b.LLY)
+						} else {
+							pl.oy = start - b.LLY
+							rowFar = max(rowFar, pl.oy+b.URY)
+						}
+						far(sd, rowFar)
+					} else {
+						pl.oy = p - (b.LLY+b.URY)/2
+						if sd == 0 {
+							pl.ox = start - b.URX
+							rowFar = min(rowFar, pl.ox+b.LLX)
+						} else {
+							pl.ox = start - b.LLX
+							rowFar = max(rowFar, pl.ox+b.URX)
+						}
+						far(sd, rowFar)
+					}
+					at[k][sd] = pl
+				}
+			}
+		}
+		// drawn tick by tick, the sides of each together (gracebat's order)
+		r.id = part("ticklabel")
+		for k := range at {
+			for sd := range 2 {
+				if pl := at[k][sd]; pl.ok {
+					r.emit(pl.ts, pl.ox, pl.oy, ax.TickLabel.Angle, ax.TickLabel.Color)
+				}
+			}
+		}
+	}
+
+	// the axis label, 0.01 beyond all on its side(s): parallel to the axis,
+	// or perpendicular ("label layout perp"), centred on the axis by its ink
 	if ax.Label.Text != "" {
 		r.id = part("label")
 		size := ax.Label.CharSize * charUnit
 		ts := r.layout(ax.Label.Text, ax.Label.Font, size)
+		perp := ax.Label.Layout == "perp"
 		if !ts.ink.Empty() {
-			if isX {
-				ox := (v.XMin+v.XMax)/2 - (ts.ink.LLX+ts.ink.URX)/2
-				oy := edge - labelOffset - ts.ink.URY
-				r.emit(ts, ox, oy, 0, ax.Label.Color)
-			} else {
-				// rotated 90 degrees: the text's ink "bottom" (LLY) faces
-				// the axis, its length runs up the page
-				ox := edge - labelOffset + ts.ink.LLY
-				oy := (v.YMin+v.YMax)/2 - (ts.ink.LLX+ts.ink.URX)/2
-				r.emit(ts, ox, oy, 90, ax.Label.Color)
+			i := ts.ink
+			for _, sd := range r.sides(ax.Label.Place, "the axis label") {
+				if ax.Label.Spec {
+					// "label place spec": its ink centred at SpecAt - along
+					// the axis from its middle, out from it
+					a, o := ax.Label.SpecAt[0], base(sd)+dir(sd)*ax.Label.SpecAt[1]
+					cx, cy := (v.XMin+v.XMax)/2+a, o
+					if !isX {
+						cx, cy = o, (v.YMin+v.YMax)/2+a
+					}
+					if isX != perp { // across the page: unturned
+						r.emit(ts, cx-(i.LLX+i.URX)/2, cy-(i.LLY+i.URY)/2, 0, ax.Label.Color)
+					} else { // turned 90 degrees
+						r.emit(ts, cx+(i.LLY+i.URY)/2, cy-(i.LLX+i.URX)/2, 90, ax.Label.Color)
+					}
+					continue
+				}
+				e := edge[sd] + dir(sd)*labelOffset
+				switch {
+				case isX && !perp: // across, below/above
+					ox := (v.XMin+v.XMax)/2 - (i.LLX+i.URX)/2
+					oy := e - i.URY
+					if sd == 1 {
+						oy = e - i.LLY
+					}
+					r.emit(ts, ox, oy, 0, ax.Label.Color)
+				case isX: // turned 90 degrees: its length runs up the page
+					ox := (v.XMin+v.XMax)/2 + (i.LLY+i.URY)/2
+					oy := e - i.URX
+					if sd == 1 {
+						oy = e - i.LLX
+					}
+					r.emit(ts, ox, oy, 90, ax.Label.Color)
+				case !perp: // turned 90 degrees: its ink "bottom" faces the axis
+					oy := (v.YMin+v.YMax)/2 - (i.LLX+i.URX)/2
+					ox := e + i.LLY
+					if sd == 1 {
+						ox = e + i.URY
+					}
+					r.emit(ts, ox, oy, 90, ax.Label.Color)
+				default: // across, left/right
+					oy := (v.YMin+v.YMax)/2 - (i.LLY+i.URY)/2
+					ox := e - i.URX
+					if sd == 1 {
+						ox = e - i.LLX
+					}
+					r.emit(ts, ox, oy, 0, ax.Label.Color)
+				}
 			}
 		}
 	}
+}
+
+// sides: the sides "place" names - 0 normal (bottom/left), 1 opposite.
+func (r *renderer) sides(place, what string) []int {
+	switch place {
+	case "normal", "", "auto":
+		return []int{0}
+	case "opposite":
+		return []int{1}
+	case "both":
+		return []int{0, 1}
+	}
+	r.warn("%s: place %q not supported; normal used", what, place)
+	return []int{0}
 }
 
 // tickSides: 0 the normal side (bottom/left), 1 the opposite.

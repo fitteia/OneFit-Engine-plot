@@ -96,6 +96,7 @@ type Axis struct {
 	Scale     string // "Normal" or "Logarithmic"
 	Invert    bool
 	On        bool
+	Offset    [2]float64 // the axis moved out from the frame: normal side, opposite
 	Label     AxisLabel
 	Tick      Ticks
 	TickLabel TickLabels
@@ -105,7 +106,9 @@ type Axis struct {
 type AxisLabel struct {
 	Text     string
 	Layout   string
-	Place    string
+	Place    string     // the side(s): "normal", "opposite", "both"
+	Spec     bool       // "label place spec": at SpecAt, not beyond the tick labels
+	SpecAt   [2]float64 // along the axis from its middle, out from it
 	CharSize float64
 	Font     int
 	Color    int
@@ -137,18 +140,20 @@ type Ticks struct {
 
 // TickLabels are the numbers written at major ticks.
 type TickLabels struct {
-	On       bool
-	Format   string // "decimal", "power", ...; empty is Grace's default, general
-	Prec     int
-	Append   string
-	Prepend  string
-	Angle    float64
-	Skip     int
-	Stagger  int
-	Place    string
-	CharSize float64
-	Font     int
-	Color    int
+	On         bool
+	Format     string // "decimal", "power", ...; empty is Grace's default, general
+	Prec       int
+	Append     string
+	Prepend    string
+	Angle      float64
+	Skip       int
+	Stagger    int
+	Place      string
+	CharSize   float64
+	Font       int
+	Color      int
+	OffsetSpec bool       // "ticklabel offset spec": Offset, not the default 0, 0.01
+	Offset     [2]float64 // along the axis, out from it
 }
 
 // Legend is a graph's legend box.
