@@ -22,5 +22,6 @@ for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; d
   echo "$out"
 done
 # the notices go with the binaries (the binaries also carry them: -notices)
-cp LICENSE NOTICE internal/afm/adobe-core14/MustRead.html dist/
+cp LICENSE NOTICE internal/afm/adobe-core14/MustRead.html internal/glyph/OFL.txt internal/glyph/go-fonts-LICENSE \
+  internal/glyph/x-image-LICENSE internal/glyph/x-image-PATENTS internal/glyph/x-text-LICENSE internal/glyph/x-text-PATENTS dist/
 (cd dist && sha256sum plot-go_* > SHA256SUMS)

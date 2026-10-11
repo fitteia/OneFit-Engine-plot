@@ -30,6 +30,11 @@ Font Name Liberation. They are licensed under the SIL Open Font License
 (internal/glyph/go-fonts-LICENSE). plot-go -notices prints both. The fonts
 are used unmodified and are not sold on their own.
 
+Reading and drawing the fonts, plot-go compiles in golang.org/x/image and
+golang.org/x/text: Copyright 2009 The Go Authors, under a BSD license with
+an additional patent grant (internal/glyph/x-image-LICENSE and -PATENTS,
+x-text-LICENSE and -PATENTS). plot-go -notices prints them too.
+
 Where the URW base-35 fonts are installed as OpenType (Debian's
 fonts-urw-base35, a Ghostscript dependency), plot-go reads their outlines
 from the system at run time instead, to draw the very glyphs Ghostscript

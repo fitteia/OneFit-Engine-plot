@@ -50,6 +50,20 @@ var (
 	PackageLicense string
 )
 
+// The licenses (BSD) and patent grants of golang.org/x/image, which reads
+// and draws the fonts, and golang.org/x/text, which it uses: compiled into
+// every plot-go binary, so plot-go -notices prints them too.
+var (
+	//go:embed x-image-LICENSE
+	XImageLicense string
+	//go:embed x-image-PATENTS
+	XImagePatents string
+	//go:embed x-text-LICENSE
+	XTextLicense string
+	//go:embed x-text-PATENTS
+	XTextPatents string
+)
+
 // standIns: each standard font's Liberation equivalent.
 var standIns = map[string][]byte{
 	"Helvetica":             liberationsansregular.TTF,
