@@ -186,7 +186,11 @@ func TestSVGIsWellFormed(t *testing.T) {
 		}
 		// render's element IDs, as groups an editor selects by (not every
 		// file draws symbols: test1-13's one point is outside its window)
-		for _, id := range []string{`<g data-id="page">`, `<g data-id="g0.frame">`, `<g data-id="g0.x.ticklabel">`, `<g data-id="g0.y.label">`} {
+		ids := []string{`<g data-id="page">`, `<g data-id="g0.frame">`, `<g data-id="g0.x.ticklabel">`, `<g data-id="g0.y.label">`}
+		if strings.Contains(f, "style-formats-") {
+			ids = ids[:3] // tick labels only, no axis labels
+		}
+		for _, id := range ids {
 			if !strings.Contains(b.String(), id) {
 				t.Errorf("%s: no %s", f, id)
 			}
