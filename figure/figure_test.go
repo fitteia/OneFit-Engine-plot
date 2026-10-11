@@ -179,3 +179,89 @@ func TestAddGraphAndLayout(t *testing.T) {
 		t.Error("the last graph was removed")
 	}
 }
+
+func TestDistinctColors(t *testing.T) {
+	fig := FromPlot(load(t, "test3-1.agr"), "a/fit-curves-1.agr")
+	seen := map[int]bool{}
+	for _, s := range fig.Graphs[0].Sets {
+		seen[s.Line.Color], seen[s.Symbol.Color] = true, true
+	}
+	src := load(t, "test3-1.agr")
+	var sets []int
+	for _, s := range src.Graphs[0].Sets {
+		sets = append(sets, s.ID)
+	}
+	// three more copies of the same plot: each its own color, never one
+	// already on the graph
+	for k := range 3 {
+		added, err := AddSets(fig, 0, src, "b/fit-curves-1.agr", sets)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c, err := Distinct(fig, 0, added)
+		if err != nil || c < 0 {
+			t.Fatalf("copy %d: color %d, %v", k, c, err)
+		}
+		if seen[c] {
+			t.Errorf("copy %d: color %d is already used", k, c)
+		}
+		seen[c] = true
+		for _, s := range fig.Graphs[0].Sets[len(fig.Graphs[0].Sets)-len(added):] {
+			if s.Line.Color != c || s.Symbol.Color != c || s.ErrorBar.Color != c {
+				t.Errorf("copy %d set %d not all in color %d: %+v %+v", k, s.ID, c, s.Line, s.Symbol)
+			}
+		}
+		if _, ok := fig.Colors[c]; !ok {
+			t.Errorf("color %d not in the figure's map", c)
+		}
+	}
+	if _, err := Distinct(fig, 7, nil); err == nil {
+		t.Error("graph 7 accepted")
+	}
+}
+
+func TestExtend(t *testing.T) {
+	fig := FromPlot(load(t, "test3-1.agr"), "a/fit-curves-1.agr") // linear, 1e-5..0.11 x 0..0.11
+	var all []int
+	for _, s := range fig.Graphs[0].Sets {
+		all = append(all, s.ID)
+	}
+	before := fig.Graphs[0].World
+	if changed, _ := Extend(fig, 0, all); changed || fig.Graphs[0].World != before {
+		t.Errorf("its own data changed the range: %+v -> %+v", before, fig.Graphs[0].World)
+	}
+	g := fig.Graphs[0]
+	ticks := (g.World.YMax - g.World.YMin) / g.Y.Tick.Major
+	g.Sets = append(g.Sets, &agr.Set{ID: 99, Type: "xydy", ErrorBar: agr.ErrorBar{On: true},
+		Data: [][]float64{{0.05, 0.3, 0.05}, {-0.02, -0.1, 0}, {math.NaN(), 5, 0}}})
+	if changed, err := Extend(fig, 0, []int{99}); !changed || err != nil {
+		t.Fatalf("no change: %v", err)
+	}
+	w := g.World
+	if !(w.XMin <= -0.02 && w.XMax >= 0.11 && w.YMin <= -0.1 && w.YMax >= 0.35 && w.YMax < 5) {
+		t.Errorf("world %+v does not hold the data (and only it)", w)
+	}
+	if n := (w.YMax - w.YMin) / g.Y.Tick.Major; n < ticks/2.5 || n > ticks*2.5 {
+		t.Errorf("y ticks %g -> %g", ticks, n)
+	}
+	for _, v := range []float64{w.YMin, w.YMax} {
+		if r := v / g.Y.Tick.Major; math.Abs(r-math.Round(r)) > 1e-9 {
+			t.Errorf("y end %g not on a tick of %g", v, g.Y.Tick.Major)
+		}
+	}
+
+	// logarithmic: decades, non-positive x left out
+	lf := FromPlot(load(t, "test7-10.agr"), "a/fit-curves-10.agr") // x 5e-4..10 log
+	lg := lf.Graphs[0]
+	lg.Sets = append(lg.Sets, &agr.Set{ID: 99, Type: "xy", Data: [][]float64{{2e-6, 0}, {300, 0}, {-1, 0}, {0, 0}, {100, 0}}})
+	Extend(lf, 0, []int{99})
+	if lg.World.XMin != 1e-6 || lg.World.XMax != 1000 {
+		t.Errorf("log x = %g..%g, want 1e-06..1000", lg.World.XMin, lg.World.XMax)
+	}
+	// data ending on a decade ends the axis there
+	lg.Sets = append(lg.Sets, &agr.Set{ID: 100, Type: "xy", Data: [][]float64{{1e4, 0}}})
+	Extend(lf, 0, []int{100})
+	if lg.World.XMax != 1e4 {
+		t.Errorf("log x max = %g, want 10000", lg.World.XMax)
+	}
+}

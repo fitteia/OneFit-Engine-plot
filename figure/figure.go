@@ -333,3 +333,171 @@ func resize(fig *agr.Project, g *agr.Graph, v agr.Rect) {
 		}
 	}
 }
+
+// palette is the order Distinct takes new colors in: Grace's default map
+// without white, yellow and grey (too light on white paper) and black (what
+// OneFit draws the first fit in).
+var palette = []int{2, 4, 15, 8, 11, 10, 13, 14, 12, 6, 3, 9}
+
+var defaultColors = map[int]agr.Color{
+	2: {R: 255, Name: "red"}, 3: {G: 255, Name: "green"}, 4: {B: 255, Name: "blue"},
+	6: {R: 188, G: 143, B: 143, Name: "brown"}, 8: {R: 148, B: 211, Name: "violet"},
+	9: {G: 255, B: 255, Name: "cyan"}, 10: {R: 255, B: 255, Name: "magenta"},
+	11: {R: 255, G: 165, Name: "orange"}, 12: {R: 114, G: 33, B: 188, Name: "indigo"},
+	13: {R: 103, G: 7, B: 72, Name: "maroon"}, 14: {R: 64, G: 224, B: 208, Name: "turquoise"},
+	15: {G: 139, Name: "green4"},
+}
+
+// Distinct draws sets of graph g - the ones a plot just brought in - in one
+// color no other set of the graph uses, symbols, lines and error bars alike,
+// so each fit reads as one color. It returns the color (-1 when every
+// palette color is taken, and nothing changes).
+func Distinct(fig *agr.Project, g int, sets []int) (int, error) {
+	gr := graph(fig, g)
+	if gr == nil {
+		return -1, fmt.Errorf("the figure has no graph %d", g)
+	}
+	mine := map[int]bool{}
+	for _, id := range sets {
+		mine[id] = true
+	}
+	used := map[int]bool{}
+	for _, s := range gr.Sets {
+		if !mine[s.ID] {
+			for _, c := range []int{s.Line.Color, s.Symbol.Color, s.Symbol.FillColor, s.ErrorBar.Color} {
+				used[c] = true
+			}
+		}
+	}
+	for _, c := range palette {
+		if used[c] {
+			continue
+		}
+		for _, s := range gr.Sets {
+			if mine[s.ID] {
+				s.Line.Color, s.Symbol.Color, s.Symbol.FillColor, s.ErrorBar.Color = c, c, c, c
+			}
+		}
+		if _, ok := fig.Colors[c]; !ok {
+			if fig.Colors == nil {
+				fig.Colors = map[int]agr.Color{}
+			}
+			fig.Colors[c] = defaultColors[c]
+		}
+		return c, nil
+	}
+	return -1, nil
+}
+
+// Extend widens graph g's axes, when needed, to show all the data of the
+// given sets (error bars included), with a margin of 5% of the new span -
+// on a logarithmic axis, out to whole decades instead, values that are not
+// positive left out. A linear axis that grows gets a new major tick step keeping
+// about as many ticks as before. It reports whether anything changed.
+func Extend(fig *agr.Project, g int, sets []int) (bool, error) {
+	gr := graph(fig, g)
+	if gr == nil {
+		return false, fmt.Errorf("the figure has no graph %d", g)
+	}
+	mine := map[int]bool{}
+	for _, id := range sets {
+		mine[id] = true
+	}
+	xlog, ylog := gr.X.Scale == "Logarithmic", gr.Y.Scale == "Logarithmic"
+	xlo, xhi, ylo, yhi := math.Inf(1), math.Inf(-1), math.Inf(1), math.Inf(-1)
+	for _, s := range gr.Sets {
+		if !mine[s.ID] {
+			continue
+		}
+		for _, row := range s.Data {
+			if len(row) < 2 {
+				continue
+			}
+			x, y := row[0], row[1]
+			if math.IsNaN(x) || math.IsInf(x, 0) || (xlog && x <= 0) {
+				continue
+			}
+			lo, hi := y, y
+			if s.Type == "xydy" && len(row) > 2 && s.ErrorBar.On {
+				lo, hi = y-math.Abs(row[2]), y+math.Abs(row[2])
+			}
+			if ylog && lo <= 0 {
+				lo = y
+			}
+			if math.IsNaN(lo) || math.IsInf(lo, 0) || math.IsNaN(hi) || math.IsInf(hi, 0) || (ylog && lo <= 0) {
+				continue
+			}
+			xlo, xhi = min(xlo, x), max(xhi, x)
+			ylo, yhi = min(ylo, lo), max(yhi, hi)
+		}
+	}
+	if xlo > xhi {
+		return false, nil
+	}
+	w := &gr.World
+	cx := grow(&w.XMin, &w.XMax, xlo, xhi, xlog, &gr.X)
+	cy := grow(&w.YMin, &w.YMax, ylo, yhi, ylog, &gr.Y)
+	return cx || cy, nil
+}
+
+// grow widens [*a, *b] (in either order - an inverted range keeps its
+// order) to hold [lo, hi].
+func grow(a, b *float64, lo, hi float64, log bool, ax *agr.Axis) bool {
+	wlo, whi := min(*a, *b), max(*a, *b)
+	if lo >= wlo && hi <= whi {
+		return false
+	}
+	nlo, nhi := min(wlo, lo), max(whi, hi)
+	if log {
+		if wlo <= 0 {
+			nlo = lo
+		}
+		l, h := math.Log10(nlo), math.Log10(nhi)
+		// out to whole decades, as OneFit's own plots end; data on a decade
+		// ends there
+		if lo < wlo || wlo <= 0 {
+			nlo = math.Pow(10, math.Floor(l+1e-9))
+		}
+		if hi > whi {
+			nhi = math.Pow(10, math.Ceil(h-1e-9))
+		}
+	} else {
+		m := 0.05 * (nhi - nlo)
+		if m == 0 {
+			m = math.Max(math.Abs(nhi), 1) * 0.05
+		}
+		if lo < wlo {
+			nlo -= m
+		}
+		if hi > whi {
+			nhi += m
+		}
+		if ax.Tick.Major > 0 {
+			n := max(math.Round((whi-wlo)/ax.Tick.Major), 2)
+			ax.Tick.Major = niceStep((nhi - nlo) / n)
+			// whole steps: the ends land on ticks, as OneFit's own do
+			nlo = math.Floor(nlo/ax.Tick.Major) * ax.Tick.Major
+			nhi = math.Ceil(nhi/ax.Tick.Major) * ax.Tick.Major
+		}
+	}
+	if *a <= *b {
+		*a, *b = nlo, nhi
+	} else {
+		*a, *b = nhi, nlo
+	}
+	return true
+}
+
+// niceStep is the smallest of 1, 2, 5 x 10^n at least d.
+func niceStep(d float64) float64 {
+	if !(d > 0) || math.IsInf(d, 0) {
+		return 1
+	}
+	p := math.Pow(10, math.Floor(math.Log10(d)))
+	for _, m := range []float64{1, 2, 5, 10} {
+		if m*p >= d*(1-1e-9) {
+			return m * p
+		}
+	}
+	return 10 * p
+}
