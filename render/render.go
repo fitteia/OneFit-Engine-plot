@@ -20,6 +20,8 @@ const (
 	tickUnit    = 0.02   // tick length per unit of tick size
 	symbolUnit  = 0.01   // circle radius per unit of symbol size
 	legendUnit  = 0.01   // legend gaps and sample length per unit
+	titleGap    = 0.06   // a title's ink above the viewport
+	subtitleGap = 0.02   // a subtitle's
 	labelOffset = 0.01   // tick labels from the axis, axis labels from them
 )
 
@@ -191,10 +193,31 @@ func (r *renderer) graph(g *agr.Graph) {
 			r.text(s)
 		}
 	}
-	if g.Title.Text != "" || g.Subtitle.Text != "" {
-		r.warn("graph titles are not drawn")
-	}
 	r.legend(t)
+	r.titles(g)
+}
+
+// titles draws a graph's title and subtitle (docs/grace-behaviour.md):
+// centred on the viewport by their boxes, as labels are, their ink 0.06
+// (title) and 0.02 (subtitle) above its top - fixed, neither making room
+// for the other.
+func (r *renderer) titles(g *agr.Graph) {
+	for _, tt := range []struct {
+		t   agr.Title
+		gap float64
+		id  string
+	}{{g.Title, titleGap, "title"}, {g.Subtitle, subtitleGap, "subtitle"}} {
+		if tt.t.Text == "" {
+			continue
+		}
+		ts := r.layout(tt.t.Text, tt.t.Font, tt.t.Size*charUnit)
+		if ts.ink.Empty() {
+			continue
+		}
+		r.id = fmt.Sprintf("g%d.%s", g.ID, tt.id)
+		x := (g.View.XMin+g.View.XMax)/2 - (ts.ink.LLX+ts.ink.URX)/2
+		r.emit(ts, x, g.View.YMax+tt.gap-ts.ink.LLY, 0, tt.t.Color)
+	}
 }
 
 // legend draws a graph's legend (docs/grace-behaviour.md): an entry per
