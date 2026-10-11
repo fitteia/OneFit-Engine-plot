@@ -7,6 +7,7 @@ import (
 
 	"github.com/fitteia/OneFit-Engine-plot/draw"
 	"github.com/fitteia/OneFit-Engine-plot/internal/afm"
+	"github.com/fitteia/OneFit-Engine-plot/internal/glyph"
 )
 
 // Escape factors, measured from gracebat (the User's Guide rounds them to
@@ -69,7 +70,7 @@ func (r *renderer) layout(s string, font int, size float64) typeset {
 		buf.Reset()
 		sz := size * zoom
 		m := r.metrics(cur)
-		ink := m.Ink(str)
+		ink := glyph.Ink(cur, m, str)
 		if !ink.Empty() {
 			ts.ink = ts.ink.Union(afm.Box{
 				LLX: x + ink.LLX*sz, LLY: shift + ink.LLY*sz,

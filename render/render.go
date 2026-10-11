@@ -10,6 +10,7 @@ import (
 
 	"github.com/fitteia/OneFit-Engine-plot/agr"
 	"github.com/fitteia/OneFit-Engine-plot/draw"
+	"github.com/fitteia/OneFit-Engine-plot/internal/afm"
 )
 
 // Units, in viewport units (docs/grace-behaviour.md).
@@ -18,6 +19,7 @@ const (
 	charUnit    = 0.028  // font size per unit of char size
 	tickUnit    = 0.02   // tick length per unit of tick size
 	symbolUnit  = 0.01   // circle radius per unit of symbol size
+	legendUnit  = 0.01   // legend gaps and sample length per unit
 	labelOffset = 0.01   // tick labels from the axis, axis labels from them
 )
 
@@ -192,13 +194,123 @@ func (r *renderer) graph(g *agr.Graph) {
 	if g.Title.Text != "" || g.Subtitle.Text != "" {
 		r.warn("graph titles are not drawn")
 	}
-	if g.Legend.On && g.Legend.BoxPattern != 0 {
-		r.warn("the legend box is not drawn")
+	r.legend(t)
+}
+
+// legend draws a graph's legend (docs/grace-behaviour.md): an entry per
+// visible set with a legend text, in set order (or reversed: invert) - a
+// sample and the text. The entries are laid out on their own, then moved so
+// that the box of all they draw, widened by the gaps, has its top left
+// corner at the legend's place; that box is the legend box.
+func (r *renderer) legend(t xform) {
+	g := t.g
+	L := g.Legend
+	if !L.On {
+		return
 	}
+	var sets []*agr.Set
+	maxSym := 0.0
 	for _, s := range g.Sets {
-		if g.Legend.On && s.Legend != "" {
-			r.warn("legend entries are not drawn")
-			break
+		if s.Hidden {
+			continue
+		}
+		maxSym = max(maxSym, s.Symbol.Size) // every visible set's, whether drawn or not
+		if s.Legend != "" {
+			sets = append(sets, s)
+		}
+	}
+	if len(sets) == 0 {
+		return
+	}
+	if L.Invert {
+		for i, j := 0, len(sets)-1; i < j; i, j = i+1, j-1 {
+			sets[i], sets[j] = sets[j], sets[i]
+		}
+	}
+	h, v := L.HGap*legendUnit, L.VGap*legendUnit
+	length := L.Length * legendUnit
+	textX := length + h + maxSym*symbolUnit
+	type entry struct {
+		s       *agr.Set
+		ts      typeset
+		base, y float64 // the text's baseline, the sample's line
+		line    bool
+		lst     draw.Style
+		pen     symbolPen
+	}
+	var ents []entry
+	var box afm.Box
+	add := func(b afm.Box) {
+		if box.Empty() {
+			box = b
+		} else {
+			box = box.Union(b)
+		}
+	}
+	top := 0.0 // the next entry's ink top
+	for _, s := range sets {
+		e := entry{s: s, ts: r.layout(s.Legend, L.Font, L.CharSize*charUnit)}
+		ink := e.ts.ink
+		e.base = top - ink.URY
+		e.y = e.base + (ink.LLY+ink.URY)/2
+		top = e.base + ink.LLY - v
+		add(afm.Box{LLX: textX + ink.LLX, LLY: e.base + ink.LLY, URX: textX + ink.URX, URY: e.base + ink.URY})
+		if s.Line.Type != 0 {
+			e.lst, e.line = r.style(s.Line.Color, s.Line.LineWidth, s.Line.LineStyle)
+		}
+		if e.line {
+			w := e.lst.Width / 2
+			add(afm.Box{LLX: -w, LLY: e.y - w, URX: length + w, URY: e.y + w})
+		}
+		e.pen = r.pen(s)
+		if e.pen.ok {
+			ext := e.pen.extent()
+			xs := []float64{length / 2}
+			if e.line {
+				xs = []float64{0, length} // with a line: at both its ends
+			}
+			for _, x := range xs {
+				add(afm.Box{LLX: x + ext.LLX, LLY: e.y + ext.LLY, URX: x + ext.URX, URY: e.y + ext.URY})
+			}
+		}
+		ents = append(ents, e)
+	}
+	x, y := L.X, L.Y
+	if L.LocType == "world" {
+		if !t.ok(x, y) {
+			r.warn("the legend is at a point a log axis cannot show; not drawn")
+			return
+		}
+		x, y = t.x(x), t.y(y)
+	}
+	dx, dy := x+h-box.LLX, y-v-box.URY
+	left, right, upper, lower := x, box.URX+dx+h, y, box.LLY+dy-v
+	r.id = fmt.Sprintf("g%d.legend", g.ID)
+	corners := []draw.Point{{X: left, Y: upper}, {X: left, Y: lower}, {X: right, Y: lower}, {X: right, Y: upper}}
+	if L.FillPattern != 0 {
+		if L.FillPattern != 1 {
+			r.warn("legend fill pattern %d is drawn solid", L.FillPattern)
+		}
+		r.path(draw.Style{Color: r.color(L.FillColor)}, true, draw.Segment{Points: corners, Closed: true})
+	}
+	if L.BoxPattern != 0 {
+		if st, ok := r.style(L.BoxColor, L.BoxWidth, L.BoxStyle); ok {
+			r.path(st, false, draw.Segment{Points: append(corners, corners[0]), Closed: true})
+		}
+	}
+	for _, e := range ents {
+		r.emit(e.ts, textX+dx, e.base+dy, 0, L.Color)
+		y := e.y + dy
+		if e.line {
+			r.path(e.lst, false, line(draw.Point{X: dx, Y: y}, draw.Point{X: length + dx, Y: y}))
+		}
+		if e.pen.ok {
+			if e.line {
+				e.pen.draw(r, dx, y)
+				e.pen.draw(r, length+dx, y)
+			} else {
+				e.pen.draw(r, length/2+dx, y)
+			}
 		}
 	}
 }
@@ -378,34 +490,121 @@ var symbolShapes = func() map[int][][]draw.Point {
 	}
 }()
 
-// symbols draws a set's symbols at its points inside the world window:
-// the fill first (fill color; any fill pattern drawn solid), then the
-// outline (pattern 0: none), or for symbol 11 the set's character, centred
-// on the point by its box as labels are.
-func (r *renderer) symbols(t xform, s *agr.Set) {
+// symbolPen is how a set's symbols are drawn: style, fill, and for symbol
+// 11 its typeset character. ok is false when there is nothing to draw.
+type symbolPen struct {
+	sy           agr.Symbol
+	st, fst      draw.Style
+	stroke, fill bool
+	open         bool // plus, x, star: arms only, never filled
+	ch           typeset
+	ok           bool
+}
+
+// pen prepares a set's symbols (docs/grace-behaviour.md): the fill first
+// (fill color; any fill pattern drawn solid), then the outline (pattern 0:
+// none), or for symbol 11 the set's character.
+func (r *renderer) pen(s *agr.Set) symbolPen {
 	sy := s.Symbol
+	if sy.Type == 0 {
+		return symbolPen{}
+	}
 	if sy.Type < 1 || sy.Type > 11 {
 		r.warn("set %d: symbol %d is drawn as a circle", s.ID, sy.Type)
 		sy.Type = 1
 	}
-	open := sy.Type >= 8 && sy.Type <= 10
-	st, stroke := r.style(sy.Color, sy.LineWidth, sy.LineStyle)
-	stroke = stroke && sy.Pattern != 0
-	fill := sy.FillPattern != 0 && !open && sy.Type != 11
-	if fill && sy.FillPattern != 1 {
+	p := symbolPen{sy: sy, open: sy.Type >= 8 && sy.Type <= 10, ok: true}
+	p.st, p.stroke = r.style(sy.Color, sy.LineWidth, sy.LineStyle)
+	p.stroke = p.stroke && sy.Pattern != 0
+	p.fill = sy.FillPattern != 0 && !p.open && sy.Type != 11
+	if p.fill && sy.FillPattern != 1 {
 		r.warn("set %d: symbol fill pattern %d is drawn solid", s.ID, sy.FillPattern)
 	}
-	var fst draw.Style
-	if fill {
-		fst = draw.Style{Color: r.color(sy.FillColor)}
+	if p.fill {
+		p.fst = draw.Style{Color: r.color(sy.FillColor)}
 	}
-	var ch typeset
 	if sy.Type == 11 {
 		if sy.Char <= 32 || sy.Char > 255 || sy.Char == '\\' {
 			r.warn("set %d: symbol character %d cannot be drawn", s.ID, sy.Char)
-			return
+			return symbolPen{}
 		}
-		ch = r.layout(string(rune(sy.Char)), sy.CharFont, sy.Size*charUnit)
+		p.ch = r.layout(string(rune(sy.Char)), sy.CharFont, sy.Size*charUnit)
+	}
+	return p
+}
+
+// draw draws one symbol centred on (px, py).
+func (p symbolPen) draw(r *renderer, px, py float64) {
+	sy := p.sy
+	switch sy.Type {
+	case 1:
+		rad := sy.Size * symbolUnit
+		arc := draw.Segment{Arc: &draw.Arc{X: px, Y: py, RX: rad, RY: rad, A1: 0, A2: 360}}
+		if p.fill {
+			r.path(p.fst, true, arc)
+		}
+		if p.stroke {
+			r.path(p.st, false, arc)
+		}
+	case 11:
+		if !p.ch.ink.Empty() {
+			r.emit(p.ch, px-(p.ch.ink.LLX+p.ch.ink.URX)/2, py-(p.ch.ink.LLY+p.ch.ink.URY)/2, 0, sy.Color)
+		}
+	default:
+		for _, shape := range symbolShapes[sy.Type] {
+			pts := make([]draw.Point, len(shape), len(shape)+1)
+			for i, q := range shape {
+				pts[i] = draw.Point{X: px + q.X*sy.Size, Y: py + q.Y*sy.Size}
+			}
+			if p.fill {
+				r.path(p.fst, true, draw.Segment{Points: pts, Closed: true})
+			}
+			if p.stroke {
+				if !p.open {
+					// gracebat's outline returns to its first point
+					pts = append(pts, pts[0])
+				}
+				r.path(p.st, false, draw.Segment{Points: pts, Closed: !p.open})
+			}
+		}
+	}
+}
+
+// extent is the box of what draw draws, around the point: the shape, plus
+// half the outline's width when there is one; a character's box.
+func (p symbolPen) extent() afm.Box {
+	var b afm.Box
+	switch p.sy.Type {
+	case 1:
+		rad := p.sy.Size * symbolUnit
+		b = afm.Box{LLX: -rad, LLY: -rad, URX: rad, URY: rad}
+	case 11:
+		w, h := p.ch.ink.URX-p.ch.ink.LLX, p.ch.ink.URY-p.ch.ink.LLY
+		return afm.Box{LLX: -w / 2, LLY: -h / 2, URX: w / 2, URY: h / 2}
+	default:
+		first := true
+		for _, shape := range symbolShapes[p.sy.Type] {
+			for _, q := range shape {
+				x, y := q.X*p.sy.Size, q.Y*p.sy.Size
+				if first {
+					b, first = afm.Box{LLX: x, LLY: y, URX: x, URY: y}, false
+				}
+				b.LLX, b.LLY, b.URX, b.URY = min(b.LLX, x), min(b.LLY, y), max(b.URX, x), max(b.URY, y)
+			}
+		}
+	}
+	if p.stroke {
+		h := p.st.Width / 2
+		b.LLX, b.LLY, b.URX, b.URY = b.LLX-h, b.LLY-h, b.URX+h, b.URY+h
+	}
+	return b
+}
+
+// symbols draws a set's symbols at its points inside the world window.
+func (r *renderer) symbols(t xform, s *agr.Set) {
+	p := r.pen(s)
+	if !p.ok {
+		return
 	}
 	r.id = fmt.Sprintf("g%d.s%d.symbols", t.g.ID, s.ID)
 	w := t.g.World
@@ -414,39 +613,7 @@ func (r *renderer) symbols(t xform, s *agr.Set) {
 		if !t.ok(x, y) || x < min(w.XMin, w.XMax) || x > max(w.XMin, w.XMax) || y < min(w.YMin, w.YMax) || y > max(w.YMin, w.YMax) {
 			continue
 		}
-		px, py := t.x(x), t.y(y)
-		switch sy.Type {
-		case 1:
-			rad := sy.Size * symbolUnit
-			arc := draw.Segment{Arc: &draw.Arc{X: px, Y: py, RX: rad, RY: rad, A1: 0, A2: 360}}
-			if fill {
-				r.path(fst, true, arc)
-			}
-			if stroke {
-				r.path(st, false, arc)
-			}
-		case 11:
-			if !ch.ink.Empty() {
-				r.emit(ch, px-(ch.ink.LLX+ch.ink.URX)/2, py-(ch.ink.LLY+ch.ink.URY)/2, 0, sy.Color)
-			}
-		default:
-			for _, shape := range symbolShapes[sy.Type] {
-				pts := make([]draw.Point, len(shape), len(shape)+1)
-				for i, q := range shape {
-					pts[i] = draw.Point{X: px + q.X*sy.Size, Y: py + q.Y*sy.Size}
-				}
-				if fill {
-					r.path(fst, true, draw.Segment{Points: pts, Closed: true})
-				}
-				if stroke {
-					if !open {
-						// gracebat's outline returns to its first point
-						pts = append(pts, pts[0])
-					}
-					r.path(st, false, draw.Segment{Points: pts, Closed: !open})
-				}
-			}
-		}
+		p.draw(r, t.x(x), t.y(y))
 	}
 }
 
