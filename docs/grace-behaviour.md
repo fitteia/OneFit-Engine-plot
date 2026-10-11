@@ -173,10 +173,35 @@ Measured with `style-axes-sides`, `-perp`, `-angle`, `-noticks` and
 - `power` tick labels are "10" with the exponent as a superscript.
   gracebat rejects an unknown tick label format name as a syntax error and
   keeps its default, `general` (%g-like: "100", not "100.00000").
-- A format may also be given by number: 0 decimal, 1 exponential, 2
-  general, 3 power, 4 scientific, 5 engineering, 6 computing, 7 and up dates
-  and times. A number Grace does not know (OneFit wrote 60) draws as
-  decimal - and is saved as "unknown", which gracebat then rejects when it
+- Tick label formats (measured with `style-formats-numbers`, `-dates`,
+  `-degrees`; p is the precision):
+  - decimal: p decimals, a value rounding to zero without its sign;
+    exponential: C's %.pe; general: C's %.pg (p at least 1);
+  - power: 10 with the decimal logarithm, at p decimals, as superscript
+    ("10^2.00" at p 2; negative values "-10^..."; 0 as decimal);
+  - scientific: the mantissa at p decimals - as rounded, not renormalised
+    (999 at 1 is "10.0") - then the Symbol font's multiply sign and 10 with
+    the exponent as superscript; 0 as decimal;
+  - engineering: the mantissa at p decimals, a space and an SI prefix
+    every 3 decades, y to Y (micro the Symbol font's m), beyond them the
+    mantissa grows; none for 1 to 999 (the space stays);
+  - computing: C's %.pg, from 1024 on divided by 1024 per prefix K, M, G,
+    T, P, E, Z, Y, no space;
+  - dates (days from `@reference date`, Julian day 0 by default: noon, 1
+    January 4713 BC): ddmmyy, mmddyy, yymmdd, mmdd, monthday, daymonth and
+    dayofyear round to the nearest day (noon rounds up); mmyy, months,
+    monthsy, monthl to the nearest month's start; dayofweeks, dayofweekl,
+    and the times (hms, mmddhms, mmddyyhms, yymmddhms, seconds rounded) use
+    the exact moment. The Julian calendar before 15 October 1582, the
+    Gregorian from then; years before 1 AD as negative BC years (Julian day
+    0 is in -4713). "dayofweek" is a syntax error: the name is dayofweeks;
+  - degrees (lon: E/W, lat: N/S): degreeslon "12.50E", degreesmmlon
+    "12 30.00' E", degreesmmsslon "12 30' 0.00\" E", mmsslon without the
+    degrees; the last part at p decimals; 0 alone ("0", "0 0'", "0 0' 0\"").
+- A format may also be given by number, in that order: 0 decimal, 1
+  exponential, 2 general, 3 power, 4 scientific, 5 engineering, 6
+  computing, 7 ddmmyy ... 23 yymmddhms, 24 degreeslon ... 31 mmsslat. A
+  number Grace does not know (OneFit wrote 60) draws as decimal - and is saved as "unknown", which gracebat then rejects when it
   reads its own project back, so that project no longer draws what it
   printed. plot-go saves the format by name.
 - Defaults for what a file leaves out: format general, precision 5 (a

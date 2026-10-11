@@ -16,6 +16,7 @@ type Project struct {
 	Defaults        Defaults
 	Fonts           map[int]Font
 	Colors          map[int]Color
+	RefDate         float64 // "@reference date": the Julian day dates count from
 	Timestamp       Text
 	Strings         []*Text
 	Graphs          []*Graph
