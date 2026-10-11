@@ -22,6 +22,10 @@ import (
 //	gracebat-call            OneFit-Engine test 3, block 1
 //	gracebat-call-format60   test 8, block 13: "ticklabel format 60" and a
 //	                         "ticklabel prec" without a value
+//	gracebat-call-errorbars  gracebat-call with "s0 errorbar on" in its
+//	                         -param file, as --error-bars, --reduced-chi2
+//	                         and --remove-outliers write it (its outputs
+//	                         made here with gracebat 5.1.25)
 func calls(t *testing.T) []string {
 	dirs, _ := filepath.Glob("../../testdata/gracebat-call*")
 	if len(dirs) == 0 {

@@ -234,22 +234,127 @@ func (r *renderer) set(t xform, s *agr.Set) {
 			}
 			if segs := clipPolyline(pts, breaks, t.g.View); len(segs) > 0 {
 				r.id = fmt.Sprintf("g%d.s%d.line", t.g.ID, s.ID)
-				if s.Line.Type == 4 || s.Line.Type == 5 {
-					// gracebat strokes each segment on its own
-					for _, sg := range segs {
-						r.path(st, false, sg)
-					}
-				} else {
-					r.path(st, false, segs...)
+				// gracebat strokes each visible piece on its own: each
+				// segment of types 4 and 5, each stretch between where a
+				// line leaves the viewport and comes back
+				for _, sg := range segs {
+					r.path(st, false, sg)
 				}
 			}
 		}
 	}
+	if s.ErrorBar.On && s.Type == "xydy" {
+		r.errorBars(t, s)
+	}
 	if s.Symbol.Type != 0 {
 		r.symbols(t, s)
 	}
-	if s.ErrorBar.On && s.Type == "xydy" {
-		r.warn("set %d: error bars are not drawn", s.ID)
+}
+
+// errorBars draws an xydy set's error bars (docs/grace-behaviour.md), after
+// its line and before its symbols: for each point inside the world window
+// with an error (its size; the sign does not matter, 0 is none), the riser
+// from the point to y+dy, then the cap across its end, then the same down
+// to y-dy - only up for place "normal", only down for "opposite". A riser
+// whose end is out of the viewport has no cap: it runs to the frame, or
+// with riser clip on, for the clip length and ends in an arrowhead. All of
+// it is cut at the frame.
+func (r *renderer) errorBars(t xform, s *agr.Set) {
+	e := s.ErrorBar
+	if e.Pattern == 0 {
+		return
+	}
+	var dirs []float64
+	switch e.Place {
+	case "normal":
+		dirs = []float64{1}
+	case "opposite":
+		dirs = []float64{-1}
+	default:
+		if e.Place != "both" && e.Place != "" {
+			r.warn("set %d: error bar place %q is drawn as both", s.ID, e.Place)
+		}
+		dirs = []float64{1, -1}
+	}
+	riser, hasRiser := r.style(e.Color, e.RiserWidth, e.RiserStyle)
+	capSt, hasCap := r.style(e.Color, e.LineWidth, e.LineStyle)
+	arrow := draw.Style{Color: r.color(e.Color), Width: e.LineWidth * lineUnit} // always solid
+	half := e.Size * symbolUnit                                                 // the cap's half length; also the arrowhead's half width
+	v, w := t.g.View, t.g.World
+	r.id = fmt.Sprintf("g%d.s%d.errorbars", t.g.ID, s.ID)
+	for _, row := range s.Data {
+		if len(row) < 3 {
+			continue
+		}
+		x, y, dy := row[0], row[1], math.Abs(row[2])
+		if !t.ok(x, y) || x < min(w.XMin, w.XMax) || x > max(w.XMin, w.XMax) || y < min(w.YMin, w.YMax) || y > max(w.YMin, w.YMax) {
+			continue
+		}
+		if dy == 0 || math.IsNaN(dy) {
+			continue
+		}
+		px, py := t.x(x), t.y(y)
+		for _, d := range dirs {
+			end := y + d*dy
+			// up the page when the error's side and the world's y run the
+			// same way
+			up := (d > 0) == (w.YMax >= w.YMin)
+			sign := -1.0
+			if up {
+				sign = 1
+			}
+			// the end in the viewport; out of it when an axis cannot place
+			// it (a log axis at or below 0)
+			ey := math.Inf(-1)
+			if up {
+				ey = math.Inf(1)
+			}
+			if t.ok(x, end) && !math.IsInf(end, 0) {
+				ey = t.y(end)
+			}
+			if ey >= v.YMin && ey <= v.YMax {
+				if hasRiser {
+					r.clipped(riser, v, draw.Point{X: px, Y: py}, draw.Point{X: px, Y: ey})
+				}
+				if hasCap {
+					// the upper cap is drawn left to right, the lower right to left
+					a, b := px-half, px+half
+					if !up {
+						a, b = b, a
+					}
+					r.clipped(capSt, v, draw.Point{X: a, Y: ey}, draw.Point{X: b, Y: ey})
+				}
+				continue
+			}
+			if !e.RiserClip {
+				// to the frame
+				if hasRiser {
+					r.clipped(riser, v, draw.Point{X: px, Y: py}, draw.Point{X: px, Y: py + sign*2*(v.YMax-v.YMin)})
+				}
+				continue
+			}
+			// riser clip: the clip length, then an arrowhead (up: from the
+			// right, through the tip, to the left; down the other way),
+			// both cut at the frame like everything else
+			tip := py + sign*e.RiserClipSize
+			if hasRiser {
+				r.clipped(riser, v, draw.Point{X: px, Y: py}, draw.Point{X: px, Y: tip})
+			}
+			a, b := px+half, px-half
+			if !up {
+				a, b = b, a
+			}
+			back := tip - sign*2*half
+			r.clipped(arrow, v, draw.Point{X: a, Y: back}, draw.Point{X: px, Y: tip}, draw.Point{X: b, Y: back})
+		}
+	}
+}
+
+// clipped strokes a polyline cut to the viewport, each visible piece a
+// path of its own (as gracebat strokes them).
+func (r *renderer) clipped(st draw.Style, v agr.Rect, pts ...draw.Point) {
+	for _, sg := range clipPolyline(pts, make([]bool, len(pts)), v) {
+		r.path(st, false, sg)
 	}
 }
 
