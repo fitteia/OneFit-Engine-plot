@@ -100,6 +100,7 @@ func TestPDFPixelsMatchGracebat(t *testing.T) {
 	for _, f := range corpus(t) {
 		name := strings.TrimSuffix(filepath.Base(f), ".agr")
 		t.Run(name, func(t *testing.T) {
+			sameTime(t, name)
 			p, d := drawing(t, f)
 			dir := t.TempDir()
 			var b bytes.Buffer
