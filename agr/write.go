@@ -36,7 +36,7 @@ func Write(w io.Writer, p *Project) error {
 		c := p.Colors[n]
 		pf("@map color %d to (%d, %d, %d), %s", n, c.R, c.G, c.B, quote(c.Name))
 	}
-	pf("@reference date 0")
+	pf("@reference date %s", num(p.RefDate))
 	pf("@date wrap on")
 	pf("@date wrap year 1900")
 	d := p.Defaults
@@ -178,14 +178,21 @@ func writeGraph(pf func(string, ...any), g *Graph) {
 func writeAxis(pf func(string, ...any), name string, a Axis) {
 	pf("@    %s  %s", name, onOff(a.On))
 	pf("@    %s  type zero false", name)
-	pf("@    %s  offset 0.000000 , 0.000000", name)
+	pf("@    %s  offset %s , %s", name, size(a.Offset[0]), size(a.Offset[1]))
 	pf("@    %s  bar off", name)
 	pf("@    %s  bar color 1", name)
 	pf("@    %s  bar linestyle 1", name)
 	pf("@    %s  bar linewidth 1.0", name)
 	pf("@    %s  label %s", name, quote(a.Label.Text))
 	pf("@    %s  label layout %s", name, or(a.Label.Layout, "para"))
-	pf("@    %s  label place %s", name, or(a.Label.Place, "auto"))
+	// how ("auto"/"spec", and where), then the side - Grace's own order
+	if a.Label.Spec {
+		pf("@    %s  label place spec", name)
+		pf("@    %s  label place %s, %s", name, size(a.Label.SpecAt[0]), size(a.Label.SpecAt[1]))
+	} else {
+		pf("@    %s  label place auto", name)
+	}
+	pf("@    %s  label place %s", name, or(a.Label.Place, "normal"))
 	pf("@    %s  label char size %s", name, size(a.Label.CharSize))
 	pf("@    %s  label font %d", name, a.Label.Font)
 	pf("@    %s  label color %d", name, a.Label.Color)
@@ -217,8 +224,13 @@ func writeAxis(pf func(string, ...any), name string, a Axis) {
 	pf("@    %s  ticklabel skip %d", name, l.Skip)
 	pf("@    %s  ticklabel stagger %d", name, l.Stagger)
 	pf("@    %s  ticklabel place %s", name, or(l.Place, "normal"))
-	pf("@    %s  ticklabel offset auto", name)
-	pf("@    %s  ticklabel offset 0.000000 , 0.010000", name)
+	if l.OffsetSpec {
+		pf("@    %s  ticklabel offset spec", name)
+		pf("@    %s  ticklabel offset %s , %s", name, size(l.Offset[0]), size(l.Offset[1]))
+	} else {
+		pf("@    %s  ticklabel offset auto", name)
+		pf("@    %s  ticklabel offset 0.000000 , 0.010000", name)
+	}
 	pf("@    %s  ticklabel start type auto", name)
 	pf("@    %s  ticklabel start 0.000000", name)
 	pf("@    %s  ticklabel stop type auto", name)

@@ -52,7 +52,13 @@ func TestGraceReadsWrittenFiles(t *testing.T) {
 				}
 				return d
 			}
-			for _, d := range drawcmp.Compare(read(out), read(filepath.Join("..", "testdata", "ref", name+".eps")), 10) {
+			got, want := read(out), read(filepath.Join("..", "testdata", "ref", name+".eps"))
+			if p.Timestamp.On {
+				// drawn last, showing the time each gracebat run drew at
+				got.Texts, want.Texts = got.Texts[:len(got.Texts)-1], want.Texts[:len(want.Texts)-1]
+				got.Order, want.Order = got.Order[:len(got.Order)-1], want.Order[:len(want.Order)-1]
+			}
+			for _, d := range drawcmp.Compare(got, want, 10) {
 				t.Error(d)
 			}
 		})
