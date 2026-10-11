@@ -162,6 +162,15 @@ gracebat takes its boxes from its 300 dpi glyph rasters, rounded and hinted
 size 1.5 is 0.01 em taller), so positions differ from the exact outlines by
 up to about 0.0006.
 
+## Titles
+
+- A graph's `title` and `subtitle` (measured with `style-titles` and
+  `style-titles-big`), each in its own font, size (0.028 per unit) and
+  color: centred on the viewport by its box, as labels are; the title's
+  ink 0.06 above the viewport's top, the subtitle's 0.02 above it - fixed,
+  whatever their sizes, so a large subtitle may overlap the title. Drawn
+  after the legend, title first.
+
 ## Legend
 
 Measured with `style-legend`, `style-legend-symbols`, `style-legend-gaps`
