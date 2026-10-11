@@ -245,16 +245,22 @@ var ignore = func(*parser, []string) {}
 
 // formatCodes are Grace's tick label formats by number (measured from
 // gracebat); "" marks the date and time formats, 7 and above.
-var formatCodes = map[int]string{
-	0: "decimal", 1: "exponential", 2: "general", 3: "power", 4: "scientific", 5: "engineering",
-	6: "computing", 7: "", 8: "", 9: "", 10: "", 11: "", 12: "", 13: "", 14: "", 15: "", 16: "",
-	17: "", 18: "", 19: "", 20: "", 21: "",
+// formatNames are Grace's tick label formats, in the order of their codes
+// (measured: "ticklabel format N" draws the Nth; 32 and up, decimal).
+var formatNames = []string{
+	"decimal", "exponential", "general", "power", "scientific", "engineering", "computing",
+	"ddmmyy", "mmddyy", "yymmdd", "mmyy", "mmdd", "monthday", "daymonth", "months", "monthsy", "monthl",
+	"dayofweeks", "dayofweekl", "dayofyear", "hms", "mmddhms", "mmddyyhms", "yymmddhms",
+	"degreeslon", "degreesmmlon", "degreesmmsslon", "mmsslon", "degreeslat", "degreesmmlat", "degreesmmsslat", "mmsslat",
 }
 
-var tickLabelFormats = map[string]bool{
-	"decimal": true, "power": true, "general": true, "exponential": true,
-	"scientific": true, "engineering": true, "computing": true,
-}
+var tickLabelFormats = func() map[string]bool {
+	m := map[string]bool{}
+	for _, f := range formatNames {
+		m[f] = true
+	}
+	return m
+}()
 
 func r(pattern string, h func(p *parser, a []string)) rule {
 	return rule{pattern: strings.Fields(pattern), handle: h}
@@ -274,7 +280,9 @@ func init() {
 		r("page background fill W", func(p *parser, a []string) { p.proj.PageFill = p.bool(a[0]) }),
 		r("background color N", func(p *parser, a []string) { p.proj.BackgroundColor = p.int(a[0]) }),
 		r("link page W", ignore),
-		r("reference date N", ignore),
+		// dates are days from it (Julian day 0 by default); date wrap only
+		// affects reading two-digit years, not drawing
+		r("reference date N", func(p *parser, a []string) { p.proj.RefDate = p.num(a[0]) }),
 		r("date wrap W", ignore),
 		r("date wrap year N", ignore),
 		r("map font N to S S", func(p *parser, a []string) {
@@ -453,14 +461,11 @@ func init() {
 		// (OneFit wrote 60) is drawn as decimal
 		r("AXIS ticklabel format N", func(p *parser, a []string) {
 			code := p.int(a[1])
-			f, ok := formatCodes[code]
-			switch {
-			case !ok:
+			f := "decimal"
+			if code >= 0 && code < len(formatNames) {
+				f = formatNames[code]
+			} else {
 				p.warn("tick label format %d is not one of Grace's; decimal used, as gracebat does", code)
-				f = "decimal"
-			case f == "":
-				p.warn("tick label format %d (a date or time format) is not supported; decimal used", code)
-				f = "decimal"
 			}
 			p.axis(a[0]).TickLabel.Format = f
 		}),

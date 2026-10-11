@@ -756,31 +756,11 @@ func (r *renderer) frame(g *agr.Graph) {
 
 // label formats a tick value.
 func (r *renderer) label(v float64, tl agr.TickLabels) string {
-	var s string
-	switch tl.Format {
-	case "power":
-		if v > 0 {
-			e := math.Log10(v)
-			if r := math.Round(e); math.Abs(e-r) < 1e-9 {
-				s = `10\S` + strconv.Itoa(int(r)) + `\N`
-				break
-			}
-		}
-		s = strconv.FormatFloat(v, 'g', -1, 64)
-	case "general", "":
-		// gracebat's default format; also what it keeps when the file's
-		// format is one it rejects
-		s = strconv.FormatFloat(v, 'g', max(tl.Prec, 1), 64)
-	case "exponential":
-		s = fmt.Sprintf("%.*e", max(tl.Prec, 0), v)
-	case "decimal":
-		s = strconv.FormatFloat(v, 'f', max(tl.Prec, 0), 64)
-	default:
-		r.warn("tick label format %s is drawn as decimal", tl.Format)
-		s = strconv.FormatFloat(v, 'f', max(tl.Prec, 0), 64)
-		if s[0] == '-' && strconv.FormatFloat(-v, 'f', max(tl.Prec, 0), 64) == s[1:] && -v == 0 {
-			s = s[1:]
-		}
+	s := formatNumber(v, tl.Format, tl.Prec)
+	if t, ok := formatDate(v, r.proj.RefDate, tl.Format); ok {
+		s = t
+	} else if t, ok := formatAngle(v, tl.Format, tl.Prec); ok {
+		s = t
 	}
 	return tl.Prepend + s + tl.Append
 }
