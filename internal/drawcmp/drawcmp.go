@@ -5,19 +5,23 @@ package drawcmp
 import (
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/fitteia/OneFit-Engine-plot/draw"
 )
 
-// Tolerances, in viewport units. gracebat writes 4 decimals and rounds its
-// text boxes; plot-go's font metrics are Adobe's, not Grace's URW fonts
-// (docs/grace-behaviour.md).
-// On the corpus the largest differences are 0.0012 for texts and 0.0001
-// (the EPS's rounding) for points.
+// Tolerances, in viewport units. gracebat writes 4 decimals, and measures
+// text on its 300 dpi glyph rasters, rounded and hinted (a box edge up to
+// 0.0004 off the outlines); plot-go measures the URW outlines exactly
+// (docs/grace-behaviour.md). On the corpus the largest differences are
+// 0.0006 for texts and 0.0001 (the EPS's rounding) for points. A legend
+// is placed by its texts' boxes, entry after entry: its shapes may be off
+// by up to 0.0007.
 const (
-	tolPoint = 0.0002
-	tolText  = 0.002
-	tolSize  = 0.0002
+	tolPoint  = 0.0002
+	tolText   = 0.002
+	tolSize   = 0.0002
+	tolLegend = 0.001
 )
 
 // Compare lists how got differs from gracebat's want, at most limit lines.
@@ -79,6 +83,10 @@ func Compare(got, want *draw.Drawing, limit int) []string {
 			add("%s: %d segments, gracebat %d", where, len(g.Segments), len(w.Segments))
 			continue
 		}
+		tp := tolPoint
+		if strings.HasSuffix(g.ID, ".legend") {
+			tp = tolLegend // placed by text boxes
+		}
 		for k := range g.Segments {
 			gs, ws := g.Segments[k], w.Segments[k]
 			if (gs.Arc == nil) != (ws.Arc == nil) {
@@ -87,7 +95,7 @@ func Compare(got, want *draw.Drawing, limit int) []string {
 			}
 			if gs.Arc != nil {
 				a, b := gs.Arc, ws.Arc
-				if !near(a.X, b.X, tolPoint) || !near(a.Y, b.Y, tolPoint) || !near(a.RX, b.RX, tolPoint) {
+				if !near(a.X, b.X, tp) || !near(a.Y, b.Y, tp) || !near(a.RX, b.RX, tolPoint) {
 					add("%s: arc %.4f,%.4f r %.4f, gracebat %.4f,%.4f r %.4f", where, a.X, a.Y, a.RX, b.X, b.Y, b.RX)
 				}
 				continue
@@ -97,7 +105,7 @@ func Compare(got, want *draw.Drawing, limit int) []string {
 				continue
 			}
 			for j := range gs.Points {
-				if !near(gs.Points[j].X, ws.Points[j].X, tolPoint) || !near(gs.Points[j].Y, ws.Points[j].Y, tolPoint) {
+				if !near(gs.Points[j].X, ws.Points[j].X, tp) || !near(gs.Points[j].Y, ws.Points[j].Y, tp) {
 					add("%s point %d: %.4f,%.4f, gracebat %.4f,%.4f", where, j, gs.Points[j].X, gs.Points[j].Y, ws.Points[j].X, ws.Points[j].Y)
 					break
 				}

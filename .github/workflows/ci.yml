@@ -28,12 +28,14 @@ jobs:
     steps:
       # git first, so actions/checkout makes a real git checkout; gcc for
       # the race detector (it needs cgo); Ghostscript and Poppler for the
-      # pixel comparisons with gracebat's references
+      # pixel comparisons with gracebat's references; the URW fonts, which
+      # plot-go measures text with as gracebat does (Ghostscript depends on
+      # them, named here so the tests never run without them)
       - name: Debian packages
         run: |
           apt-get update -qq
           apt-get install -y -qq --no-install-recommends git ca-certificates gcc libc6-dev \
-            ghostscript poppler-utils
+            ghostscript poppler-utils fonts-urw-base35
 
       - uses: actions/checkout@v4
 

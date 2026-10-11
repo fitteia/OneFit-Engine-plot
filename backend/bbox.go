@@ -8,6 +8,7 @@ import (
 
 	"github.com/fitteia/OneFit-Engine-plot/draw"
 	"github.com/fitteia/OneFit-Engine-plot/internal/afm"
+	"github.com/fitteia/OneFit-Engine-plot/internal/glyph"
 )
 
 // Box is a rectangle in page points: lower left and upper right.
@@ -25,8 +26,8 @@ func BoundingBox(d *draw.Drawing, unit float64) Box {
 		lx, ly, ux, uy = min(lx, x), min(ly, y), max(ux, x), max(uy, y)
 	}
 	for _, p := range d.Paths {
-		if p.Fill {
-			continue
+		if p.Fill && p.ID == "page" {
+			continue // the page background; other fills (a legend's box, filled symbols) are ink
 		}
 		hw := p.Style.Width / 2
 		for _, s := range p.Segments {
@@ -46,7 +47,7 @@ func BoundingBox(d *draw.Drawing, unit float64) Box {
 		if err != nil {
 			continue
 		}
-		b := m.Ink(t.Str)
+		b := glyph.Ink(t.Font, m, t.Str) // as the layout measures it
 		if b.Empty() {
 			continue
 		}

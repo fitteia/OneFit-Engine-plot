@@ -152,9 +152,42 @@ Units: viewport units - the page's shorter side is 1, origin bottom left
 - Strings (`with string`) start at their point (left justified), in view
   or world coordinates.
 
-gracebat's own text boxes are rounded, so its positions differ from exact
-metrics by up to about 0.002; plot-go uses Adobe's metrics, whose ink boxes
-differ from Grace's URW fonts by up to about 0.02 em.
+Text is measured with the URW base-35 fonts' glyphs, as gracebat does (its
+fonts are those files): plot-go reads each character's ink box from the
+installed URW OpenType font and falls back to Adobe's metrics, whose ink
+differs by up to 0.02 em, where the URW fonts are not installed; advance
+widths are Adobe's either way (the URW fonts are metric compatible).
+gracebat takes its boxes from its 300 dpi glyph rasters, rounded and hinted
+(an edge may be a pixel, 0.0004, off the outline: Helvetica's "f" at char
+size 1.5 is 0.01 em taller), so positions differ from the exact outlines by
+up to about 0.0006.
+
+## Legend
+
+Measured with `style-legend`, `style-legend-symbols`, `style-legend-gaps`
+and `style-legend-world`.
+
+- An entry per visible set with a legend text, in set order (`legend
+  invert`: reversed); hidden sets and empty texts have none, and a legend
+  without entries draws nothing. Error bars are not part of an entry.
+- Each entry: a sample - the set's line (if it has a line type) across
+  `legend length` x 0.01, with its symbol at both ends; or, without a line,
+  the symbol at the middle of that length - and the text, in `legend font`,
+  `char size`, `color`, starting at length + hgap + 0.01 x the largest
+  `symbol size` of the graph's visible sets (whether they draw symbols or
+  not). The sample's line and symbols sit at the middle of the text's ink
+  box. Entries are stacked by their texts' ink boxes, `vgap` x 0.01 apart.
+- The entries are then moved so that the box of everything they draw (the
+  line's half width and the symbols' outlines included) has its top left
+  corner at the legend's place (`legend x, y`, in view or world
+  coordinates) less hgap x 0.01 and vgap x 0.01; the legend box is that box
+  widened by those gaps: filled first (`box fill pattern` not 0, `box fill
+  color`), then outlined (`box pattern` not 0, `box color`, `linewidth`,
+  `linestyle`). Drawing order: the box, then per entry its text, line,
+  symbols. The legend comes after the graph's strings in world coordinates.
+- A large symbol in a middle entry does not move its neighbours (only the
+  box of everything drawn counts), so it may overlap them, as in Grace.
+
 
 ## Drawing order
 

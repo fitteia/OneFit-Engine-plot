@@ -131,8 +131,8 @@ func TestPDFPixelsMatchGracebat(t *testing.T) {
 			diff, ink := differing(got, want, 96, 2)
 			frac := float64(diff) / float64(ink)
 			t.Logf("%d of %d inked pixels differ (%.2f%%)", diff, ink, 100*frac)
-			if frac > pixelLimit {
-				t.Errorf("%.2f%% of inked pixels differ from gracebat's, limit %.2f%%", 100*frac, 100*pixelLimit)
+			if frac > limitFor(name) {
+				t.Errorf("%.2f%% of inked pixels differ from gracebat's, limit %.2f%%", 100*frac, 100*limitFor(name))
 			}
 		})
 	}

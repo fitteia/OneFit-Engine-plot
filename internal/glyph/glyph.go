@@ -36,6 +36,7 @@ import (
 	"github.com/go-fonts/liberation/liberationserifbolditalic"
 	"github.com/go-fonts/liberation/liberationserifitalic"
 	"github.com/go-fonts/liberation/liberationserifregular"
+	xfont "golang.org/x/image/font"
 	"golang.org/x/image/font/sfnt"
 	"golang.org/x/image/math/fixed"
 )
@@ -263,6 +264,62 @@ func Outline(fontName string, c byte) ([]Seg, error) {
 		fitSymbol(out, c)
 	}
 	return out, nil
+}
+
+// URWInk is the box of the ink character c leaves in a standard font, in
+// ems, from the URW font when it is installed - the glyphs gracebat lays
+// its text out with. ok is false without the URW font (or for a character
+// it has no glyph for): the caller keeps Adobe's metrics then.
+func URWInk(fontName string, c byte) (llx, lly, urx, ury float64, ok bool) {
+	f, err := load(fontName)
+	if err != nil || !f.urw {
+		return 0, 0, 0, 0, false
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	r := Rune(fontName, c)
+	if fontName == "Symbol" {
+		r = rune(c) // Standard Symbols maps the Symbol font's own codes
+	}
+	i, err := f.f.GlyphIndex(&f.buf, r)
+	if err != nil || i == 0 {
+		return 0, 0, 0, 0, false
+	}
+	b, _, err := f.f.GlyphBounds(&f.buf, i, fixed.Int26_6(f.upm*64), xfont.HintingNone)
+	if err != nil || b.Max.X <= b.Min.X {
+		return 0, 0, 0, 0, false
+	}
+	// font units to ems; sfnt's y grows down, ems' up
+	u := 64 * f.upm
+	return float64(b.Min.X) / u, -float64(b.Max.Y) / u, float64(b.Max.X) / u, -float64(b.Min.Y) / u, true
+}
+
+// Ink is the box of the ink str leaves in font name (whose Adobe metrics
+// are m), in ems, the pen starting at 0: each character's box from the URW
+// font where it is installed - gracebat lays its text out with the URW
+// glyphs, whose ink differs from Adobe's by up to 0.02 em - else from
+// Adobe's metrics. The advance widths are Adobe's either way (the URW fonts
+// are metric compatible).
+func Ink(name string, m *afm.Font, str string) afm.Box {
+	var b afm.Box
+	x := 0.0
+	for i := 0; i < len(str); i++ {
+		c := str[i : i+1]
+		g := m.Ink(c)
+		if llx, lly, urx, ury, ok := URWInk(name, str[i]); ok {
+			g = afm.Box{LLX: llx, LLY: lly, URX: urx, URY: ury}
+		}
+		if !g.Empty() {
+			g = afm.Box{LLX: x + g.LLX, LLY: g.LLY, URX: x + g.URX, URY: g.URY}
+			if b.Empty() {
+				b = g
+			} else {
+				b = b.Union(g)
+			}
+		}
+		x += m.Width(c)
+	}
+	return b
 }
 
 // fitSymbol stretches a Greek stand-in across the ink box Adobe's Symbol
