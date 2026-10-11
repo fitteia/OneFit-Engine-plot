@@ -173,6 +173,8 @@ func (r *renderer) graph(g *agr.Graph) {
 		return
 	}
 	t := newXform(g)
+	r.grid(t, true)
+	r.grid(t, false)
 	for _, s := range g.Sets {
 		if !s.Hidden {
 			r.set(t, s)
@@ -564,6 +566,46 @@ func (r *renderer) label(v float64, tl agr.TickLabels) string {
 		}
 	}
 	return tl.Prepend + s + tl.Append
+}
+
+// grid draws an axis's grid lines (docs/grace-behaviour.md): across the
+// viewport at each minor, then each major tick, in that tick mark's color,
+// width and style - for an axis that is on, whether or not its ticks are.
+func (r *renderer) grid(t xform, isX bool) {
+	g := t.g
+	ax, lo, hi := &g.Y, g.World.YMin, g.World.YMax
+	if isX {
+		ax, lo, hi = &g.X, g.World.XMin, g.World.XMax
+	}
+	if !ax.On || !(ax.Tick.MinorMarks.Grid || ax.Tick.MajorMarks.Grid) {
+		return
+	}
+	tk := makeTicks(*ax, lo, hi)
+	v := g.View
+	name := map[bool]string{true: "x", false: "y"}[isX]
+	for _, k := range []struct {
+		vals []float64
+		m    agr.TickMarks
+		id   string
+	}{{tk.minors, ax.Tick.MinorMarks, "minorgrid"}, {tk.majors, ax.Tick.MajorMarks, "grid"}} {
+		if !k.m.Grid {
+			continue
+		}
+		st, ok := r.style(k.m.Color, k.m.LineWidth, k.m.LineStyle)
+		if !ok {
+			continue
+		}
+		r.id = fmt.Sprintf("g%d.%s.%s", g.ID, name, k.id)
+		for _, w := range k.vals {
+			if isX {
+				x := t.x(w)
+				r.path(st, false, line(draw.Point{X: x, Y: v.YMin}, draw.Point{X: x, Y: v.YMax}))
+			} else {
+				y := t.y(w)
+				r.path(st, false, line(draw.Point{X: v.XMin, Y: y}, draw.Point{X: v.XMax, Y: y}))
+			}
+		}
+	}
 }
 
 func (r *renderer) axis(t xform, isX bool) {
