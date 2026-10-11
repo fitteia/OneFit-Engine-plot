@@ -6,7 +6,9 @@ package render
 import (
 	"fmt"
 	"math"
+	"os"
 	"strconv"
+	"time"
 
 	"github.com/fitteia/OneFit-Engine-plot/agr"
 	"github.com/fitteia/OneFit-Engine-plot/draw"
@@ -128,10 +130,24 @@ func Render(p *agr.Project) (*draw.Drawing, []string) {
 			r.text(s)
 		}
 	}
-	if p.Timestamp.On {
-		r.warn("the timestamp is not drawn")
+	if ts := p.Timestamp; ts.On {
+		// gracebat prints the time it draws at, not the file's text
+		r.id = "timestamp"
+		t := r.layout(Now().Format("Mon Jan _2 15:04:05 2006"), ts.Font, ts.CharSize*charUnit)
+		r.emit(t, ts.X, ts.Y, ts.Rot, ts.Color)
 	}
 	return r.d, r.warnings
+}
+
+// Now is the time a timestamp shows: the current one, as gracebat's, or
+// $SOURCE_DATE_EPOCH (seconds, UTC) for output that must be reproducible.
+func Now() time.Time {
+	if s := os.Getenv("SOURCE_DATE_EPOCH"); s != "" {
+		if n, err := strconv.ParseInt(s, 10, 64); err == nil {
+			return time.Unix(n, 0).UTC()
+		}
+	}
+	return time.Now()
 }
 
 // xform maps a graph's world coordinates to viewport coordinates.

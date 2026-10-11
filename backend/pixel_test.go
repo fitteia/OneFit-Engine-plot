@@ -7,8 +7,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/fitteia/OneFit-Engine-plot/agr"
 	"github.com/fitteia/OneFit-Engine-plot/render"
@@ -107,6 +110,7 @@ func TestPixelsMatchGracebat(t *testing.T) {
 	for _, f := range files {
 		name := strings.TrimSuffix(filepath.Base(f), ".agr")
 		t.Run(name, func(t *testing.T) {
+			sameTime(t, name)
 			p, err := agr.ParseFile(f)
 			if err != nil {
 				t.Fatal(err)
@@ -129,6 +133,27 @@ func TestPixelsMatchGracebat(t *testing.T) {
 			}
 		})
 	}
+}
+
+// sameTime makes plot-go's timestamp show the time gracebat's reference
+// for name shows (gracebat prints the time it drew at): read from the
+// reference EPS, set as SOURCE_DATE_EPOCH (UTC, so the text comes out the
+// same).
+func sameTime(t *testing.T, name string) {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("..", "testdata", "ref", name+".eps"))
+	if err != nil {
+		return
+	}
+	m := regexp.MustCompile(`\(([A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4})\) show`).FindSubmatch(b)
+	if m == nil {
+		return
+	}
+	tm, err := time.Parse("Mon Jan _2 15:04:05 2006", string(m[1]))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("SOURCE_DATE_EPOCH", strconv.FormatInt(tm.Unix(), 10))
 }
 
 // pixelLimit is the share of inked pixels allowed to differ (all corpus

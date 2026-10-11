@@ -162,6 +162,16 @@ gracebat takes its boxes from its 300 dpi glyph rasters, rounded and hinted
 size 1.5 is 0.01 em taller), so positions differ from the exact outlines by
 up to about 0.0006.
 
+## Timestamp
+
+- `timestamp on` (measured with `style-timestamp`): gracebat prints the
+  time it draws at, not the file's `timestamp def` - C's date format,
+  "Sun Oct 11 23:25:03 2026" (local time) - from the timestamp's place
+  (view coordinates; the pen origin, as strings), rotated by `rot`, in its
+  font, char size (0.028 per unit) and color, drawn last of all. plot-go
+  does the same; $SOURCE_DATE_EPOCH (seconds, shown in UTC) fixes the time
+  for reproducible output (the pixel tests set it to the reference's).
+
 ## Titles
 
 - A graph's `title` and `subtitle` (measured with `style-titles` and

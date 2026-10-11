@@ -41,7 +41,8 @@ func Compare(got, want *draw.Drawing, limit int) []string {
 	}
 	for i := 0; i < min(len(got.Texts), len(want.Texts)); i++ {
 		g, w := got.Texts[i], want.Texts[i]
-		if g.Str != w.Str || g.Font != w.Font {
+		// a timestamp shows the time each program drew at
+		if (g.Str != w.Str && g.ID != "timestamp") || g.Font != w.Font {
 			add("text %d: %q %s, gracebat %q %s", i, g.Str, g.Font, w.Str, w.Font)
 			continue
 		}
