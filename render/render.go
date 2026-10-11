@@ -203,51 +203,143 @@ func (r *renderer) graph(g *agr.Graph) {
 
 func (r *renderer) set(t xform, s *agr.Set) {
 	if s.Line.Type != 0 {
-		if s.Line.Type != 1 {
+		if s.Line.Type < 1 || s.Line.Type > 5 {
 			r.warn("set %d: line type %d is drawn straight", s.ID, s.Line.Type)
 		}
 		if st, ok := r.style(s.Line.Color, s.Line.LineWidth, s.Line.LineStyle); ok {
 			var pts []draw.Point
-			var breaks []bool // a point that may not be joined to the one before
-			for _, row := range s.Data {
+			var breaks []bool // a point that may not be joined to the one after
+			for i, row := range s.Data {
 				if !t.ok(row[0], row[1]) {
 					if len(pts) > 0 {
 						breaks[len(breaks)-1] = true
 					}
 					continue
 				}
-				pts = append(pts, draw.Point{X: t.x(row[0]), Y: t.y(row[1])})
-				breaks = append(breaks, false)
+				p := draw.Point{X: t.x(row[0]), Y: t.y(row[1])}
+				// stairs: a corner between each point and the one before,
+				// vertical first (left stairs) or horizontal first (right)
+				if n := len(pts); n > 0 && !breaks[n-1] && (s.Line.Type == 2 || s.Line.Type == 3) {
+					c := draw.Point{X: pts[n-1].X, Y: p.Y}
+					if s.Line.Type == 3 {
+						c = draw.Point{X: p.X, Y: pts[n-1].Y}
+					}
+					pts = append(pts, c)
+					breaks = append(breaks, false)
+				}
+				pts = append(pts, p)
+				// segments join the points in twos, 3-segments in threes,
+				// counted by their place in the data
+				breaks = append(breaks, (s.Line.Type == 4 && i%2 == 1) || (s.Line.Type == 5 && i%3 == 2))
 			}
 			if segs := clipPolyline(pts, breaks, t.g.View); len(segs) > 0 {
 				r.id = fmt.Sprintf("g%d.s%d.line", t.g.ID, s.ID)
-				r.path(st, false, segs...)
+				if s.Line.Type == 4 || s.Line.Type == 5 {
+					// gracebat strokes each segment on its own
+					for _, sg := range segs {
+						r.path(st, false, sg)
+					}
+				} else {
+					r.path(st, false, segs...)
+				}
 			}
 		}
 	}
 	if s.Symbol.Type != 0 {
-		if s.Symbol.Type != 1 {
-			r.warn("set %d: symbol %d is drawn as a circle", s.ID, s.Symbol.Type)
-		}
-		st, ok := r.style(s.Symbol.Color, s.Symbol.LineWidth, s.Symbol.LineStyle)
-		if s.Symbol.FillPattern != 0 {
-			r.warn("set %d: symbol fills are not drawn", s.ID)
-		}
-		rad := s.Symbol.Size * symbolUnit
-		r.id = fmt.Sprintf("g%d.s%d.symbols", t.g.ID, s.ID)
-		w := t.g.World
-		for _, row := range s.Data {
-			x, y := row[0], row[1]
-			if !t.ok(x, y) || x < min(w.XMin, w.XMax) || x > max(w.XMin, w.XMax) || y < min(w.YMin, w.YMax) || y > max(w.YMin, w.YMax) {
-				continue
-			}
-			if ok {
-				r.path(st, false, draw.Segment{Arc: &draw.Arc{X: t.x(x), Y: t.y(y), RX: rad, RY: rad, A1: 0, A2: 360}})
-			}
-		}
+		r.symbols(t, s)
 	}
 	if s.ErrorBar.On && s.Type == "xydy" {
 		r.warn("set %d: error bars are not drawn", s.ID)
+	}
+}
+
+// symbolShapes are the outlines of symbols 2-10 around the point, per unit
+// of symbol size (docs/grace-behaviour.md); nil marks the open ones (plus,
+// x, star), drawn as strokes and never filled.
+var symbolShapes = func() map[int][][]draw.Point {
+	const tri, half, d = 0.0115470054, 0.0057735027, 0.0070710678 // 0.02/sqrt(3), its half, 0.01/sqrt(2)
+	return map[int][][]draw.Point{
+		2:  {{{X: -0.0085, Y: -0.0085}, {X: -0.0085, Y: 0.0085}, {X: 0.0085, Y: 0.0085}, {X: 0.0085, Y: -0.0085}}},
+		3:  {{{X: 0, Y: 0.01}, {X: -0.01, Y: 0}, {X: 0, Y: -0.01}, {X: 0.01, Y: 0}}},
+		4:  {{{X: 0, Y: tri}, {X: -0.01, Y: -half}, {X: 0.01, Y: -half}}},
+		5:  {{{X: -tri, Y: 0}, {X: half, Y: -0.01}, {X: half, Y: 0.01}}},
+		6:  {{{X: -0.01, Y: half}, {X: 0, Y: -tri}, {X: 0.01, Y: half}}},
+		7:  {{{X: -half, Y: 0.01}, {X: -half, Y: -0.01}, {X: tri, Y: 0}}},
+		8:  {{{X: -0.01}, {X: 0.01}}, {{Y: -0.01}, {Y: 0.01}}},
+		9:  {{{X: -d, Y: -d}, {X: d, Y: d}}, {{X: -d, Y: d}, {X: d, Y: -d}}},
+		10: {{{X: -0.01}, {X: 0.01}}, {{Y: -0.01}, {Y: 0.01}}, {{X: -d, Y: -d}, {X: d, Y: d}}, {{X: -d, Y: d}, {X: d, Y: -d}}},
+	}
+}()
+
+// symbols draws a set's symbols at its points inside the world window:
+// the fill first (fill color; any fill pattern drawn solid), then the
+// outline (pattern 0: none), or for symbol 11 the set's character, centred
+// on the point by its box as labels are.
+func (r *renderer) symbols(t xform, s *agr.Set) {
+	sy := s.Symbol
+	if sy.Type < 1 || sy.Type > 11 {
+		r.warn("set %d: symbol %d is drawn as a circle", s.ID, sy.Type)
+		sy.Type = 1
+	}
+	open := sy.Type >= 8 && sy.Type <= 10
+	st, stroke := r.style(sy.Color, sy.LineWidth, sy.LineStyle)
+	stroke = stroke && sy.Pattern != 0
+	fill := sy.FillPattern != 0 && !open && sy.Type != 11
+	if fill && sy.FillPattern != 1 {
+		r.warn("set %d: symbol fill pattern %d is drawn solid", s.ID, sy.FillPattern)
+	}
+	var fst draw.Style
+	if fill {
+		fst = draw.Style{Color: r.color(sy.FillColor)}
+	}
+	var ch typeset
+	if sy.Type == 11 {
+		if sy.Char <= 32 || sy.Char > 255 || sy.Char == '\\' {
+			r.warn("set %d: symbol character %d cannot be drawn", s.ID, sy.Char)
+			return
+		}
+		ch = r.layout(string(rune(sy.Char)), sy.CharFont, sy.Size*charUnit)
+	}
+	r.id = fmt.Sprintf("g%d.s%d.symbols", t.g.ID, s.ID)
+	w := t.g.World
+	for _, row := range s.Data {
+		x, y := row[0], row[1]
+		if !t.ok(x, y) || x < min(w.XMin, w.XMax) || x > max(w.XMin, w.XMax) || y < min(w.YMin, w.YMax) || y > max(w.YMin, w.YMax) {
+			continue
+		}
+		px, py := t.x(x), t.y(y)
+		switch sy.Type {
+		case 1:
+			rad := sy.Size * symbolUnit
+			arc := draw.Segment{Arc: &draw.Arc{X: px, Y: py, RX: rad, RY: rad, A1: 0, A2: 360}}
+			if fill {
+				r.path(fst, true, arc)
+			}
+			if stroke {
+				r.path(st, false, arc)
+			}
+		case 11:
+			if !ch.ink.Empty() {
+				r.emit(ch, px-(ch.ink.LLX+ch.ink.URX)/2, py-(ch.ink.LLY+ch.ink.URY)/2, 0, sy.Color)
+			}
+		default:
+			for _, shape := range symbolShapes[sy.Type] {
+				pts := make([]draw.Point, len(shape), len(shape)+1)
+				for i, q := range shape {
+					pts[i] = draw.Point{X: px + q.X*sy.Size, Y: py + q.Y*sy.Size}
+				}
+				if fill {
+					r.path(fst, true, draw.Segment{Points: pts, Closed: true})
+				}
+				if stroke {
+					if !open {
+						// gracebat's outline returns to its first point
+						pts = append(pts, pts[0])
+					}
+					r.path(st, false, draw.Segment{Points: pts, Closed: !open})
+				}
+			}
+		}
 	}
 }
 
