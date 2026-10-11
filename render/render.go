@@ -168,13 +168,22 @@ func scale(v, lo, hi, vlo, vhi float64, log bool) float64 {
 	return vlo + (v-lo)/(hi-lo)*(vhi-vlo)
 }
 
+// x and y map world values to the viewport; an inverted axis runs from
+// its viewport's far side (gracebat mirrors everything on it: data, ticks,
+// labels).
 func (t xform) x(v float64) float64 {
 	w, vw := t.g.World, t.g.View
+	if t.g.X.Invert {
+		return scale(v, w.XMin, w.XMax, vw.XMax, vw.XMin, t.logX)
+	}
 	return scale(v, w.XMin, w.XMax, vw.XMin, vw.XMax, t.logX)
 }
 
 func (t xform) y(v float64) float64 {
 	w, vw := t.g.World, t.g.View
+	if t.g.Y.Invert {
+		return scale(v, w.YMin, w.YMax, vw.YMax, vw.YMin, t.logY)
+	}
 	return scale(v, w.YMin, w.YMax, vw.YMin, vw.YMax, t.logY)
 }
 
@@ -451,8 +460,8 @@ func (r *renderer) errorBars(t xform, s *agr.Set) {
 		for _, d := range dirs {
 			end := y + d*dy
 			// up the page when the error's side and the world's y run the
-			// same way
-			up := (d > 0) == (w.YMax >= w.YMin)
+			// same way (an inverted axis turns it round)
+			up := ((d > 0) == (w.YMax >= w.YMin)) != t.g.Y.Invert
 			sign := -1.0
 			if up {
 				sign = 1
@@ -803,13 +812,22 @@ func (r *renderer) grid(t xform, isX bool) {
 			continue
 		}
 		r.id = fmt.Sprintf("g%d.%s.%s", g.ID, name, k.id)
+		// from the other axis's low end to its high end, which an inverted
+		// axis puts on the far side
+		y0, y1, x0, x1 := v.YMin, v.YMax, v.XMin, v.XMax
+		if g.Y.Invert {
+			y0, y1 = y1, y0
+		}
+		if g.X.Invert {
+			x0, x1 = x1, x0
+		}
 		for _, w := range k.vals {
 			if isX {
 				x := t.x(w)
-				r.path(st, false, line(draw.Point{X: x, Y: v.YMin}, draw.Point{X: x, Y: v.YMax}))
+				r.path(st, false, line(draw.Point{X: x, Y: y0}, draw.Point{X: x, Y: y1}))
 			} else {
 				y := t.y(w)
-				r.path(st, false, line(draw.Point{X: v.XMin, Y: y}, draw.Point{X: v.XMax, Y: y}))
+				r.path(st, false, line(draw.Point{X: x0, Y: y}, draw.Point{X: x1, Y: y}))
 			}
 		}
 	}
@@ -825,9 +843,6 @@ func (r *renderer) axis(t xform, isX bool) {
 	}
 	if !ax.On {
 		return
-	}
-	if ax.Invert {
-		r.warn("inverted axes are drawn not inverted")
 	}
 	v := g.View
 	axisName := map[bool]string{true: "x", false: "y"}[isX]

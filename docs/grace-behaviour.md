@@ -87,6 +87,14 @@ Units: viewport units - the page's shorter side is 1, origin bottom left
   1, size 1, font 0. Sets are drawn in number order, whatever order the
   file names them in.
 
+## Inverted axes
+
+- `xaxes invert on` / `yaxes invert on` (measured with `style-invert`):
+  the axis runs from its viewport's far side - data, error bars, ticks,
+  tick labels, strings and legends in world coordinates, all mirrored; the
+  ticks keep their order (drawn from the world's low end), and so do grid
+  lines (drawn from the other axis's low end, now on its far side).
+
 ## Grid lines
 
 - `tick major grid on` / `tick minor grid on` (measured with `style-grids`
