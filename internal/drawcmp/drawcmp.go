@@ -67,15 +67,10 @@ func Compare(got, want *draw.Drawing, limit int) []string {
 		if !g.Fill && !near(g.Style.Width, w.Style.Width, 1e-4) {
 			add("%s: width %.4f, gracebat %.4f", where, g.Style.Width, w.Style.Width)
 		}
-		if len(g.Style.Dash) != len(w.Style.Dash) {
+		// a fill has no dash; gracebat's EPS just leaves the last stroke's
+		// in the graphics state
+		if !(g.Fill && w.Fill) && !dashNear(g.Style.Dash, w.Style.Dash) {
 			add("%s: dash %v, gracebat %v", where, g.Style.Dash, w.Style.Dash)
-		} else {
-			for k := range g.Style.Dash {
-				if !near(g.Style.Dash[k], w.Style.Dash[k], 1e-4) {
-					add("%s: dash %v, gracebat %v", where, g.Style.Dash, w.Style.Dash)
-					break
-				}
-			}
 		}
 		if !colorNear(g.Style.Color, w.Style.Color) {
 			add("%s: color %v, gracebat %v", where, g.Style.Color, w.Style.Color)
@@ -133,4 +128,16 @@ func describe(p draw.Path) string {
 		return fmt.Sprintf("arc at %.4f,%.4f", s.Arc.X, s.Arc.Y)
 	}
 	return fmt.Sprintf("from %.4f,%.4f, %d points", s.Points[0].X, s.Points[0].Y, len(s.Points))
+}
+
+func dashNear(a, b []float64) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k := range a {
+		if math.Abs(a[k]-b[k]) > 1e-4 {
+			return false
+		}
+	}
+	return true
 }

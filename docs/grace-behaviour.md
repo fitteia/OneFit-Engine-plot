@@ -25,8 +25,35 @@ Units: viewport units - the page's shorter side is 1, origin bottom left
   | 7 | 1 3 5 3 1 3 |
   | 8 | 5 3 1 3 5 3 |
 
-- Symbol 1 (circle): radius 0.01 x `symbol size`, stroked with the symbol
-  linewidth; fill pattern 0 is no fill.
+- Symbols, per unit of `symbol size`, around the point (measured with
+  `style-symbols.agr`):
+
+  | symbol | shape |
+  |---|---|
+  | 0 | none |
+  | 1 | circle, radius 0.01 |
+  | 2 | square, half side 0.0085 |
+  | 3 | diamond, corners at +-0.01 on the axes |
+  | 4-7 | triangle up, left, down, right: equilateral, side 0.02, centred on the point (tip 0.0115 from it, base 0.0058) |
+  | 8 | plus, arms +-0.01 |
+  | 9 | x, arms +-0.0071 (0.01/sqrt 2) |
+  | 10 | star: the plus and the x |
+  | 11 | the character `symbol char` in `symbol char font`, size 0.028 x `symbol size`, centred on the point by its box as labels are (below) |
+
+  The fill comes first, in `symbol fill color` (fill pattern 0 is none; 1
+  solid - the hatched patterns 2 and up are drawn solid by plot-go), then
+  the outline in `symbol color` with the symbol linewidth and linestyle
+  (`symbol pattern 0`: no outline). A closed outline's path returns to its
+  first point; each arm of the plus, x and star is a path of its own, and
+  they are never filled. Each point's symbol is drawn whole before the
+  next.
+- Line types (`line type`, measured with `style-lines.agr`): 0 none; 1
+  straight; 2 left stairs - from each point vertically to the next one's y,
+  then across; 3 right stairs - across first, then vertically; 4 segments -
+  points joined in twos (0-1, 2-3, ...; a last odd point is left out); 5
+  three-segments - in threes (0-1-2, 3-4-5, ...; a last group of two is
+  drawn, of one is not). Each segment of types 4 and 5 is a path of its
+  own.
 - Lines are clipped where they cross the viewport (a curve leaving the top
   ends exactly on the frame); symbols outside the world window are not
   drawn.
