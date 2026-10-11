@@ -149,8 +149,20 @@ Units: viewport units - the page's shorter side is 1, origin bottom left
   printed. plot-go saves the format by name.
 - Defaults for what a file leaves out: format general, precision 5 (a
   "ticklabel prec" line without a value is ignored, leaving 5).
-- Strings (`with string`) start at their point (left justified), in view
-  or world coordinates.
+- Strings (`with string`), in view or world coordinates, are placed by
+  `string just` (measured with `style-justify`, every value at 0, 30, 90
+  and 315 degrees): the low two bits horizontal - 0 left, 1 right, 2
+  centre; 3 draws nothing - the next two vertical - 0 the baseline, 1
+  bottom, 2 top, 3 middle. On the baseline the string moves along its own
+  direction by its advance width; aligned vertically, it moves by the box,
+  on the page, of its turned glyph outlines and its pen origin (left puts
+  that box's left edge on the point, and so on).
+- A new string starts as a copy of the previous one's settings - place,
+  color, rotation, font, justification, char size, coordinates - but off
+  and without text; the first at 0, 0 in view coordinates, in the
+  `@default` color, font and char size (`style-strings-inherit`,
+  `style-strings-defaults`). A negative `string rot` is rejected
+  ("Negative value supplied for non-negative") and the rotation kept.
 
 Text is measured with the URW base-35 fonts' glyphs, as gracebat does (its
 fonts are those files): plot-go reads each character's ink box from the

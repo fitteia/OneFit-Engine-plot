@@ -104,6 +104,9 @@ func TestParseCorpus(t *testing.T) {
 			if name == "test1-13.agr" && strings.Contains(w.Msg, `tick label format "unknown"`) {
 				continue
 			}
+			if name == "style-strings-inherit.agr" && strings.Contains(w.Msg, "negative rotation") {
+				continue // on purpose: gracebat rejects it too
+			}
 			t.Errorf("%s:%d: %s (%s)", name, w.Line, w.Msg, w.Text)
 		}
 		if len(p.Graphs) != 1 || len(p.Graphs[0].Sets) == 0 {
