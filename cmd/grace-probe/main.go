@@ -85,7 +85,7 @@ func print(d *draw.Drawing) {
 			}
 			fmt.Print(" ")
 			for i, pt := range s.Points {
-				if i == 4 && len(s.Points) > 6 {
+				if i == 4 && len(s.Points) > 6 && os.Getenv("GRACE_PROBE_ALL") == "" {
 					fmt.Printf(" ...(%d points)", len(s.Points))
 					break
 				}
