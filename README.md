@@ -1,20 +1,24 @@
 # OneFit-Engine-plot
 
-`plot-go` will render the Grace (xmgrace) project files OneFit writes -
-the `.agr`/`.agr-par` plots of every fit - straight to PDF, SVG and PNG,
+`plot-go` renders the Grace (xmgrace) project files OneFit writes - the
+`.agr`/`.agr-par` plots of every fit - straight to PDF, EPS and SVG,
 without Grace, Ghostscript or `epstopdf`. It is a batch renderer for the
 part of the Grace format OneFit uses, not a clone of xmgrace; interactive
 plots are the OneFit GUI's job.
 
-Status: steps 1 to 5 are done. `plot-go FILE.agr` writes a PDF (or EPS,
-SVG) without Grace; the renderer matches gracebat primitive by primitive,
-and the output matches gracebat's page pixel for pixel, allowing for text
-placed up to 0.7 pt apart (see docs/grace-behaviour.md). plot-go also takes
-gracebat's own command line - the one OneFit's C core gives Grace, recorded
-from real fits in testdata/gracebat-call* - and writes the same EPS and a
-saved project that redraws it. With plot-go in Grace's place, all nine
-OneFit-Engine test suites produce the same 110 plots as with Grace. Next:
-making OneFit use it (step 6).
+Status: steps 1 to 6 of the plan below are done; step 7 is the OneFit
+GUI's Figures editor, in use and growing. What plot-go draws, and
+what it reads and keeps without drawing, is in
+[docs/capabilities.md](docs/capabilities.md): a measured subset of Grace,
+not all of it. On every corpus file plot-go matches gracebat within stated
+tolerances - primitive by primitive, and on the rendered page - not
+exactly; the tolerances are in
+[docs/grace-behaviour.md](docs/grace-behaviour.md) ("How closely plot-go
+matches"). plot-go also takes gracebat's own command line - the one
+OneFit's C core gives Grace, recorded from real fits in
+testdata/gracebat-call* - and writes the EPS and a saved project. OneFit's
+C core uses it when installed, and the OneFit GUI draws its Figures with
+it.
 
 ```bash
 go install ./cmd/plot-go
@@ -71,8 +75,10 @@ black box: its output is the reference the tests compare against.
 - `testdata/corpus/`: nine real OneFit plots chosen to cover the format's
   variety - normal and log axes, decimal and power tick labels, 3 to 7
   sets, curve labels, every text escape, small symbols, and one malformed
-  tick label format. They come from the OneFit-Engine test suites and the
-  p96-10 sample that is already public in OneFit-Engine-assistant.
+  tick label format; they come from the OneFit-Engine test suites and the
+  p96-10 sample that is already public in OneFit-Engine-assistant. And
+  `style-*.agr`, one per feature measured since (frames, patterns, legends,
+  set fills, ...), each named in docs/grace-behaviour.md.
 - `testdata/ref/`: gracebat's rendering of each, made by
   `scripts/make-references.sh` (gracebat -> EPS -> Ghostscript, the whole
   page at 144 dpi). Regenerating gives byte-identical files.

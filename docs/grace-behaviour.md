@@ -61,11 +61,14 @@ Units: viewport units - the page's shorter side is 1, origin bottom left
   three-segments - in threes (0-1-2, 3-4-5, ...; a last group of two is
   drawn, of one is not). Each segment of types 4 and 5 is a path of its
   own.
-- Lines are clipped where they cross the viewport (a curve leaving the top
-  ends on the frame - gracebat's clip box is about 0.00015 larger than the
-  viewport, plot-go clips at the viewport); each visible piece is a path of
-  its own. Symbols and error bars of points outside the world window are
-  not drawn.
+- Lines are clipped where they cross the viewport, 0.0001 outside it on
+  every side whatever the world (measured with lines nearly along each
+  edge, where a margin d moves the crossing by d / slope); fills are cut at
+  the viewport itself. Each visible piece is a path of its own; a segment
+  with both ends outside starts on the bottom edge, else the right, else
+  the top, else the left (`style-set-fill-clip`), one with an end inside
+  runs as the data do. Symbols and error bars of points outside the world
+  window are not drawn.
 - Error bars (`errorbar on`, xydy sets; measured with `style-errorbars`
   and `style-errorbars-log`), drawn after the set's line and before its
   symbols, point by point:
@@ -101,6 +104,35 @@ Units: viewport units - the page's shorter side is 1, origin bottom left
   out of view too, so a hidden first point does not shift the others. The
   error bars are left out with their symbols; the line still joins every
   point. A negative skip is rejected (see Values gracebat rejects).
+
+## Set fill, baseline and droplines
+
+Measured with `style-set-fill`, `style-set-baselines`,
+`style-set-fill-clip` and `style-set-fill-log`.
+
+- Order: the fill, the line, the droplines, the baseline, then error bars
+  and symbols.
+- `fill type 1` fills the polygon of the line's points (stair corners of
+  line types 2 and 3 included; types 4 and 5 fill through every point);
+  `fill type 2` that, then to (largest x, base) and (smallest x, base) -
+  by x value, not the first and last points. Other types fill nothing,
+  without a message. `fill rule 1` is even-odd (`eofill`), any other
+  rule non-zero winding (saved as 0). `fill color`/`fill pattern` as for
+  any fill (see Fill patterns); a new set has color 1, pattern 1.
+- The base (`baseline type`): 0 y = 0, 1 the set's smallest y, 2 its
+  largest, 3 the graph's world bottom, 4 its top, 5 the set's mean y; 6
+  and up print "Wrong type of baseline" when drawn and use 0. On a log y
+  axis a base at or below 0 is infinitely far below: fills and droplines
+  run to the frame, the baseline is not drawn.
+- `baseline on` draws a line at the base from the set's smallest x to its
+  largest; `dropline on` a line from the base to each point, in data
+  order; both in the set's line color, width, style and pattern, cut to
+  the frame like lines.
+- `line type 0` draws neither fill nor line but keeps droplines and the
+  baseline; `line linestyle 0` or `line pattern 0` hides the line, the
+  droplines and the baseline but keeps the fill.
+- Negative types, rules, colors and patterns are rejected (see Values
+  gracebat rejects).
 
 ## Inverted axes
 
@@ -378,7 +410,8 @@ and `style-legend-world`.
 
 ## Drawing order
 
-Page background; then per graph: each set (line, then symbols), the x axis
+Page background; then per graph: each set (fill, line, droplines,
+baseline, error bars, symbols), the x axis
 (minor ticks, major ticks, tick labels, label), the y axis likewise, the
 frame, and the strings placed in that graph's world coordinates; then the
 strings placed on the page (view coordinates). Each tick is drawn on the
@@ -386,9 +419,29 @@ normal side, then the opposite one.
 
 ## How closely plot-go matches
 
-`render`'s test draws every corpus file and compares it with gracebat's
-EPS primitive by primitive: all paths, arcs, texts, fonts, sizes and colors
-agree, texts within 0.0012 and points within 0.0001 (the EPS's rounding).
+Close, within stated tolerances - not identical. Two kinds of test, on
+every corpus file (`testdata/corpus`, gracebat's output in `testdata/ref`):
+
+- Primitives (`render`'s TestMatchesGracebat, `internal/drawcmp`): the
+  same paths, arcs, texts, fonts and colors, in the same order. Points
+  within 0.0002 viewport units (gracebat's EPS has 4 decimals; legends
+  0.001, placed by text boxes gracebat measures on 300 dpi rasters),
+  text positions within 0.002 (the largest seen is 0.0006), font matrices
+  and widths within 0.0002, colors within 0.002, arc angles within 0.001
+  degree. A clipped fill's outline may start at another vertex or repeat
+  one (same area). Each compared property has a test that changes it alone
+  and must be caught.
+- Pixels (`backend`): plot-go's EPS, PDF and SVG, rendered at 144 dpi,
+  against gracebat's EPS rendered the same way. A pixel differs when a
+  channel is more than 96 of 255 off and no pixel within 2 (text may sit a
+  fraction of a point apart) matches; at most 0.2% of the inked pixels may
+  differ (0.4% and 0.5% for two legend files, see pixelLimits). Fill
+  patterns are checked cell by cell at 10 pixels a cell instead, since
+  Ghostscript moves pattern tiles by up to a pixel.
+
+What this covers is the corpus: the features listed in this file, as
+OneFit and the Figures editor use them - not all of Grace (see
+docs/features.md for what plot-go does not draw).
 
 ## The command line OneFit uses
 

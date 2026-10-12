@@ -1,5 +1,9 @@
 # What plot-go has to draw
 
+History: the inventory plot-go started from (2026-10-09), what OneFit's
+own files used then. What plot-go draws now - more than this, and what it
+does not - is in [capabilities.md](capabilities.md).
+
 Derived from `inventory.md`: 704 distinct `.agr`/`.agr-par` files written
 by OneFit (test suites 1-9, p96 individual, global and hybrid fits, the
 GUI's saved plots), 2026-10-09. The inventory is regenerated with
