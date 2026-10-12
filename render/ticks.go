@@ -14,7 +14,10 @@ const maxTicks = 255
 // ticks are an axis's tick values in world units.
 type ticks struct {
 	majors, minors []float64
-	auto           bool // the file's spacing was replaced (too many ticks)
+	// labels, for special ticks of type "both": each major's own label, ""
+	// for one without (gracebat still writes its prepend and append)
+	labels []string
+	auto   bool // the file's spacing was replaced (too many ticks)
 	// narrow: the window is too narrow for the precision of its own
 	// values (1e16 to 1e16+2 has no room for steps of 0.02), so no ticks
 	narrow bool
@@ -40,6 +43,9 @@ const edgeTol = 1e-9
 func makeTicks(ax agr.Axis, lo, hi float64) ticks {
 	if lo > hi {
 		lo, hi = hi, lo
+	}
+	if s := ax.Tick.SpecType; s == "ticks" || s == "both" {
+		return specTicks(ax, lo, hi)
 	}
 	major, minor := ax.Tick.Major, ax.Tick.MinorTicks
 	if !finite(lo, hi, major) || lo == hi {
@@ -174,6 +180,32 @@ func logTicks(lo, hi, factor float64, minor int) ticks {
 			if m := v * float64(1+i); in(m) {
 				t.minors = append(t.minors, m)
 			}
+		}
+	}
+	return t
+}
+
+// specTicks are an axis's special ticks (docs/grace-behaviour.md): its
+// first SpecCount entries in the file's order, not sorted - each a major or
+// minor tick at its value, when inside the window (and above 0 on a log
+// axis); for type "both" the majors carry their own labels.
+func specTicks(ax agr.Axis, lo, hi float64) ticks {
+	var t ticks
+	tol := (hi - lo) * edgeTol
+	n := min(ax.Tick.SpecCount, len(ax.Tick.Spec))
+	for _, st := range ax.Tick.Spec[:n] {
+		v := st.Value
+		if !finite(v) || v < lo-tol || v > hi+tol || (ax.Scale == "Logarithmic" && v <= 0) {
+			continue
+		}
+		switch st.Kind {
+		case "major":
+			t.majors = append(t.majors, v)
+			if ax.Tick.SpecType == "both" {
+				t.labels = append(t.labels, st.Label)
+			}
+		case "minor":
+			t.minors = append(t.minors, v)
 		}
 	}
 	return t

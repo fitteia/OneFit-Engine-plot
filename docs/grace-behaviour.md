@@ -202,6 +202,26 @@ patterns cell by cell at 10 pixels a cell instead
   smallest of 1, 2, 5 x 10^n giving at most `tick default`+1 intervals
   (default 6 -> 7), and at most one minor tick per interval.
 
+## Special ticks
+
+Measured with `style-ticks-spec-ticks` and `style-ticks-spec-both`.
+
+- `tick spec type ticks` or `both` replaces the spaced ticks with the
+  file's own: `tick major i, v` and `tick minor i, v` put tick i at v,
+  `ticklabel i, "text"` gives it a label. Only entries 0 to `tick spec`
+  N-1 are drawn.
+- Drawn in the file's order, not sorted: all the minor ticks, then all the
+  majors; grid lines likewise. A tick outside the world window is left out;
+  one exactly at its edge is drawn.
+- `ticks`: the majors are labelled with their values, as usual. `both`:
+  with their own text, `ticklabel prepend` and `append` around it; a major
+  without one gets prepend and append alone; minor ticks' labels are never
+  drawn. `ticklabel skip` counts the majors as drawn.
+- Entries are numbered 0 to 255: a larger number is "Number of ticks
+  exceeds maximum" and gracebat then crashes (SIGSYS) without a page;
+  plot-go ignores that entry, with a warning. A `tick spec` count above 256
+  works as 256.
+
 ## Axis sides, offsets, labels
 
 Measured with `style-axes-sides`, `-perp`, `-angle`, `-noticks` and

@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -272,5 +273,31 @@ func TestNegativeValues(t *testing.T) {
 	}
 	if len(p.Warnings) != 4 {
 		t.Errorf("%d warnings, want 4: %v", len(p.Warnings), p.Warnings)
+	}
+}
+
+// TestSpecialTicks: entries by number, a count above gracebat's 256 held
+// at 256, and a number past 255 ignored (gracebat stops there).
+func TestSpecialTicks(t *testing.T) {
+	p, err := Parse(strings.NewReader(`@version 50125
+@g0 on
+@with g0
+@    xaxis  tick spec type both
+@    xaxis  tick spec 300
+@    xaxis  tick major 2, 0.5
+@    xaxis  ticklabel 2, "half"
+@    xaxis  tick minor 0, 0.25
+@    xaxis  tick major 256, 1
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tk := p.Graphs[0].X.Tick
+	want := []SpecTick{{Kind: "minor", Value: 0.25}, {}, {Kind: "major", Value: 0.5, Label: "half", HasLabel: true}}
+	if tk.SpecType != "both" || tk.SpecCount != MaxSpecTicks || !reflect.DeepEqual(tk.Spec, want) {
+		t.Errorf("type %q count %d spec %+v", tk.SpecType, tk.SpecCount, tk.Spec)
+	}
+	if len(p.Warnings) != 1 {
+		t.Errorf("%d warnings, want 1: %v", len(p.Warnings), p.Warnings)
 	}
 }

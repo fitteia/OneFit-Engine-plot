@@ -150,6 +150,22 @@ func (p *parser) nonNeg(cur int, s string) int {
 	return v
 }
 
+// specTick is an axis's special tick number s, made if new; nil for a
+// number gracebat has no room for (it stops: "Number of ticks exceeds
+// maximum").
+func (p *parser) specTick(axis, s string) *SpecTick {
+	i := p.int(s)
+	if i < 0 || i >= MaxSpecTicks {
+		p.warn("special tick %d: gracebat has room for 0 to %d; ignored", i, MaxSpecTicks-1)
+		return nil
+	}
+	t := &p.axis(axis).Tick
+	for len(t.Spec) <= i {
+		t.Spec = append(t.Spec, SpecTick{})
+	}
+	return &t.Spec[i]
+}
+
 // width reads a line width: gracebat makes a negative one 0 ("Negative
 // linewidth").
 func (p *parser) width(s string) float64 {
@@ -185,11 +201,12 @@ func (p *parser) graphByID(id int) *Graph {
 		}
 	}
 	// Grace's defaults for what a file may leave out (measured): tick
-	// labels in general format with precision 5
+	// labels in general format with precision 5, no special ticks
 	g := &Graph{ID: id}
 	for _, ax := range []*Axis{&g.X, &g.Y} {
 		ax.TickLabel.Format = "general"
 		ax.TickLabel.Prec = 5
+		ax.Tick.SpecType = "none"
 	}
 	p.proj.Graphs = append(p.proj.Graphs, g)
 	return g
@@ -461,8 +478,30 @@ func init() {
 		r("AXIS tick place rounded W", func(p *parser, a []string) { p.axis(a[0]).Tick.Rounded = p.bool(a[1]) }),
 		r("AXIS tick place W", func(p *parser, a []string) { p.axis(a[0]).Tick.Place = a[1] }),
 		r("AXIS tick spec type W", func(p *parser, a []string) {
-			if a[1] != "none" {
-				p.warn("special ticks are not drawn by plot-go")
+			switch a[1] {
+			case "none", "ticks", "both":
+				p.axis(a[0]).Tick.SpecType = a[1]
+			default:
+				p.warn("tick spec type %q is not one of Grace's", a[1])
+			}
+		}),
+		r("AXIS tick spec N", func(p *parser, a []string) {
+			t := &p.axis(a[0]).Tick
+			t.SpecCount = min(p.nonNeg(t.SpecCount, a[1]), MaxSpecTicks)
+		}),
+		r("AXIS tick major N N", func(p *parser, a []string) {
+			if st := p.specTick(a[0], a[1]); st != nil {
+				st.Kind, st.Value = "major", p.num(a[2])
+			}
+		}),
+		r("AXIS tick minor N N", func(p *parser, a []string) {
+			if st := p.specTick(a[0], a[1]); st != nil {
+				st.Kind, st.Value = "minor", p.num(a[2])
+			}
+		}),
+		r("AXIS ticklabel N S", func(p *parser, a []string) {
+			if st := p.specTick(a[0], a[1]); st != nil {
+				st.Label, st.HasLabel = a[2], true
 			}
 		}),
 		r("AXIS tick major size N", func(p *parser, a []string) { p.axis(a[0]).Tick.MajorMarks.Size = p.num(a[1]) }),

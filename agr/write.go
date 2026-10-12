@@ -239,7 +239,18 @@ func writeAxis(pf func(string, ...any), name string, a Axis) {
 	pf("@    %s  ticklabel font %d", name, l.Font)
 	pf("@    %s  ticklabel color %d", name, l.Color)
 	pf("@    %s  tick place %s", name, or(t.Place, "both"))
-	pf("@    %s  tick spec type none", name)
+	pf("@    %s  tick spec type %s", name, or(t.SpecType, "none"))
+	if t.SpecCount > 0 || len(t.Spec) > 0 {
+		pf("@    %s  tick spec %d", name, t.SpecCount)
+	}
+	for i, st := range t.Spec {
+		if st.Kind != "" {
+			pf("@    %s  tick %s %d, %s", name, st.Kind, i, num(st.Value))
+		}
+		if st.HasLabel {
+			pf("@    %s  ticklabel %d, %s", name, i, quote(st.Label))
+		}
+	}
 }
 
 func writeSet(pf func(string, ...any), s *Set) {

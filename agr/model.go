@@ -137,6 +137,25 @@ type Ticks struct {
 	Place      string // "both", "normal" or "opposite"
 	MajorMarks TickMarks
 	MinorMarks TickMarks
+	// SpecType is "tick spec type": "none" (ticks every Major), "ticks"
+	// (at Spec's places, labelled as usual) or "both" (labelled with
+	// Spec's own strings). Only the first SpecCount entries count.
+	SpecType  string
+	SpecCount int
+	Spec      []SpecTick
+}
+
+// MaxSpecTicks is the number of special ticks gracebat has room for:
+// entries 0 to 255.
+const MaxSpecTicks = 256
+
+// SpecTick is one special tick: "tick major i, v" or "tick minor i, v",
+// and "ticklabel i, \"text\"".
+type SpecTick struct {
+	Kind     string // "major", "minor", or "" (no tick)
+	Value    float64
+	Label    string
+	HasLabel bool
 }
 
 // TickLabels are the numbers written at major ticks.

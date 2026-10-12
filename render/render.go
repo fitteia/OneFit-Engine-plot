@@ -1035,7 +1035,11 @@ func (r *renderer) axis(t xform, isX bool) {
 					if k%step != 0 {
 						continue
 					}
-					ts := r.layout(r.label(w, ax.TickLabel), ax.TickLabel.Font, size)
+					text := r.label(w, ax.TickLabel)
+					if tk.labels != nil { // special ticks with their own labels ("" if none)
+						text = ax.TickLabel.Prepend + tk.labels[k] + ax.TickLabel.Append
+					}
+					ts := r.layout(text, ax.TickLabel.Font, size)
 					if ts.ink.Empty() {
 						continue
 					}
