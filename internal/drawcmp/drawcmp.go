@@ -22,6 +22,7 @@ const (
 	tolText   = 0.002
 	tolSize   = 0.0002
 	tolLegend = 0.001
+	tolAngle  = 0.001 // degrees
 )
 
 // Compare lists how got differs from gracebat's want, at most limit lines.
@@ -99,10 +100,15 @@ func Compare(got, want *draw.Drawing, limit int) []string {
 			}
 			if gs.Arc != nil {
 				a, b := gs.Arc, ws.Arc
-				if !near(a.X, b.X, tp) || !near(a.Y, b.Y, tp) || !near(a.RX, b.RX, tolPoint) {
-					add("%s: arc %.4f,%.4f r %.4f, gracebat %.4f,%.4f r %.4f", where, a.X, a.Y, a.RX, b.X, b.Y, b.RX)
+				if !near(a.X, b.X, tp) || !near(a.Y, b.Y, tp) || !near(a.RX, b.RX, tolPoint) || !near(a.RY, b.RY, tolPoint) ||
+					!near(a.A1, b.A1, tolAngle) || !near(a.A2, b.A2, tolAngle) {
+					add("%s: arc %.4f,%.4f r %.4f %.4f from %g to %g, gracebat %.4f,%.4f r %.4f %.4f from %g to %g",
+						where, a.X, a.Y, a.RX, a.RY, a.A1, a.A2, b.X, b.Y, b.RX, b.RY, b.A1, b.A2)
 				}
 				continue
+			}
+			if gs.Closed != ws.Closed {
+				add("%s segment %d: closed %v, gracebat %v", where, k, gs.Closed, ws.Closed)
 			}
 			if len(gs.Points) != len(ws.Points) {
 				add("%s segment %d: %d points, gracebat %d", where, k, len(gs.Points), len(ws.Points))
