@@ -94,6 +94,14 @@ Units: viewport units - the page's shorter side is 1, origin bottom left
   1, size 1, font 0. Sets are drawn in number order, whatever order the
   file names them in.
 
+## Symbol skip
+
+- `symbol skip k` (measured with `style-symbol-skip`) draws the symbol of
+  every (k+1)-th data row - rows 0, k+1, 2(k+1), ... - counting the rows
+  out of view too, so a hidden first point does not shift the others. The
+  error bars are left out with their symbols; the line still joins every
+  point. A negative skip is rejected (see Values gracebat rejects).
+
 ## Inverted axes
 
 - `xaxes invert on` / `yaxes invert on` (measured with `style-invert`):

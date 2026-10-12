@@ -496,7 +496,10 @@ func (r *renderer) errorBars(t xform, s *agr.Set) {
 	half := e.Size * symbolUnit // the cap's half length; also the arrowhead's half width
 	v, w := t.g.View, t.g.World
 	r.id = fmt.Sprintf("g%d.s%d.errorbars", t.g.ID, s.ID)
-	for _, row := range s.Data {
+	for i, row := range s.Data {
+		if i%(s.Symbol.Skip+1) != 0 {
+			continue // symbol skip leaves out the error bars too
+		}
 		if len(row) < 3 {
 			continue
 		}
@@ -702,7 +705,13 @@ func (r *renderer) symbols(t xform, s *agr.Set) {
 	}
 	r.id = fmt.Sprintf("g%d.s%d.symbols", t.g.ID, s.ID)
 	w := t.g.World
-	for _, row := range s.Data {
+	// symbol skip k draws every (k+1)-th row, counting the rows out of
+	// view too (docs/grace-behaviour.md)
+	step := s.Symbol.Skip + 1
+	for i, row := range s.Data {
+		if i%step != 0 {
+			continue
+		}
 		x, y := row[0], row[1]
 		if !t.ok(x, y) || x < min(w.XMin, w.XMax) || x > max(w.XMin, w.XMax) || y < min(w.YMin, w.YMax) || y > max(w.YMin, w.YMax) {
 			continue
