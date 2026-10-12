@@ -40,3 +40,35 @@ func TestCompareFindsEachDifference(t *testing.T) {
 		}
 	}
 }
+
+// A fill's outline matches gracebat's from another start or with a
+// vertex repeated; a different one, or one stroked, does not.
+func TestCompareFillOutlines(t *testing.T) {
+	pts := func(xy ...float64) []draw.Point {
+		var p []draw.Point
+		for i := 0; i < len(xy); i += 2 {
+			p = append(p, draw.Point{X: xy[i], Y: xy[i+1]})
+		}
+		return p
+	}
+	fill := func(fill bool, p []draw.Point) *draw.Drawing {
+		return &draw.Drawing{Paths: []draw.Path{{Fill: fill, Segments: []draw.Segment{{Points: p, Closed: true}}}}, Order: []byte{'p'}}
+	}
+	want := fill(true, pts(0, 0, 1, 0, 1, 1, 0, 1))
+	for _, same := range [][]draw.Point{pts(1, 1, 0, 1, 0, 0, 1, 0), pts(0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0)} {
+		if d := Compare(fill(true, same), want, 10); len(d) != 0 {
+			t.Errorf("%v: %v", same, d)
+		}
+	}
+	for name, got := range map[string]*draw.Drawing{
+		"other vertex":   fill(true, pts(0, 0, 1, 0, 1, 2, 0, 1)),
+		"reversed":       fill(true, pts(0, 1, 1, 1, 1, 0, 0, 0)),
+		"stroked":        fill(false, pts(1, 1, 0, 1, 0, 0, 1, 0)),
+		"even-odd":       {Paths: []draw.Path{{Fill: true, EvenOdd: true, Segments: want.Paths[0].Segments}}, Order: []byte{'p'}},
+		"missing vertex": fill(true, pts(0, 0, 1, 0, 1, 1)),
+	} {
+		if d := Compare(got, want, 10); len(d) == 0 {
+			t.Errorf("%s: no difference found", name)
+		}
+	}
+}

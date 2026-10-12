@@ -67,8 +67,8 @@ func Compare(got, want *draw.Drawing, limit int) []string {
 	for i := 0; i < min(len(got.Paths), len(want.Paths)); i++ {
 		g, w := got.Paths[i], want.Paths[i]
 		where := fmt.Sprintf("path %d (%s)", i, describe(w))
-		if g.Fill != w.Fill {
-			add("%s: fill %v, gracebat %v", where, g.Fill, w.Fill)
+		if g.Fill != w.Fill || g.EvenOdd != w.EvenOdd {
+			add("%s: fill %v even-odd %v, gracebat %v %v", where, g.Fill, g.EvenOdd, w.Fill, w.EvenOdd)
 		}
 		if !g.Fill && !near(g.Style.Width, w.Style.Width, 1e-4) {
 			add("%s: width %.4f, gracebat %.4f", where, g.Style.Width, w.Style.Width)
@@ -110,6 +110,11 @@ func Compare(got, want *draw.Drawing, limit int) []string {
 			if gs.Closed != ws.Closed {
 				add("%s segment %d: closed %v, gracebat %v", where, k, gs.Closed, ws.Closed)
 			}
+			// gracebat clips a fill's outline to the frame starting at
+			// another vertex, some of them twice: the same area
+			if g.Fill && w.Fill && gs.Closed && ws.Closed && samePolygon(gs.Points, ws.Points, tp) {
+				continue
+			}
 			if len(gs.Points) != len(ws.Points) {
 				add("%s segment %d: %d points, gracebat %d", where, k, len(gs.Points), len(ws.Points))
 				continue
@@ -126,6 +131,41 @@ func Compare(got, want *draw.Drawing, limit int) []string {
 		add("drawing order differs")
 	}
 	return out
+}
+
+// samePolygon reports whether two closed outlines have the same vertices
+// in the same cyclic order, whatever the first, repeated ones once.
+func samePolygon(a, b []draw.Point, tol float64) bool {
+	near := func(p, q draw.Point) bool { return math.Abs(p.X-q.X) <= tol && math.Abs(p.Y-q.Y) <= tol }
+	once := func(pts []draw.Point) []draw.Point {
+		var out []draw.Point
+		for _, p := range pts {
+			if len(out) == 0 || !near(out[len(out)-1], p) {
+				out = append(out, p)
+			}
+		}
+		for len(out) > 1 && near(out[0], out[len(out)-1]) {
+			out = out[:len(out)-1]
+		}
+		return out
+	}
+	a, b = once(a), once(b)
+	if len(a) != len(b) || len(a) == 0 {
+		return false
+	}
+	for start := range b {
+		ok := true
+		for i := range a {
+			if !near(a[i], b[(start+i)%len(b)]) {
+				ok = false
+				break
+			}
+		}
+		if ok {
+			return true
+		}
+	}
+	return false
 }
 
 func colorNear(a, b [3]float64) bool {

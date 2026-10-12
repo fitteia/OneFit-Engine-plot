@@ -97,7 +97,7 @@ func Parse(r io.Reader) (*draw.Drawing, error) {
 		stack = stack[:len(stack)-n]
 		return out, nil
 	}
-	emitPath := func(fill bool) {
+	emitPath := func(fill, evenOdd bool) {
 		if st.cur != nil {
 			st.path = append(st.path, *st.cur)
 			st.cur = nil
@@ -107,7 +107,7 @@ func Parse(r io.Reader) (*draw.Drawing, error) {
 		}
 		style := st.style
 		style.Dash = append([]float64(nil), style.Dash...)
-		d.Paths = append(d.Paths, draw.Path{Segments: st.path, Fill: fill, Style: style})
+		d.Paths = append(d.Paths, draw.Path{Segments: st.path, Fill: fill, EvenOdd: evenOdd, Style: style})
 		d.Order = append(d.Order, 'p')
 		st.path = nil
 	}
@@ -165,9 +165,11 @@ func Parse(r io.Reader) (*draw.Drawing, error) {
 				st.path = append(st.path, draw.Segment{Arc: &draw.Arc{X: a[0], Y: a[1], RX: a[2], RY: a[3], A1: a[4], A2: a[5]}})
 			}
 		case "s":
-			emitPath(false)
+			emitPath(false, false)
 		case "fill":
-			emitPath(true)
+			emitPath(true, false)
+		case "eofill":
+			emitPath(true, true)
 		case "SLW":
 			var a []float64
 			if a, e = nums(1); e == nil {

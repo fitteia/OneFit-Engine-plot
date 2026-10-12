@@ -116,6 +116,9 @@ type parser struct {
 	str    *Text  // the string "@with string" started
 	target *Set   // the set "@target" selected, receiving data
 	inData bool
+	// inString: the last "@with" was "@with string", so a directive that
+	// names no graph, set or region is not the graph's
+	inString bool
 }
 
 func (p *parser) warn(format string, a ...any) {
@@ -275,13 +278,83 @@ func (p *parser) newString() {
 // off, and warns when a file turns it on.
 func unsupportedWhenOn(what string, arg int) func(p *parser, a []string) {
 	return func(p *parser, a []string) {
+		p.keep()
 		if p.bool(a[arg]) {
 			p.warn("%s is not drawn by plot-go", what)
 		}
 	}
 }
 
-var ignore = func(*parser, []string) {}
+// ignore is for a directive plot-go does not draw: kept for Write.
+var ignore = func(p *parser, _ []string) { p.keep() }
+
+// directiveKey names what a directive (without "@") sets, so that a later
+// one setting the same replaces it: its rule's words, with the values left
+// out and a set's or graph's number as "#" (a set keeps its directives
+// when renumbered). An unknown directive is its own key.
+func directiveKey(line string) string {
+	toks, err := tokenize(line)
+	if err != nil || len(toks) == 0 {
+		return "?" + line
+	}
+	for _, r := range rules {
+		if _, ok := r.match(toks); ok {
+			key := make([]string, len(r.pattern))
+			for i, pat := range r.pattern {
+				switch pat {
+				case "N", "S", "W":
+					key[i] = "_"
+				case "S#", "G#":
+					key[i] = pat
+				case "R#", "AXIS", "AXES":
+					key[i] = strings.ToLower(toks[i].word)
+				default:
+					key[i] = strings.ToLower(pat)
+				}
+			}
+			return strings.Join(key, " ")
+		}
+	}
+	f := strings.Fields(line)
+	if matchIndex("s", f[0]) || matchIndex("g", f[0]) {
+		f[0] = strings.ToUpper(f[0][:1]) + "#"
+	}
+	return "?" + strings.Join(f, " ")
+}
+
+// keepIn adds line to kept, replacing what set the same before it (key
+// computed with prefix, the "sN "/"gN " the line was stored without).
+func keepIn(kept []string, prefix, line string) []string {
+	key := directiveKey(prefix + line)
+	out := kept[:0]
+	for _, k := range kept {
+		if directiveKey(prefix+k) != key {
+			out = append(out, k)
+		}
+	}
+	return append(out, line)
+}
+
+// keep keeps the directive being read for Write (see Project.Kept): with
+// its set when it names one, with its graph when it names one or is in a
+// "@with g" block, else with the project.
+func (p *parser) keep() {
+	line := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(p.text), "@"))
+	first, rest, _ := strings.Cut(line, " ")
+	rest = strings.TrimSpace(rest)
+	switch {
+	case matchIndex("s", first):
+		s := p.set([]string{first})
+		s.Kept = keepIn(s.Kept, "s0 ", rest)
+	case matchIndex("g", first):
+		g := p.graphByID(p.index(first))
+		g.KeptHeader = keepIn(g.KeptHeader, "g0 ", rest)
+	case p.graph != nil && !p.inString && !matchIndex("r", first) && first != "link":
+		p.graph.Kept = keepIn(p.graph.Kept, "", line)
+	default:
+		p.proj.Kept = keepIn(p.proj.Kept, "", line)
+	}
+}
 
 // formatCodes are Grace's tick label formats by number (measured from
 // gracebat); "" marks the date and time formats, 7 and above.
@@ -348,7 +421,7 @@ func init() {
 		r("timestamp font N", func(p *parser, a []string) { p.proj.Timestamp.Font = p.nonNeg(p.proj.Timestamp.Font, a[0]) }),
 		r("timestamp char size N", func(p *parser, a []string) { p.proj.Timestamp.CharSize = p.num(a[0]) }),
 		r("timestamp def S", func(p *parser, a []string) { p.proj.Timestamp.Text = a[0] }),
-		r("with string", func(p *parser, a []string) { p.newString() }),
+		r("with string", func(p *parser, a []string) { p.inString = true; p.newString() }),
 		// "string G#" before "string W": W matches any word, g0 included
 		r("string G#", func(p *parser, a []string) { p.currentString().Graph = p.index(a[0]) }),
 		r("string W", func(p *parser, a []string) { p.currentString().On = p.bool(a[0]) }),
@@ -394,7 +467,7 @@ func init() {
 		r("G# fixedpoint xy N N", ignore),
 		r("G# fixedpoint format W W", ignore),
 		r("G# fixedpoint prec N N", ignore),
-		r("with G#", func(p *parser, a []string) { p.graph = p.graphByID(p.index(a[0])) }),
+		r("with G#", func(p *parser, a []string) { p.inString = false; p.graph = p.graphByID(p.index(a[0])) }),
 
 		// graph contents
 		r("world N N N N", func(p *parser, a []string) {
@@ -549,6 +622,7 @@ func init() {
 		}),
 		r("AXIS ticklabel prec N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Prec = p.nonNeg(p.axis(a[0]).TickLabel.Prec, a[1]) }),
 		r("AXIS ticklabel formula S", func(p *parser, a []string) {
+			p.keep()
 			if a[1] != "" {
 				p.warn("tick label formulas are not applied by plot-go")
 			}
@@ -566,12 +640,14 @@ func init() {
 			p.axis(a[0]).TickLabel.Offset = [2]float64{p.num(a[1]), p.num(a[2])}
 		}),
 		r("AXIS ticklabel start type W", func(p *parser, a []string) {
+			p.keep()
 			if a[1] != "auto" {
 				p.warn("tick label start/stop are not applied by plot-go")
 			}
 		}),
 		r("AXIS ticklabel start N", ignore),
 		r("AXIS ticklabel stop type W", func(p *parser, a []string) {
+			p.keep()
 			if a[1] != "auto" {
 				p.warn("tick label start/stop are not applied by plot-go")
 			}
@@ -654,17 +730,20 @@ func init() {
 		r("S# line linewidth N", func(p *parser, a []string) { p.set(a).Line.LineWidth = p.width(a[1]) }),
 		r("S# line color N", func(p *parser, a []string) { p.set(a).Line.Color = p.nonNeg(p.set(a).Line.Color, a[1]) }),
 		r("S# line pattern N", func(p *parser, a []string) { p.set(a).Line.Pattern = p.nonNeg(p.set(a).Line.Pattern, a[1]) }),
-		r("S# baseline type N", ignore),
-		r("S# baseline W", unsupportedWhenOn("a set baseline", 1)),
-		r("S# dropline W", unsupportedWhenOn("set droplines", 1)),
-		r("S# fill type N", func(p *parser, a []string) {
-			if p.int(a[1]) != 0 {
-				p.warn("set fills are not drawn by plot-go")
+		r("S# baseline type N", func(p *parser, a []string) { p.set(a).Baseline.Type = p.nonNeg(p.set(a).Baseline.Type, a[1]) }),
+		r("S# baseline W", func(p *parser, a []string) { p.set(a).Baseline.On = p.bool(a[1]) }),
+		r("S# dropline W", func(p *parser, a []string) { p.set(a).Dropline = p.bool(a[1]) }),
+		r("S# fill type N", func(p *parser, a []string) { p.set(a).Fill.Type = p.nonNeg(p.set(a).Fill.Type, a[1]) }),
+		// any rule but 1 is 0 (gracebat saves "fill rule 2" as 0)
+		r("S# fill rule N", func(p *parser, a []string) {
+			if n := p.nonNeg(p.set(a).Fill.Rule, a[1]); n == 1 {
+				p.set(a).Fill.Rule = 1
+			} else {
+				p.set(a).Fill.Rule = 0
 			}
 		}),
-		r("S# fill rule N", ignore),
-		r("S# fill color N", ignore),
-		r("S# fill pattern N", ignore),
+		r("S# fill color N", func(p *parser, a []string) { p.set(a).Fill.Color = p.nonNeg(p.set(a).Fill.Color, a[1]) }),
+		r("S# fill pattern N", func(p *parser, a []string) { p.set(a).Fill.Pattern = p.nonNeg(p.set(a).Fill.Pattern, a[1]) }),
 		r("S# avalue W", unsupportedWhenOn("annotated values", 1)),
 		r("S# avalue type N", ignore),
 		r("S# avalue char size N", ignore),
@@ -767,13 +846,14 @@ func (p *parser) directive(line string) {
 	if len(toks) == 0 {
 		return
 	}
-	for _, r := range rules {
-		if args, ok := r.match(toks); ok {
-			r.handle(p, args)
+	for i := range rules {
+		if args, ok := rules[i].match(toks); ok {
+			rules[i].handle(p, args)
 			return
 		}
 	}
 	p.warn("unknown directive")
+	p.keep()
 }
 
 // Parse reads a Grace project. It fails only on a read error; anything it

@@ -411,54 +411,171 @@ func (r *renderer) legend(t xform) {
 	}
 }
 
+// set draws a set (docs/grace-behaviour.md): its fill, line, droplines,
+// baseline, error bars and symbols, in that order.
 func (r *renderer) set(t xform, s *agr.Set) {
-	if s.Line.Type != 0 {
-		if s.Line.Type < 1 || s.Line.Type > 5 {
-			r.warn("set %d: line type %d is drawn straight", s.ID, s.Line.Type)
-		}
-		st, ok := r.style(s.Line.Color, s.Line.LineWidth, s.Line.LineStyle)
-		if st, ok = r.patterned(st, ok, s.Line.Pattern); ok {
-			var pts []draw.Point
-			var breaks []bool // a point that may not be joined to the one after
-			for i, row := range s.Data {
-				if !t.ok(row[0], row[1]) {
-					if len(pts) > 0 {
-						breaks[len(breaks)-1] = true
-					}
-					continue
-				}
-				p := draw.Point{X: t.x(row[0]), Y: t.y(row[1])}
-				// stairs: a corner between each point and the one before,
-				// vertical first (left stairs) or horizontal first (right)
-				if n := len(pts); n > 0 && !breaks[n-1] && (s.Line.Type == 2 || s.Line.Type == 3) {
-					c := draw.Point{X: pts[n-1].X, Y: p.Y}
-					if s.Line.Type == 3 {
-						c = draw.Point{X: p.X, Y: pts[n-1].Y}
-					}
-					pts = append(pts, c)
-					breaks = append(breaks, false)
-				}
-				pts = append(pts, p)
-				// segments join the points in twos, 3-segments in threes,
-				// counted by their place in the data
-				breaks = append(breaks, (s.Line.Type == 4 && i%2 == 1) || (s.Line.Type == 5 && i%3 == 2))
-			}
-			if segs := clipPolyline(pts, breaks, t.g.View); len(segs) > 0 {
-				r.id = fmt.Sprintf("g%d.s%d.line", t.g.ID, s.ID)
-				// gracebat strokes each visible piece on its own: each
-				// segment of types 4 and 5, each stretch between where a
-				// line leaves the viewport and comes back
-				for _, sg := range segs {
-					r.path(st, false, sg)
-				}
+	pts, breaks := r.linePoints(t, s)
+	if s.Line.Type != 0 && (s.Fill.Type == 1 || s.Fill.Type == 2) {
+		r.setFill(t, s, pts)
+	} else if s.Line.Type != 0 && s.Fill.Type != 0 {
+		r.warn("set %d: fill type %d is not one of Grace's; not drawn, as gracebat does", s.ID, s.Fill.Type)
+	}
+	st, ok := r.style(s.Line.Color, s.Line.LineWidth, s.Line.LineStyle)
+	st, ok = r.patterned(st, ok, s.Line.Pattern)
+	if s.Line.Type != 0 && ok {
+		if segs := clipPolyline(pts, breaks, t.g.View); len(segs) > 0 {
+			r.id = fmt.Sprintf("g%d.s%d.line", t.g.ID, s.ID)
+			// gracebat strokes each visible piece on its own: each
+			// segment of types 4 and 5, each stretch between where a
+			// line leaves the viewport and comes back
+			for _, sg := range segs {
+				r.path(st, false, sg)
 			}
 		}
+	}
+	if ok && (s.Dropline || s.Baseline.On) {
+		r.droplines(t, s, st)
 	}
 	if s.ErrorBar.On && s.Type == "xydy" {
 		r.errorBars(t, s)
 	}
 	if s.Symbol.Type != 0 {
 		r.symbols(t, s)
+	}
+}
+
+// linePoints are the viewport points a set's line joins: its points that
+// the axes can place, with stair corners for line types 2 and 3; breaks
+// marks a point not joined to the next.
+func (r *renderer) linePoints(t xform, s *agr.Set) (pts []draw.Point, breaks []bool) {
+	if s.Line.Type < 0 || s.Line.Type > 5 {
+		r.warn("set %d: line type %d is drawn straight", s.ID, s.Line.Type)
+	}
+	for i, row := range s.Data {
+		if !t.ok(row[0], row[1]) {
+			if len(pts) > 0 {
+				breaks[len(breaks)-1] = true
+			}
+			continue
+		}
+		p := draw.Point{X: t.x(row[0]), Y: t.y(row[1])}
+		// stairs: a corner between each point and the one before,
+		// vertical first (left stairs) or horizontal first (right)
+		if n := len(pts); n > 0 && !breaks[n-1] && (s.Line.Type == 2 || s.Line.Type == 3) {
+			c := draw.Point{X: pts[n-1].X, Y: p.Y}
+			if s.Line.Type == 3 {
+				c = draw.Point{X: p.X, Y: pts[n-1].Y}
+			}
+			pts = append(pts, c)
+			breaks = append(breaks, false)
+		}
+		pts = append(pts, p)
+		// segments join the points in twos, 3-segments in threes,
+		// counted by their place in the data
+		breaks = append(breaks, (s.Line.Type == 4 && i%2 == 1) || (s.Line.Type == 5 && i%3 == 2))
+	}
+	return pts, breaks
+}
+
+// baseline is where a set's baseline is, in world y, and the x extent of
+// its points (docs/grace-behaviour.md); ok is false for a set without a
+// point the axes can place.
+func (r *renderer) baseline(t xform, s *agr.Set) (y, xmin, xmax float64, ok bool) {
+	ymin, ymax, sum, n := math.Inf(1), math.Inf(-1), 0.0, 0
+	xmin, xmax = math.Inf(1), math.Inf(-1)
+	for _, row := range s.Data {
+		if !t.ok(row[0], row[1]) {
+			continue
+		}
+		xmin, xmax = min(xmin, row[0]), max(xmax, row[0])
+		ymin, ymax = min(ymin, row[1]), max(ymax, row[1])
+		sum += row[1]
+		n++
+	}
+	if n == 0 {
+		return 0, 0, 0, false
+	}
+	switch s.Baseline.Type {
+	case 0:
+		y = 0
+	case 1:
+		y = ymin
+	case 2:
+		y = ymax
+	case 3:
+		y = t.g.World.YMin
+	case 4:
+		y = t.g.World.YMax
+	case 5:
+		y = sum / float64(n)
+	default:
+		r.warn("set %d: baseline type %d is not one of Grace's; y = 0 used, as gracebat does (\"Wrong type of baseline\")", s.ID, s.Baseline.Type)
+	}
+	return y, xmin, xmax, true
+}
+
+// baseY is a baseline's viewport y: on a log axis a baseline at or below
+// 0 is infinitely far below the world, so beyond the frame on that side.
+func baseY(t xform, y float64) float64 {
+	if t.g.Y.Scale == "Logarithmic" && y <= 0 {
+		y = math.SmallestNonzeroFloat64
+	}
+	return t.y(y)
+}
+
+// setFill fills the area of a set's line (docs/grace-behaviour.md): type 1
+// the polygon of its points (stair corners included), type 2 that and
+// then along the baseline from the point furthest right in x to the one
+// furthest left, cut to the frame.
+func (r *renderer) setFill(t xform, s *agr.Set, pts []draw.Point) {
+	poly := append([]draw.Point(nil), pts...)
+	if s.Fill.Type == 2 {
+		y, xmin, xmax, ok := r.baseline(t, s)
+		if !ok {
+			return
+		}
+		b := baseY(t, y)
+		poly = append(poly, draw.Point{X: t.x(xmax), Y: b}, draw.Point{X: t.x(xmin), Y: b})
+	}
+	poly = clipPolygon(poly, t.g.View)
+	if len(poly) < 3 {
+		return
+	}
+	r.id = fmt.Sprintf("g%d.s%d.fill", t.g.ID, s.ID)
+	n := len(r.d.Paths)
+	r.fill(s.Fill.Color, s.Fill.Pattern, draw.Segment{Points: poly, Closed: true})
+	for i := n; i < len(r.d.Paths); i++ {
+		r.d.Paths[i].EvenOdd = s.Fill.Rule == 1
+	}
+}
+
+// droplines draws a set's droplines, from its baseline up (or down) to
+// each point, and its baseline, from its smallest x to its largest, in
+// the line's style, cut to the frame (docs/grace-behaviour.md).
+func (r *renderer) droplines(t xform, s *agr.Set, st draw.Style) {
+	y, xmin, xmax, ok := r.baseline(t, s)
+	if !ok {
+		return
+	}
+	b := baseY(t, y)
+	v := t.g.View
+	if s.Dropline {
+		r.id = fmt.Sprintf("g%d.s%d.dropline", t.g.ID, s.ID)
+		for _, row := range s.Data {
+			if !t.ok(row[0], row[1]) {
+				continue
+			}
+			x := t.x(row[0])
+			if a, c, ok := clipSegment(draw.Point{X: x, Y: b}, draw.Point{X: x, Y: t.y(row[1])}, v); ok {
+				r.path(st, false, line(a, c))
+			}
+		}
+	}
+	if s.Baseline.On {
+		r.id = fmt.Sprintf("g%d.s%d.baseline", t.g.ID, s.ID)
+		if a, c, ok := clipSegment(draw.Point{X: t.x(xmin), Y: b}, draw.Point{X: t.x(xmax), Y: b}, v); ok {
+			r.path(st, false, line(a, c))
+		}
 	}
 }
 
@@ -754,15 +871,27 @@ func clipPolyline(pts []draw.Point, breaks []bool, v agr.Rect) []draw.Segment {
 	return segs
 }
 
-// clipSegment is Liang-Barsky clipping of a-b to the rectangle.
+// clipMargin is how far outside the frame gracebat cuts lines: 0.0001 of
+// the viewport on every side, whatever the world (docs/grace-behaviour.md);
+// fills it cuts at the frame.
+const clipMargin = 0.0001
+
+// clipSegment is Liang-Barsky clipping of a-b to the rectangle, widened by
+// clipMargin. A segment with both ends outside starts, as gracebat draws
+// it, on the frame's bottom, else right, else top, else left edge.
 func clipSegment(a, b draw.Point, v agr.Rect) (draw.Point, draw.Point, bool) {
+	v = agr.Rect{XMin: v.XMin - clipMargin, YMin: v.YMin - clipMargin, XMax: v.XMax + clipMargin, YMax: v.YMax + clipMargin}
 	t0, t1 := 0.0, 1.0
+	e0, e1 := -1, -1 // the edges a and b are cut at, as ranked below
 	dx, dy := b.X-a.X, b.Y-a.Y
-	for _, e := range [][2]float64{
-		{-dx, a.X - v.XMin}, {dx, v.XMax - a.X},
-		{-dy, a.Y - v.YMin}, {dy, v.YMax - a.Y},
+	for _, e := range []struct {
+		p, q float64
+		rank int
+	}{
+		{-dx, a.X - v.XMin, 3}, {dx, v.XMax - a.X, 1},
+		{-dy, a.Y - v.YMin, 0}, {dy, v.YMax - a.Y, 2},
 	} {
-		p, q := e[0], e[1]
+		p, q := e.p, e.q
 		if p == 0 {
 			if q < 0 {
 				return a, b, false
@@ -774,12 +903,16 @@ func clipSegment(a, b draw.Point, v agr.Rect) (draw.Point, draw.Point, bool) {
 			if t > t1 {
 				return a, b, false
 			}
-			t0 = max(t0, t)
+			if t > t0 {
+				t0, e0 = t, e.rank
+			}
 		} else {
 			if t < t0 {
 				return a, b, false
 			}
-			t1 = min(t1, t)
+			if t < t1 {
+				t1, e1 = t, e.rank
+			}
 		}
 	}
 	na, nb := a, b
@@ -789,7 +922,52 @@ func clipSegment(a, b draw.Point, v agr.Rect) (draw.Point, draw.Point, bool) {
 	if t1 < 1 {
 		nb = draw.Point{X: a.X + t1*dx, Y: a.Y + t1*dy}
 	}
+	if t0 > 0 && t1 < 1 && e1 < e0 {
+		na, nb = nb, na
+	}
 	return na, nb, true
+}
+
+// clipPolygon cuts a closed outline to the viewport rectangle
+// (Sutherland-Hodgman), edge by edge.
+func clipPolygon(pts []draw.Point, v agr.Rect) []draw.Point {
+	type edge struct {
+		in  func(draw.Point) bool
+		cut func(a, b draw.Point) draw.Point
+	}
+	at := func(a, b draw.Point, t float64) draw.Point {
+		return draw.Point{X: a.X + t*(b.X-a.X), Y: a.Y + t*(b.Y-a.Y)}
+	}
+	xAt := func(x float64) func(a, b draw.Point) draw.Point {
+		return func(a, b draw.Point) draw.Point { p := at(a, b, (x-a.X)/(b.X-a.X)); p.X = x; return p }
+	}
+	yAt := func(y float64) func(a, b draw.Point) draw.Point {
+		return func(a, b draw.Point) draw.Point { p := at(a, b, (y-a.Y)/(b.Y-a.Y)); p.Y = y; return p }
+	}
+	for _, e := range []edge{
+		{func(p draw.Point) bool { return p.X >= v.XMin }, xAt(v.XMin)},
+		{func(p draw.Point) bool { return p.X <= v.XMax }, xAt(v.XMax)},
+		{func(p draw.Point) bool { return p.Y >= v.YMin }, yAt(v.YMin)},
+		{func(p draw.Point) bool { return p.Y <= v.YMax }, yAt(v.YMax)},
+	} {
+		var out []draw.Point
+		for i, b := range pts {
+			a := pts[(i+len(pts)-1)%len(pts)]
+			switch {
+			case e.in(b) && !e.in(a):
+				out = append(out, e.cut(a, b), b)
+			case e.in(b):
+				out = append(out, b)
+			case e.in(a):
+				out = append(out, e.cut(a, b))
+			}
+		}
+		pts = out
+		if len(pts) == 0 {
+			break
+		}
+	}
+	return pts
 }
 
 // frameBackground fills the viewport with the frame's background

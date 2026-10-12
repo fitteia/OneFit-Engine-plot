@@ -100,6 +100,7 @@ func AddSets(fig *agr.Project, g int, src *agr.Project, path string, sets []int)
 			return added, fmt.Errorf("%s has no set %d", path, id)
 		}
 		c := *s
+		c.Kept = append([]string(nil), s.Kept...)
 		c.Data = make([][]float64, len(s.Data))
 		for i, row := range s.Data {
 			c.Data[i] = append([]float64(nil), row...)
@@ -109,7 +110,7 @@ func AddSets(fig *agr.Project, g int, src *agr.Project, path string, sets []int)
 		dst.Sets = append(dst.Sets, &c)
 		added = append(added, next)
 		next++
-		for _, n := range []int{c.Line.Color, c.Symbol.Color, c.Symbol.FillColor, c.ErrorBar.Color} {
+		for _, n := range []int{c.Line.Color, c.Symbol.Color, c.Symbol.FillColor, c.Fill.Color, c.ErrorBar.Color} {
 			if _, ok := fig.Colors[n]; !ok {
 				if col, ok := src.Colors[n]; ok {
 					if fig.Colors == nil {

@@ -110,7 +110,9 @@ func WritePDF(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) 
 				p("h\n")
 			}
 		}
-		if path.Fill {
+		if path.Fill && path.EvenOdd {
+			p("f*\n")
+		} else if path.Fill {
 			p("f\n")
 		} else {
 			p("S\n")

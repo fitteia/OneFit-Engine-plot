@@ -301,3 +301,39 @@ func TestSpecialTicks(t *testing.T) {
 		t.Errorf("%d warnings, want 1: %v", len(p.Warnings), p.Warnings)
 	}
 }
+
+// TestSetFill: fill, baseline and dropline settings as gracebat keeps
+// them - a new set fills in color 1, pattern 1; negatives are rejected;
+// any fill rule but 1 is 0 (gracebat saves "fill rule 2" as 0).
+func TestSetFill(t *testing.T) {
+	p, err := Parse(strings.NewReader(`@with g0
+@    s1 line type 1
+@    s0 fill type 2
+@    s0 fill type -1
+@    s0 fill rule 2
+@    s0 fill color 5
+@    s0 fill color -2
+@    s0 fill pattern 7
+@    s0 baseline type 5
+@    s0 baseline type -1
+@    s0 baseline on
+@    s0 dropline on
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s0, s1 := p.Graphs[0].Sets[0], p.Graphs[0].Sets[1]
+	if want := (Fill{Type: 2, Rule: 0, Color: 5, Pattern: 7}); s0.Fill != want {
+		t.Errorf("fill %+v, want %+v", s0.Fill, want)
+	}
+	if want := (Baseline{On: true, Type: 5}); s0.Baseline != want || !s0.Dropline {
+		t.Errorf("baseline %+v, dropline %v", s0.Baseline, s0.Dropline)
+	}
+	if want := (Fill{Color: 1, Pattern: 1}); s1.Fill != want || s1.Baseline != (Baseline{}) || s1.Dropline {
+		t.Errorf("new set: fill %+v, baseline %+v, dropline %v", s1.Fill, s1.Baseline, s1.Dropline)
+	}
+	p, _ = Parse(strings.NewReader("@with g0\n@    s0 fill rule 1\n"))
+	if p.Graphs[0].Sets[0].Fill.Rule != 1 {
+		t.Error("fill rule 1 not kept")
+	}
+}

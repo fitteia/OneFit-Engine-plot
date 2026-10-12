@@ -53,7 +53,11 @@ type Path struct {
 	ID       string
 	Segments []Segment
 	Fill     bool
-	Style    Style
+	// EvenOdd fills by the even-odd rule (PostScript's eofill) instead of
+	// the non-zero winding one: where a fill's outline crosses itself,
+	// every other part is left out.
+	EvenOdd bool
+	Style   Style
 }
 
 // Text is a string shown at a point: Matrix is the font matrix (a b c d)

@@ -137,6 +137,9 @@ func WriteSVGWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 		}
 		if path.Fill {
 			attrs = fmt.Sprintf(`fill="%s" stroke="none"`, paint)
+			if path.EvenOdd {
+				attrs += ` fill-rule="evenodd"`
+			}
 		} else {
 			attrs = fmt.Sprintf(`fill="none" stroke="%s" stroke-width="%s"`, paint, num(st.Width*unit))
 			if len(st.Dash) > 0 {

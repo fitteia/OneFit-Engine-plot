@@ -198,7 +198,9 @@ ellipsedict /mtrx matrix put
 				p("c\n")
 			}
 		}
-		if path.Fill {
+		if path.Fill && path.EvenOdd {
+			p("eofill\n")
+		} else if path.Fill {
 			p("fill\n")
 		} else {
 			p("s\n")

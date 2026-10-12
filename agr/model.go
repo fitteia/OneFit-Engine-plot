@@ -21,6 +21,11 @@ type Project struct {
 	Strings         []*Text
 	Graphs          []*Graph
 	Warnings        []Warning
+	// Kept are the directives the model has no place for (regions, date
+	// wrap, ...), as read: Write writes them back, so a project read and
+	// written again loses nothing, drawn by plot-go or not. Graphs and
+	// sets keep their own.
+	Kept []string
 }
 
 // Defaults are the "@default" settings.
@@ -81,6 +86,12 @@ type Graph struct {
 	Legend   Legend
 	Frame    Frame
 	Sets     []*Set
+	// Kept are the graph's directives the model has no place for: those
+	// in its "@with g" block (alternate axes, axis bars, ...) as read, and
+	// in KeptHeader those of its "@gN" header (stacked, fixed point) as
+	// read but without "gN". See Project.Kept.
+	Kept       []string
+	KeptHeader []string
 }
 
 // Title is a graph's title or subtitle.
@@ -213,11 +224,18 @@ type Set struct {
 	Type     string // "xy" or "xydy"
 	Symbol   Symbol
 	Line     Line
+	Baseline Baseline
+	Dropline bool // a line from the baseline to each point
+	Fill     Fill
 	ErrorBar ErrorBar
 	Comment  string
 	Legend   string
 	// Data holds one row per point: x, y, and dy for an xydy set.
 	Data [][]float64
+	// Kept are the set's directives the model has no place for (annotated
+	// values, ...), as read but without "sN", so they stay with the set
+	// when it is renumbered. See Project.Kept.
+	Kept []string
 }
 
 // Symbol is how a set's points are marked; Type 0 is none, 1 a circle.
@@ -242,6 +260,25 @@ type Line struct {
 	LineWidth float64
 	Color     int
 	Pattern   int
+}
+
+// Baseline is the level a set's fill of type 2 and its droplines start
+// from, drawn as a line when On. Type: 0 y = 0, 1 the set's smallest y,
+// 2 its largest, 3 the graph's world bottom, 4 its top, 5 the set's mean
+// y.
+type Baseline struct {
+	On   bool
+	Type int
+}
+
+// Fill is the area a set's line encloses: Type 0 none, 1 the polygon of
+// its points, 2 down (or up) to its baseline. Rule 1 is even-odd, 0
+// non-zero winding.
+type Fill struct {
+	Type    int
+	Rule    int
+	Color   int
+	Pattern int
 }
 
 // ErrorBar is how an xydy set's dy is drawn.
@@ -275,6 +312,7 @@ func NewSet(id int, d Defaults, colors int) *Set {
 		Type:   "xy",
 		Line:   Line{Type: 1, LineStyle: d.LineStyle, LineWidth: d.LineWidth, Color: c, Pattern: 1},
 		Symbol: Symbol{Size: d.SymbolSize, Color: c, Pattern: 1, FillColor: c, LineWidth: d.LineWidth, LineStyle: d.LineStyle, Char: 'A', CharFont: d.Font},
+		Fill:   Fill{Color: 1, Pattern: 1},
 		ErrorBar: ErrorBar{On: true, Place: "both", Color: c, Pattern: 1, Size: 1,
 			LineWidth: d.LineWidth, LineStyle: d.LineStyle, RiserWidth: d.LineWidth, RiserStyle: d.LineStyle, RiserClipSize: 0.1},
 	}
