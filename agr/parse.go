@@ -138,6 +138,29 @@ func (p *parser) int(s string) int {
 	return int(f)
 }
 
+// nonNeg reads a color, font, pattern, line style, type or count: gracebat
+// rejects a negative one ("Negative value supplied for non-negative") and
+// keeps the value it had (docs/grace-behaviour.md).
+func (p *parser) nonNeg(cur int, s string) int {
+	v := p.int(s)
+	if v < 0 {
+		p.warn("negative value; ignored, as gracebat does")
+		return cur
+	}
+	return v
+}
+
+// width reads a line width: gracebat makes a negative one 0 ("Negative
+// linewidth").
+func (p *parser) width(s string) float64 {
+	v := p.num(s)
+	if v < 0 {
+		p.warn("negative line width; 0 used, as gracebat does")
+		return 0
+	}
+	return v
+}
+
 func (p *parser) bool(s string) bool {
 	switch strings.ToLower(s) {
 	case "on", "true":
@@ -278,7 +301,7 @@ func init() {
 		r("page scroll W", ignore),
 		r("page inout W", ignore),
 		r("page background fill W", func(p *parser, a []string) { p.proj.PageFill = p.bool(a[0]) }),
-		r("background color N", func(p *parser, a []string) { p.proj.BackgroundColor = p.int(a[0]) }),
+		r("background color N", func(p *parser, a []string) { p.proj.BackgroundColor = p.nonNeg(p.proj.BackgroundColor, a[0]) }),
 		r("link page W", ignore),
 		// dates are days from it (Julian day 0 by default); date wrap only
 		// affects reading two-digit years, not drawing
@@ -291,11 +314,11 @@ func init() {
 		r("map color N to N N N S", func(p *parser, a []string) {
 			p.proj.Colors[p.int(a[0])] = Color{R: uint8(p.int(a[1])), G: uint8(p.int(a[2])), B: uint8(p.int(a[3])), Name: a[4]}
 		}),
-		r("default linewidth N", func(p *parser, a []string) { p.proj.Defaults.LineWidth = p.num(a[0]) }),
-		r("default linestyle N", func(p *parser, a []string) { p.proj.Defaults.LineStyle = p.int(a[0]) }),
-		r("default color N", func(p *parser, a []string) { p.proj.Defaults.Color = p.int(a[0]) }),
-		r("default pattern N", func(p *parser, a []string) { p.proj.Defaults.Pattern = p.int(a[0]) }),
-		r("default font N", func(p *parser, a []string) { p.proj.Defaults.Font = p.int(a[0]) }),
+		r("default linewidth N", func(p *parser, a []string) { p.proj.Defaults.LineWidth = p.width(a[0]) }),
+		r("default linestyle N", func(p *parser, a []string) { p.proj.Defaults.LineStyle = p.nonNeg(p.proj.Defaults.LineStyle, a[0]) }),
+		r("default color N", func(p *parser, a []string) { p.proj.Defaults.Color = p.nonNeg(p.proj.Defaults.Color, a[0]) }),
+		r("default pattern N", func(p *parser, a []string) { p.proj.Defaults.Pattern = p.nonNeg(p.proj.Defaults.Pattern, a[0]) }),
+		r("default font N", func(p *parser, a []string) { p.proj.Defaults.Font = p.nonNeg(p.proj.Defaults.Font, a[0]) }),
 		r("default char size N", func(p *parser, a []string) { p.proj.Defaults.CharSize = p.num(a[0]) }),
 		r("default symbol size N", func(p *parser, a []string) { p.proj.Defaults.SymbolSize = p.num(a[0]) }),
 		r("default sformat S", func(p *parser, a []string) { p.proj.Defaults.SFormat = a[0] }),
@@ -303,9 +326,9 @@ func init() {
 		// timestamp and strings
 		r("timestamp W", func(p *parser, a []string) { p.proj.Timestamp.On = p.bool(a[0]) }),
 		r("timestamp N N", func(p *parser, a []string) { p.proj.Timestamp.X, p.proj.Timestamp.Y = p.num(a[0]), p.num(a[1]) }),
-		r("timestamp color N", func(p *parser, a []string) { p.proj.Timestamp.Color = p.int(a[0]) }),
+		r("timestamp color N", func(p *parser, a []string) { p.proj.Timestamp.Color = p.nonNeg(p.proj.Timestamp.Color, a[0]) }),
 		r("timestamp rot N", func(p *parser, a []string) { p.proj.Timestamp.Rot = p.num(a[0]) }),
-		r("timestamp font N", func(p *parser, a []string) { p.proj.Timestamp.Font = p.int(a[0]) }),
+		r("timestamp font N", func(p *parser, a []string) { p.proj.Timestamp.Font = p.nonNeg(p.proj.Timestamp.Font, a[0]) }),
 		r("timestamp char size N", func(p *parser, a []string) { p.proj.Timestamp.CharSize = p.num(a[0]) }),
 		r("timestamp def S", func(p *parser, a []string) { p.proj.Timestamp.Text = a[0] }),
 		r("with string", func(p *parser, a []string) { p.newString() }),
@@ -314,7 +337,7 @@ func init() {
 		r("string W", func(p *parser, a []string) { p.currentString().On = p.bool(a[0]) }),
 		r("string loctype W", func(p *parser, a []string) { p.currentString().LocType = a[0] }),
 		r("string N N", func(p *parser, a []string) { s := p.currentString(); s.X, s.Y = p.num(a[0]), p.num(a[1]) }),
-		r("string color N", func(p *parser, a []string) { p.currentString().Color = p.int(a[0]) }),
+		r("string color N", func(p *parser, a []string) { p.currentString().Color = p.nonNeg(p.currentString().Color, a[0]) }),
 		r("string rot N", func(p *parser, a []string) {
 			if v := p.num(a[0]); v < 0 {
 				// gracebat rejects it ("Negative value supplied for
@@ -324,8 +347,8 @@ func init() {
 				p.currentString().Rot = v
 			}
 		}),
-		r("string font N", func(p *parser, a []string) { p.currentString().Font = p.int(a[0]) }),
-		r("string just N", func(p *parser, a []string) { p.currentString().Just = p.int(a[0]) }),
+		r("string font N", func(p *parser, a []string) { p.currentString().Font = p.nonNeg(p.currentString().Font, a[0]) }),
+		r("string just N", func(p *parser, a []string) { p.currentString().Just = p.nonNeg(p.currentString().Just, a[0]) }),
 		r("string char size N", func(p *parser, a []string) { p.currentString().CharSize = p.num(a[0]) }),
 		r("string def S", func(p *parser, a []string) { p.currentString().Text = a[0] }),
 
@@ -374,13 +397,19 @@ func init() {
 		r("stack world N N N N", ignore),
 		r("znorm N", ignore),
 		r("title S", func(p *parser, a []string) { p.currentGraph().Title.Text = a[0] }),
-		r("title font N", func(p *parser, a []string) { p.currentGraph().Title.Font = p.int(a[0]) }),
+		r("title font N", func(p *parser, a []string) { p.currentGraph().Title.Font = p.nonNeg(p.currentGraph().Title.Font, a[0]) }),
 		r("title size N", func(p *parser, a []string) { p.currentGraph().Title.Size = p.num(a[0]) }),
-		r("title color N", func(p *parser, a []string) { p.currentGraph().Title.Color = p.int(a[0]) }),
+		r("title color N", func(p *parser, a []string) {
+			p.currentGraph().Title.Color = p.nonNeg(p.currentGraph().Title.Color, a[0])
+		}),
 		r("subtitle S", func(p *parser, a []string) { p.currentGraph().Subtitle.Text = a[0] }),
-		r("subtitle font N", func(p *parser, a []string) { p.currentGraph().Subtitle.Font = p.int(a[0]) }),
+		r("subtitle font N", func(p *parser, a []string) {
+			p.currentGraph().Subtitle.Font = p.nonNeg(p.currentGraph().Subtitle.Font, a[0])
+		}),
 		r("subtitle size N", func(p *parser, a []string) { p.currentGraph().Subtitle.Size = p.num(a[0]) }),
-		r("subtitle color N", func(p *parser, a []string) { p.currentGraph().Subtitle.Color = p.int(a[0]) }),
+		r("subtitle color N", func(p *parser, a []string) {
+			p.currentGraph().Subtitle.Color = p.nonNeg(p.currentGraph().Subtitle.Color, a[0])
+		}),
 
 		// axes
 		r("AXES scale W", func(p *parser, a []string) {
@@ -414,8 +443,8 @@ func init() {
 			}
 		}),
 		r("AXIS label char size N", func(p *parser, a []string) { p.axis(a[0]).Label.CharSize = p.num(a[1]) }),
-		r("AXIS label font N", func(p *parser, a []string) { p.axis(a[0]).Label.Font = p.int(a[1]) }),
-		r("AXIS label color N", func(p *parser, a []string) { p.axis(a[0]).Label.Color = p.int(a[1]) }),
+		r("AXIS label font N", func(p *parser, a []string) { p.axis(a[0]).Label.Font = p.nonNeg(p.axis(a[0]).Label.Font, a[1]) }),
+		r("AXIS label color N", func(p *parser, a []string) { p.axis(a[0]).Label.Color = p.nonNeg(p.axis(a[0]).Label.Color, a[1]) }),
 		r("AXIS tick W", func(p *parser, a []string) {
 			switch a[1] {
 			case "in", "out", "both":
@@ -425,8 +454,10 @@ func init() {
 			}
 		}),
 		r("AXIS tick major N", func(p *parser, a []string) { p.axis(a[0]).Tick.Major = p.num(a[1]) }),
-		r("AXIS tick minor ticks N", func(p *parser, a []string) { p.axis(a[0]).Tick.MinorTicks = p.int(a[1]) }),
-		r("AXIS tick default N", func(p *parser, a []string) { p.axis(a[0]).Tick.Default = p.int(a[1]) }),
+		r("AXIS tick minor ticks N", func(p *parser, a []string) {
+			p.axis(a[0]).Tick.MinorTicks = p.nonNeg(p.axis(a[0]).Tick.MinorTicks, a[1])
+		}),
+		r("AXIS tick default N", func(p *parser, a []string) { p.axis(a[0]).Tick.Default = p.nonNeg(p.axis(a[0]).Tick.Default, a[1]) }),
 		r("AXIS tick place rounded W", func(p *parser, a []string) { p.axis(a[0]).Tick.Rounded = p.bool(a[1]) }),
 		r("AXIS tick place W", func(p *parser, a []string) { p.axis(a[0]).Tick.Place = a[1] }),
 		r("AXIS tick spec type W", func(p *parser, a []string) {
@@ -435,14 +466,22 @@ func init() {
 			}
 		}),
 		r("AXIS tick major size N", func(p *parser, a []string) { p.axis(a[0]).Tick.MajorMarks.Size = p.num(a[1]) }),
-		r("AXIS tick major color N", func(p *parser, a []string) { p.axis(a[0]).Tick.MajorMarks.Color = p.int(a[1]) }),
-		r("AXIS tick major linewidth N", func(p *parser, a []string) { p.axis(a[0]).Tick.MajorMarks.LineWidth = p.num(a[1]) }),
-		r("AXIS tick major linestyle N", func(p *parser, a []string) { p.axis(a[0]).Tick.MajorMarks.LineStyle = p.int(a[1]) }),
+		r("AXIS tick major color N", func(p *parser, a []string) {
+			p.axis(a[0]).Tick.MajorMarks.Color = p.nonNeg(p.axis(a[0]).Tick.MajorMarks.Color, a[1])
+		}),
+		r("AXIS tick major linewidth N", func(p *parser, a []string) { p.axis(a[0]).Tick.MajorMarks.LineWidth = p.width(a[1]) }),
+		r("AXIS tick major linestyle N", func(p *parser, a []string) {
+			p.axis(a[0]).Tick.MajorMarks.LineStyle = p.nonNeg(p.axis(a[0]).Tick.MajorMarks.LineStyle, a[1])
+		}),
 		r("AXIS tick major grid W", func(p *parser, a []string) { p.axis(a[0]).Tick.MajorMarks.Grid = p.bool(a[1]) }),
 		r("AXIS tick minor size N", func(p *parser, a []string) { p.axis(a[0]).Tick.MinorMarks.Size = p.num(a[1]) }),
-		r("AXIS tick minor color N", func(p *parser, a []string) { p.axis(a[0]).Tick.MinorMarks.Color = p.int(a[1]) }),
-		r("AXIS tick minor linewidth N", func(p *parser, a []string) { p.axis(a[0]).Tick.MinorMarks.LineWidth = p.num(a[1]) }),
-		r("AXIS tick minor linestyle N", func(p *parser, a []string) { p.axis(a[0]).Tick.MinorMarks.LineStyle = p.int(a[1]) }),
+		r("AXIS tick minor color N", func(p *parser, a []string) {
+			p.axis(a[0]).Tick.MinorMarks.Color = p.nonNeg(p.axis(a[0]).Tick.MinorMarks.Color, a[1])
+		}),
+		r("AXIS tick minor linewidth N", func(p *parser, a []string) { p.axis(a[0]).Tick.MinorMarks.LineWidth = p.width(a[1]) }),
+		r("AXIS tick minor linestyle N", func(p *parser, a []string) {
+			p.axis(a[0]).Tick.MinorMarks.LineStyle = p.nonNeg(p.axis(a[0]).Tick.MinorMarks.LineStyle, a[1])
+		}),
 		r("AXIS tick minor grid W", func(p *parser, a []string) { p.axis(a[0]).Tick.MinorMarks.Grid = p.bool(a[1]) }),
 		r("AXIS ticklabel prec", func(p *parser, a []string) {
 			p.warn("tick label precision has no value; ignored, as gracebat does (the default is 5)")
@@ -469,7 +508,7 @@ func init() {
 			}
 			p.axis(a[0]).TickLabel.Format = f
 		}),
-		r("AXIS ticklabel prec N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Prec = p.int(a[1]) }),
+		r("AXIS ticklabel prec N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Prec = p.nonNeg(p.axis(a[0]).TickLabel.Prec, a[1]) }),
 		r("AXIS ticklabel formula S", func(p *parser, a []string) {
 			if a[1] != "" {
 				p.warn("tick label formulas are not applied by plot-go")
@@ -478,8 +517,10 @@ func init() {
 		r("AXIS ticklabel append S", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Append = a[1] }),
 		r("AXIS ticklabel prepend S", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Prepend = a[1] }),
 		r("AXIS ticklabel angle N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Angle = p.num(a[1]) }),
-		r("AXIS ticklabel skip N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Skip = p.int(a[1]) }),
-		r("AXIS ticklabel stagger N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Stagger = p.int(a[1]) }),
+		r("AXIS ticklabel skip N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Skip = p.nonNeg(p.axis(a[0]).TickLabel.Skip, a[1]) }),
+		r("AXIS ticklabel stagger N", func(p *parser, a []string) {
+			p.axis(a[0]).TickLabel.Stagger = p.nonNeg(p.axis(a[0]).TickLabel.Stagger, a[1])
+		}),
 		r("AXIS ticklabel place W", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Place = a[1] }),
 		r("AXIS ticklabel offset W", func(p *parser, a []string) { p.axis(a[0]).TickLabel.OffsetSpec = a[1] == "spec" }),
 		r("AXIS ticklabel offset N N", func(p *parser, a []string) {
@@ -498,8 +539,10 @@ func init() {
 		}),
 		r("AXIS ticklabel stop N", ignore),
 		r("AXIS ticklabel char size N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.CharSize = p.num(a[1]) }),
-		r("AXIS ticklabel font N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Font = p.int(a[1]) }),
-		r("AXIS ticklabel color N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Color = p.int(a[1]) }),
+		r("AXIS ticklabel font N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Font = p.nonNeg(p.axis(a[0]).TickLabel.Font, a[1]) }),
+		r("AXIS ticklabel color N", func(p *parser, a []string) {
+			p.axis(a[0]).TickLabel.Color = p.nonNeg(p.axis(a[0]).TickLabel.Color, a[1])
+		}),
 
 		// legend and frame
 		r("legend W", func(p *parser, a []string) { p.currentGraph().Legend.On = p.bool(a[0]) }),
@@ -508,46 +551,70 @@ func init() {
 			l := &p.currentGraph().Legend
 			l.X, l.Y = p.num(a[0]), p.num(a[1])
 		}),
-		r("legend box color N", func(p *parser, a []string) { p.currentGraph().Legend.BoxColor = p.int(a[0]) }),
-		r("legend box pattern N", func(p *parser, a []string) { p.currentGraph().Legend.BoxPattern = p.int(a[0]) }),
-		r("legend box linewidth N", func(p *parser, a []string) { p.currentGraph().Legend.BoxWidth = p.num(a[0]) }),
-		r("legend box linestyle N", func(p *parser, a []string) { p.currentGraph().Legend.BoxStyle = p.int(a[0]) }),
-		r("legend box fill color N", func(p *parser, a []string) { p.currentGraph().Legend.FillColor = p.int(a[0]) }),
-		r("legend box fill pattern N", func(p *parser, a []string) { p.currentGraph().Legend.FillPattern = p.int(a[0]) }),
-		r("legend font N", func(p *parser, a []string) { p.currentGraph().Legend.Font = p.int(a[0]) }),
+		r("legend box color N", func(p *parser, a []string) {
+			p.currentGraph().Legend.BoxColor = p.nonNeg(p.currentGraph().Legend.BoxColor, a[0])
+		}),
+		r("legend box pattern N", func(p *parser, a []string) {
+			p.currentGraph().Legend.BoxPattern = p.nonNeg(p.currentGraph().Legend.BoxPattern, a[0])
+		}),
+		r("legend box linewidth N", func(p *parser, a []string) { p.currentGraph().Legend.BoxWidth = p.width(a[0]) }),
+		r("legend box linestyle N", func(p *parser, a []string) {
+			p.currentGraph().Legend.BoxStyle = p.nonNeg(p.currentGraph().Legend.BoxStyle, a[0])
+		}),
+		r("legend box fill color N", func(p *parser, a []string) {
+			p.currentGraph().Legend.FillColor = p.nonNeg(p.currentGraph().Legend.FillColor, a[0])
+		}),
+		r("legend box fill pattern N", func(p *parser, a []string) {
+			p.currentGraph().Legend.FillPattern = p.nonNeg(p.currentGraph().Legend.FillPattern, a[0])
+		}),
+		r("legend font N", func(p *parser, a []string) {
+			p.currentGraph().Legend.Font = p.nonNeg(p.currentGraph().Legend.Font, a[0])
+		}),
 		r("legend char size N", func(p *parser, a []string) { p.currentGraph().Legend.CharSize = p.num(a[0]) }),
-		r("legend color N", func(p *parser, a []string) { p.currentGraph().Legend.Color = p.int(a[0]) }),
+		r("legend color N", func(p *parser, a []string) {
+			p.currentGraph().Legend.Color = p.nonNeg(p.currentGraph().Legend.Color, a[0])
+		}),
 		r("legend length N", func(p *parser, a []string) { p.currentGraph().Legend.Length = p.num(a[0]) }),
 		r("legend vgap N", func(p *parser, a []string) { p.currentGraph().Legend.VGap = p.num(a[0]) }),
 		r("legend hgap N", func(p *parser, a []string) { p.currentGraph().Legend.HGap = p.num(a[0]) }),
 		r("legend invert W", func(p *parser, a []string) { p.currentGraph().Legend.Invert = p.bool(a[0]) }),
-		r("frame type N", func(p *parser, a []string) { p.currentGraph().Frame.Type = p.int(a[0]) }),
-		r("frame linestyle N", func(p *parser, a []string) { p.currentGraph().Frame.LineStyle = p.int(a[0]) }),
-		r("frame linewidth N", func(p *parser, a []string) { p.currentGraph().Frame.LineWidth = p.num(a[0]) }),
-		r("frame color N", func(p *parser, a []string) { p.currentGraph().Frame.Color = p.int(a[0]) }),
-		r("frame pattern N", func(p *parser, a []string) { p.currentGraph().Frame.Pattern = p.int(a[0]) }),
-		r("frame background color N", func(p *parser, a []string) { p.currentGraph().Frame.BackgroundColor = p.int(a[0]) }),
-		r("frame background pattern N", func(p *parser, a []string) { p.currentGraph().Frame.BackgroundPattern = p.int(a[0]) }),
+		r("frame type N", func(p *parser, a []string) { p.currentGraph().Frame.Type = p.nonNeg(p.currentGraph().Frame.Type, a[0]) }),
+		r("frame linestyle N", func(p *parser, a []string) {
+			p.currentGraph().Frame.LineStyle = p.nonNeg(p.currentGraph().Frame.LineStyle, a[0])
+		}),
+		r("frame linewidth N", func(p *parser, a []string) { p.currentGraph().Frame.LineWidth = p.width(a[0]) }),
+		r("frame color N", func(p *parser, a []string) {
+			p.currentGraph().Frame.Color = p.nonNeg(p.currentGraph().Frame.Color, a[0])
+		}),
+		r("frame pattern N", func(p *parser, a []string) {
+			p.currentGraph().Frame.Pattern = p.nonNeg(p.currentGraph().Frame.Pattern, a[0])
+		}),
+		r("frame background color N", func(p *parser, a []string) {
+			p.currentGraph().Frame.BackgroundColor = p.nonNeg(p.currentGraph().Frame.BackgroundColor, a[0])
+		}),
+		r("frame background pattern N", func(p *parser, a []string) {
+			p.currentGraph().Frame.BackgroundPattern = p.nonNeg(p.currentGraph().Frame.BackgroundPattern, a[0])
+		}),
 
 		// sets
 		r("S# hidden W", func(p *parser, a []string) { p.set(a).Hidden = p.bool(a[1]) }),
 		r("S# type W", func(p *parser, a []string) { p.setType(p.set(a), a[1]) }),
-		r("S# symbol N", func(p *parser, a []string) { p.set(a).Symbol.Type = p.int(a[1]) }),
+		r("S# symbol N", func(p *parser, a []string) { p.set(a).Symbol.Type = p.nonNeg(p.set(a).Symbol.Type, a[1]) }),
 		r("S# symbol size N", func(p *parser, a []string) { p.set(a).Symbol.Size = p.num(a[1]) }),
-		r("S# symbol color N", func(p *parser, a []string) { p.set(a).Symbol.Color = p.int(a[1]) }),
-		r("S# symbol pattern N", func(p *parser, a []string) { p.set(a).Symbol.Pattern = p.int(a[1]) }),
-		r("S# symbol fill color N", func(p *parser, a []string) { p.set(a).Symbol.FillColor = p.int(a[1]) }),
-		r("S# symbol fill pattern N", func(p *parser, a []string) { p.set(a).Symbol.FillPattern = p.int(a[1]) }),
-		r("S# symbol linewidth N", func(p *parser, a []string) { p.set(a).Symbol.LineWidth = p.num(a[1]) }),
-		r("S# symbol linestyle N", func(p *parser, a []string) { p.set(a).Symbol.LineStyle = p.int(a[1]) }),
-		r("S# symbol char N", func(p *parser, a []string) { p.set(a).Symbol.Char = p.int(a[1]) }),
-		r("S# symbol char font N", func(p *parser, a []string) { p.set(a).Symbol.CharFont = p.int(a[1]) }),
-		r("S# symbol skip N", func(p *parser, a []string) { p.set(a).Symbol.Skip = p.int(a[1]) }),
-		r("S# line type N", func(p *parser, a []string) { p.set(a).Line.Type = p.int(a[1]) }),
-		r("S# line linestyle N", func(p *parser, a []string) { p.set(a).Line.LineStyle = p.int(a[1]) }),
-		r("S# line linewidth N", func(p *parser, a []string) { p.set(a).Line.LineWidth = p.num(a[1]) }),
-		r("S# line color N", func(p *parser, a []string) { p.set(a).Line.Color = p.int(a[1]) }),
-		r("S# line pattern N", func(p *parser, a []string) { p.set(a).Line.Pattern = p.int(a[1]) }),
+		r("S# symbol color N", func(p *parser, a []string) { p.set(a).Symbol.Color = p.nonNeg(p.set(a).Symbol.Color, a[1]) }),
+		r("S# symbol pattern N", func(p *parser, a []string) { p.set(a).Symbol.Pattern = p.nonNeg(p.set(a).Symbol.Pattern, a[1]) }),
+		r("S# symbol fill color N", func(p *parser, a []string) { p.set(a).Symbol.FillColor = p.nonNeg(p.set(a).Symbol.FillColor, a[1]) }),
+		r("S# symbol fill pattern N", func(p *parser, a []string) { p.set(a).Symbol.FillPattern = p.nonNeg(p.set(a).Symbol.FillPattern, a[1]) }),
+		r("S# symbol linewidth N", func(p *parser, a []string) { p.set(a).Symbol.LineWidth = p.width(a[1]) }),
+		r("S# symbol linestyle N", func(p *parser, a []string) { p.set(a).Symbol.LineStyle = p.nonNeg(p.set(a).Symbol.LineStyle, a[1]) }),
+		r("S# symbol char N", func(p *parser, a []string) { p.set(a).Symbol.Char = p.nonNeg(p.set(a).Symbol.Char, a[1]) }),
+		r("S# symbol char font N", func(p *parser, a []string) { p.set(a).Symbol.CharFont = p.nonNeg(p.set(a).Symbol.CharFont, a[1]) }),
+		r("S# symbol skip N", func(p *parser, a []string) { p.set(a).Symbol.Skip = p.nonNeg(p.set(a).Symbol.Skip, a[1]) }),
+		r("S# line type N", func(p *parser, a []string) { p.set(a).Line.Type = p.nonNeg(p.set(a).Line.Type, a[1]) }),
+		r("S# line linestyle N", func(p *parser, a []string) { p.set(a).Line.LineStyle = p.nonNeg(p.set(a).Line.LineStyle, a[1]) }),
+		r("S# line linewidth N", func(p *parser, a []string) { p.set(a).Line.LineWidth = p.width(a[1]) }),
+		r("S# line color N", func(p *parser, a []string) { p.set(a).Line.Color = p.nonNeg(p.set(a).Line.Color, a[1]) }),
+		r("S# line pattern N", func(p *parser, a []string) { p.set(a).Line.Pattern = p.nonNeg(p.set(a).Line.Pattern, a[1]) }),
 		r("S# baseline type N", ignore),
 		r("S# baseline W", unsupportedWhenOn("a set baseline", 1)),
 		r("S# dropline W", unsupportedWhenOn("set droplines", 1)),
@@ -572,13 +639,15 @@ func init() {
 		r("S# avalue offset N N", ignore),
 		r("S# errorbar W", func(p *parser, a []string) { p.set(a).ErrorBar.On = p.bool(a[1]) }),
 		r("S# errorbar place W", func(p *parser, a []string) { p.set(a).ErrorBar.Place = a[1] }),
-		r("S# errorbar color N", func(p *parser, a []string) { p.set(a).ErrorBar.Color = p.int(a[1]) }),
-		r("S# errorbar pattern N", func(p *parser, a []string) { p.set(a).ErrorBar.Pattern = p.int(a[1]) }),
+		r("S# errorbar color N", func(p *parser, a []string) { p.set(a).ErrorBar.Color = p.nonNeg(p.set(a).ErrorBar.Color, a[1]) }),
+		r("S# errorbar pattern N", func(p *parser, a []string) { p.set(a).ErrorBar.Pattern = p.nonNeg(p.set(a).ErrorBar.Pattern, a[1]) }),
 		r("S# errorbar size N", func(p *parser, a []string) { p.set(a).ErrorBar.Size = p.num(a[1]) }),
-		r("S# errorbar linewidth N", func(p *parser, a []string) { p.set(a).ErrorBar.LineWidth = p.num(a[1]) }),
-		r("S# errorbar linestyle N", func(p *parser, a []string) { p.set(a).ErrorBar.LineStyle = p.int(a[1]) }),
-		r("S# errorbar riser linewidth N", func(p *parser, a []string) { p.set(a).ErrorBar.RiserWidth = p.num(a[1]) }),
-		r("S# errorbar riser linestyle N", func(p *parser, a []string) { p.set(a).ErrorBar.RiserStyle = p.int(a[1]) }),
+		r("S# errorbar linewidth N", func(p *parser, a []string) { p.set(a).ErrorBar.LineWidth = p.width(a[1]) }),
+		r("S# errorbar linestyle N", func(p *parser, a []string) { p.set(a).ErrorBar.LineStyle = p.nonNeg(p.set(a).ErrorBar.LineStyle, a[1]) }),
+		r("S# errorbar riser linewidth N", func(p *parser, a []string) { p.set(a).ErrorBar.RiserWidth = p.width(a[1]) }),
+		r("S# errorbar riser linestyle N", func(p *parser, a []string) {
+			p.set(a).ErrorBar.RiserStyle = p.nonNeg(p.set(a).ErrorBar.RiserStyle, a[1])
+		}),
 		r("S# errorbar riser clip W", func(p *parser, a []string) { p.set(a).ErrorBar.RiserClip = p.bool(a[1]) }),
 		r("S# errorbar riser clip length N", func(p *parser, a []string) { p.set(a).ErrorBar.RiserClipSize = p.num(a[1]) }),
 		r("S# comment S", func(p *parser, a []string) { p.set(a).Comment = a[1] }),

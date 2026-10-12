@@ -10,7 +10,14 @@ Units: viewport units - the page's shorter side is 1, origin bottom left
 
 ## Lines and symbols
 
-- Line width: 0.0015 per unit of `linewidth` (2.0 -> 0.003).
+- Line width: 0.0015 per unit of `linewidth` (2.0 -> 0.003), but never
+  less than 0.0004: `linewidth` 0 to 0.3 all draw 0.0004 wide, and dashes
+  scale with that drawn width (measured with `style-frame-negative`).
+- Widths and dash lengths are written to the EPS with 4 decimals of the
+  viewport (`[0.0263 0.0158]` for linestyle 3 at `linewidth` 3.5). The
+  dashes are computed from the unrounded width, then rounded; the rounding
+  adds up along a long dashed line, so plot-go draws these rounded values
+  in every format (`style-frame-break-top`).
 - Dash patterns, in multiples of the line width:
 
   | linestyle | pattern |
@@ -102,6 +109,36 @@ Units: viewport units - the page's shorter side is 1, origin bottom left
   minor tick inside the window, in that tick mark's color, linewidth and
   linestyle; drawn first in the graph, before the sets: x minor, x major,
   y minor, y major. An axis that is off has none; ticks off do not matter.
+
+## Frame
+
+- `frame type` (measured with `style-frame-*`), each one path starting
+  after the gap, so its ends have the line's butt caps:
+
+  | type | sides | path |
+  |---|---|---|
+  | 0 | all four | closed box from the lower left, up first |
+  | 1 | left and bottom | upper left, lower left, lower right |
+  | 2 | no top | upper left, down, across, up |
+  | 3 | no bottom | lower left, up, across, down |
+  | 4 | no left | lower left, across, up, back |
+  | 5 | no right | lower right, across, up, back |
+
+  Any other type draws no frame, silently. `frame pattern 0` or
+  `linestyle 0` draws none either.
+- `frame background pattern` not 0 fills the viewport with `frame
+  background color`, for every frame type (6 included), first of
+  everything in the graph. Pattern 0 fills nothing whatever the color.
+
+## Values gracebat rejects
+
+- A negative color, font, pattern, line style, type, symbol, character,
+  count, precision, skip, stagger or justification: gracebat prints
+  "Negative value supplied for non-negative" and the field keeps the value
+  it had before that line (a default, if nothing set it yet). plot-go does
+  the same, with a warning.
+- A negative `linewidth` is "Negative linewidth" and becomes 0 (drawn
+  0.0004 wide, as above).
 
 ## Ticks
 

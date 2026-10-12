@@ -27,6 +27,7 @@ func TestSVGTextAsPathsMatchesGracebat(t *testing.T) {
 	for _, f := range corpus(t) {
 		name := strings.TrimSuffix(filepath.Base(f), ".agr")
 		t.Run(name, func(t *testing.T) {
+			sameTime(t, name)
 			p, d := drawing(t, f)
 			var b bytes.Buffer
 			if err := WriteSVGWith(&b, d, p.PageWidth, p.PageHeight, name, SVGOptions{TextAsPaths: true}); err != nil {

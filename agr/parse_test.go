@@ -107,6 +107,9 @@ func TestParseCorpus(t *testing.T) {
 			if name == "style-strings-inherit.agr" && strings.Contains(w.Msg, "negative rotation") {
 				continue // on purpose: gracebat rejects it too
 			}
+			if name == "style-frame-negative.agr" && strings.Contains(w.Msg, "negative") {
+				continue // on purpose: negative values, as gracebat reads them
+			}
 			t.Errorf("%s:%d: %s (%s)", name, w.Line, w.Msg, w.Text)
 		}
 		if strings.HasPrefix(name, "style-formats-") {
@@ -242,5 +245,32 @@ func TestBadTargetSelectsNoSet(t *testing.T) {
 	}
 	if len(p.Warnings) != 2 {
 		t.Errorf("warnings = %+v, want the bad target and the skipped data", p.Warnings)
+	}
+}
+
+// TestNegativeValues: gracebat keeps the value a field had when a file
+// gives it a negative color, pattern, style or type, and draws a negative
+// line width as 0.
+func TestNegativeValues(t *testing.T) {
+	p, err := Parse(strings.NewReader(`@version 50125
+@g0 on
+@with g0
+@    frame type 3
+@    frame type -2
+@    frame color 2
+@    frame color -1
+@    frame linewidth -1.5
+@    xaxis  tick major color 4
+@    xaxis  tick major color -3
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := p.Graphs[0]
+	if g.Frame.Type != 3 || g.Frame.Color != 2 || g.Frame.LineWidth != 0 || g.X.Tick.MajorMarks.Color != 4 {
+		t.Errorf("frame %+v, tick color %d", g.Frame, g.X.Tick.MajorMarks.Color)
+	}
+	if len(p.Warnings) != 4 {
+		t.Errorf("%d warnings, want 4: %v", len(p.Warnings), p.Warnings)
 	}
 }

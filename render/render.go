@@ -18,15 +18,16 @@ import (
 
 // Units, in viewport units (docs/grace-behaviour.md).
 const (
-	lineUnit    = 0.0015 // per unit of linewidth
-	charUnit    = 0.028  // font size per unit of char size
-	tickUnit    = 0.02   // tick length per unit of tick size
-	symbolUnit  = 0.01   // circle radius per unit of symbol size
-	legendUnit  = 0.01   // legend gaps and sample length per unit
-	titleGap    = 0.06   // a title's ink above the viewport
-	staggerUnit = 0.02   // a staggered tick label row's height per unit of char size
-	subtitleGap = 0.02   // a subtitle's
-	labelOffset = 0.01   // tick labels from the axis, axis labels from them
+	lineUnit     = 0.0015 // per unit of linewidth
+	minLineWidth = 0.0004 // the thinnest line gracebat draws
+	charUnit     = 0.028  // font size per unit of char size
+	tickUnit     = 0.02   // tick length per unit of tick size
+	symbolUnit   = 0.01   // circle radius per unit of symbol size
+	legendUnit   = 0.01   // legend gaps and sample length per unit
+	titleGap     = 0.06   // a title's ink above the viewport
+	staggerUnit  = 0.02   // a staggered tick label row's height per unit of char size
+	subtitleGap  = 0.02   // a subtitle's
+	labelOffset  = 0.01   // tick labels from the axis, axis labels from them
 )
 
 // dashes are the line styles' dash patterns, in multiples of the line
@@ -79,6 +80,21 @@ func (r *renderer) color(n int) [3]float64 {
 	return [3]float64{float64(c.R) / 255, float64(c.G) / 255, float64(c.B) / 255}
 }
 
+// strokeWidth is a line width in viewport units. gracebat draws nothing
+// thinner than minLineWidth, width 0 included, and scales dashes by the
+// width it draws (docs/grace-behaviour.md).
+func strokeWidth(linewidth float64) float64 {
+	return eps4(max(linewidth*lineUnit, minLineWidth))
+}
+
+// eps4 rounds a length as gracebat's EPS writes it, to 4 decimals of the
+// viewport: OneFit's PDFs are that EPS, so widths and dashes are drawn at
+// these lengths - a dash pattern's rounding adds up along a long line.
+func eps4(x float64) float64 {
+	v, _ := strconv.ParseFloat(fmt.Sprintf("%.4f", x), 64)
+	return v
+}
+
 func (r *renderer) style(color int, width float64, linestyle int) (draw.Style, bool) {
 	if linestyle == 0 {
 		return draw.Style{}, false
@@ -87,10 +103,10 @@ func (r *renderer) style(color int, width float64, linestyle int) (draw.Style, b
 	if !ok {
 		r.warn("line style %d is not supported; solid used", linestyle)
 	}
-	w := width * lineUnit
-	st := draw.Style{Color: r.color(color), Width: w}
+	w := max(width*lineUnit, minLineWidth) // dashes scale with it unrounded
+	st := draw.Style{Color: r.color(color), Width: eps4(w)}
 	for _, p := range pat {
-		st.Dash = append(st.Dash, p*w)
+		st.Dash = append(st.Dash, eps4(p*w))
 	}
 	return st, true
 }
@@ -204,6 +220,7 @@ func (r *renderer) graph(g *agr.Graph) {
 		return
 	}
 	t := newXform(g)
+	r.frameBackground(g)
 	r.grid(t, true)
 	r.grid(t, false)
 	for _, s := range g.Sets {
@@ -442,8 +459,8 @@ func (r *renderer) errorBars(t xform, s *agr.Set) {
 	}
 	riser, hasRiser := r.style(e.Color, e.RiserWidth, e.RiserStyle)
 	capSt, hasCap := r.style(e.Color, e.LineWidth, e.LineStyle)
-	arrow := draw.Style{Color: r.color(e.Color), Width: e.LineWidth * lineUnit} // always solid
-	half := e.Size * symbolUnit                                                 // the cap's half length; also the arrowhead's half width
+	arrow := draw.Style{Color: r.color(e.Color), Width: strokeWidth(e.LineWidth)} // always solid
+	half := e.Size * symbolUnit                                                   // the cap's half length; also the arrowhead's half width
 	v, w := t.g.View, t.g.World
 	r.id = fmt.Sprintf("g%d.s%d.errorbars", t.g.ID, s.ID)
 	for _, row := range s.Data {
@@ -739,19 +756,60 @@ func clipSegment(a, b draw.Point, v agr.Rect) (draw.Point, draw.Point, bool) {
 	return na, nb, true
 }
 
-func (r *renderer) frame(g *agr.Graph) {
-	if g.Frame.Type != 0 {
-		r.warn("frame type %d is drawn as a box", g.Frame.Type)
-	}
-	st, ok := r.style(g.Frame.Color, g.Frame.LineWidth, g.Frame.LineStyle)
-	if !ok {
+// frameBackground fills the viewport with the frame's background
+// (docs/grace-behaviour.md): before anything else of the graph, for any
+// frame type, when its pattern is not 0.
+func (r *renderer) frameBackground(g *agr.Graph) {
+	f := g.Frame
+	if f.BackgroundPattern == 0 {
 		return
+	}
+	if f.BackgroundPattern != 1 {
+		r.warn("frame background pattern %d is drawn solid", f.BackgroundPattern)
 	}
 	v := g.View
 	r.id = fmt.Sprintf("g%d.frame", g.ID)
-	r.path(st, false, draw.Segment{Points: []draw.Point{
-		{X: v.XMin, Y: v.YMin}, {X: v.XMin, Y: v.YMax}, {X: v.XMax, Y: v.YMax}, {X: v.XMax, Y: v.YMin}, {X: v.XMin, Y: v.YMin},
+	r.path(draw.Style{Color: r.color(f.BackgroundColor)}, true, draw.Segment{Points: []draw.Point{
+		{X: v.XMin, Y: v.YMin}, {X: v.XMin, Y: v.YMax}, {X: v.XMax, Y: v.YMax}, {X: v.XMax, Y: v.YMin},
 	}, Closed: true})
+}
+
+// frame draws the frame as gracebat does (docs/grace-behaviour.md): type 0
+// a closed box, 1 the left and bottom sides, 2-5 the box without its top,
+// bottom, left or right side, each one path from the corner after the gap;
+// any other type, pattern 0 or line style 0 draws nothing.
+func (r *renderer) frame(g *agr.Graph) {
+	f := g.Frame
+	if f.Pattern == 0 {
+		return
+	}
+	v := g.View
+	bl, tl := draw.Point{X: v.XMin, Y: v.YMin}, draw.Point{X: v.XMin, Y: v.YMax}
+	tr, br := draw.Point{X: v.XMax, Y: v.YMax}, draw.Point{X: v.XMax, Y: v.YMin}
+	var seg draw.Segment
+	switch f.Type {
+	case 0:
+		seg = draw.Segment{Points: []draw.Point{bl, tl, tr, br, bl}, Closed: true}
+	case 1:
+		seg = line(tl, bl, br)
+	case 2:
+		seg = line(tl, bl, br, tr)
+	case 3:
+		seg = line(bl, tl, tr, br)
+	case 4:
+		seg = line(bl, br, tr, tl)
+	case 5:
+		seg = line(br, bl, tl, tr)
+	default:
+		r.warn("frame type %d is not one of Grace's; not drawn, as gracebat does", f.Type)
+		return
+	}
+	st, ok := r.style(f.Color, f.LineWidth, f.LineStyle)
+	if !ok {
+		return
+	}
+	r.id = fmt.Sprintf("g%d.frame", g.ID)
+	r.path(st, false, seg)
 }
 
 // label formats a tick value.
