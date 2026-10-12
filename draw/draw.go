@@ -27,6 +27,10 @@ type Style struct {
 	Dash  []float64 // dash pattern, viewport units; empty is solid
 	Cap   int
 	Join  int
+	// Pattern is a Grace fill pattern (2 to 31, see PatternCells) whose
+	// cells are painted with Color, the rest left as it was; 0 paints
+	// everything (Grace's pattern 1).
+	Pattern int
 }
 
 // Segment is one piece of a path: a polyline, or an elliptical arc.

@@ -196,10 +196,21 @@ func Parse(r io.Reader) (*draw.Drawing, error) {
 		case "SCS":
 			_, e = pop()
 		case "showpage":
-		case "SC":
+		case "SC", "SRGB":
+			// "ColorN PatternM SC" in the pattern color space: a fill
+			// pattern painted in that color
+			pattern := 0
+			if w == "SC" && len(stack) > 0 && strings.HasPrefix(stack[len(stack)-1].name, "Pattern") {
+				pattern, e = strconv.Atoi(strings.TrimPrefix(stack[len(stack)-1].name, "Pattern"))
+				stack = stack[:len(stack)-1]
+				if e != nil {
+					break
+				}
+			}
 			var a []float64
 			if a, e = nums(3); e == nil {
 				st.style.Color = [3]float64{a[0], a[1], a[2]}
+				st.style.Pattern = pattern
 			}
 		case "GS":
 			saved = append(saved, *st)
@@ -245,6 +256,10 @@ func Parse(r io.Reader) (*draw.Drawing, error) {
 				d.Order = append(d.Order, 't')
 			}
 		default:
+			if n, err := strconv.Atoi(strings.TrimPrefix(w, "Pattern")); err == nil && strings.HasPrefix(w, "Pattern") && n >= 0 {
+				stack = append(stack, value{name: w})
+				break
+			}
 			c, ok := colors[w]
 			if !ok {
 				e = fmt.Errorf("unknown operator %q", w)

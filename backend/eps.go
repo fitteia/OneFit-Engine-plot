@@ -81,6 +81,33 @@ ellipsedict /mtrx matrix put
 	for i, c := range order {
 		p("/Color%d {%.4f %.4f %.4f} def\n", i, c[0], c[1], c[2])
 	}
+	// fill patterns as gracebat defines them: uncolored tiles, painted in
+	// the fill's color where the pattern's bits are set
+	patterns := map[int]bool{}
+	for _, path := range d.Paths {
+		if n := path.Style.Pattern; n != 0 && !patterns[n] {
+			if len(patterns) == 0 {
+				p(`/PTRN {
+ /pat_bits exch def
+ <<
+  /PaintType 2
+  /PatternType 1 /TilingType 1
+  /BBox[0 0 16 16]
+  /XStep 16 /YStep 16
+  /PaintProc {
+   pop
+   16 16 true [-1 0 0 -1 16 16] pat_bits imagemask
+  }
+ >>
+ [%.4f 0 0 %.4f 0 0]
+ makepattern
+} def
+`, draw.PatternUnit, draw.PatternUnit)
+			}
+			patterns[n] = true
+			p("/Pattern%d {<%s> PTRN} bind def\n", n, draw.PatternHex(n))
+		}
+	}
 	// gracebat's text encoding: Latin-1, but 39 is quoteright and 45 the
 	// hyphen as in Adobe Standard (ISOLatin1Encoding has quotesingle and
 	// minus there, which the layout did not measure)
@@ -110,7 +137,12 @@ ellipsedict /mtrx matrix put
 	}
 	first := true
 	setStyle := func(st draw.Style) {
-		setColor(st.Color)
+		if st.Pattern != 0 {
+			p("[/Pattern /DeviceRGB] SCS\nColor%d Pattern%d SC\n", colors[st.Color], st.Pattern)
+			curColor = -1
+		} else {
+			setColor(st.Color)
+		}
 		if first || !sameDash(st.Dash, cur.Dash) {
 			p("[")
 			for _, x := range st.Dash {
@@ -141,7 +173,10 @@ ellipsedict /mtrx matrix put
 		}
 		path := d.Paths[pi]
 		pi++
-		if path.Fill {
+		if path.Fill && path.Style.Pattern != 0 {
+			p("[/Pattern /DeviceRGB] SCS\nColor%d Pattern%d SC\n", colors[path.Style.Color], path.Style.Pattern)
+			curColor = -1
+		} else if path.Fill {
 			setColor(path.Style.Color)
 		} else {
 			setStyle(path.Style)

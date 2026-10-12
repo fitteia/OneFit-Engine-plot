@@ -74,6 +74,9 @@ func print(d *draw.Drawing) {
 			op = "fill"
 		}
 		fmt.Printf("%s w %.4f dash %v rgb %.2f %.2f %.2f:", op, p.Style.Width, p.Style.Dash, p.Style.Color[0], p.Style.Color[1], p.Style.Color[2])
+		if p.Style.Pattern != 0 {
+			fmt.Printf(" pattern %d:", p.Style.Pattern)
+		}
 		for _, s := range p.Segments {
 			if s.Arc != nil {
 				a := s.Arc

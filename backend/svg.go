@@ -91,6 +91,13 @@ func WriteSVGWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 		}
 		group = id
 	}
+	type patternUse struct {
+		id    string
+		n     int
+		color [3]float64
+	}
+	patterns := map[string]bool{}
+	var patternOrder []patternUse
 	pi, ti := 0, 0
 	for _, kind := range d.Order {
 		if kind == 't' {
@@ -119,10 +126,19 @@ func WriteSVGWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 		enter(path.ID)
 		st := path.Style
 		attrs := ""
+		paint := rgb(st.Color)
+		if st.Pattern != 0 {
+			id := fmt.Sprintf("pattern%d-%s", st.Pattern, rgb(st.Color)[1:])
+			if !patterns[id] {
+				patterns[id] = true
+				patternOrder = append(patternOrder, patternUse{id, st.Pattern, st.Color})
+			}
+			paint = "url(#" + id + ")"
+		}
 		if path.Fill {
-			attrs = fmt.Sprintf(`fill="%s" stroke="none"`, rgb(st.Color))
+			attrs = fmt.Sprintf(`fill="%s" stroke="none"`, paint)
 		} else {
-			attrs = fmt.Sprintf(`fill="none" stroke="%s" stroke-width="%s"`, rgb(st.Color), num(st.Width*unit))
+			attrs = fmt.Sprintf(`fill="none" stroke="%s" stroke-width="%s"`, paint, num(st.Width*unit))
 			if len(st.Dash) > 0 {
 				var ds []string
 				for _, x := range st.Dash {
@@ -158,6 +174,21 @@ func WriteSVGWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 		}
 	}
 	enter("")
+	if len(patternOrder) > 0 {
+		// Grace's fill patterns: a tile of PatternUnit cells from the
+		// page's origin, its y turned for SVG's y down (draw.PatternCells)
+		u := draw.PatternUnit * unit
+		p("<defs>\n")
+		for _, pu := range patternOrder {
+			var cells strings.Builder
+			for _, c := range draw.PatternCells(pu.n) {
+				fmt.Fprintf(&cells, "M%s %sh%sv%sh-%sz", num(float64(c[0])*u), num(float64(15-c[1])*u), num(u), num(u), num(u))
+			}
+			p(`<pattern id="%s" patternUnits="userSpaceOnUse" x="%s" y="%s" width="%s" height="%s"><path d="%s" fill="%s"/></pattern>`+"\n",
+				pu.id, X(0), Y(0), num(16*u), num(16*u), cells.String(), rgb(pu.color))
+		}
+		p("</defs>\n")
+	}
 	p("</svg>\n")
 	return b.Flush()
 }

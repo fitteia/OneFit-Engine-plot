@@ -77,6 +77,9 @@ func Compare(got, want *draw.Drawing, limit int) []string {
 		if !(g.Fill && w.Fill) && !dashNear(g.Style.Dash, w.Style.Dash) {
 			add("%s: dash %v, gracebat %v", where, g.Style.Dash, w.Style.Dash)
 		}
+		if g.Style.Pattern != w.Style.Pattern {
+			add("%s: pattern %d, gracebat %d", where, g.Style.Pattern, w.Style.Pattern)
+		}
 		if !colorNear(g.Style.Color, w.Style.Color) {
 			add("%s: color %v, gracebat %v", where, g.Style.Color, w.Style.Color)
 		}

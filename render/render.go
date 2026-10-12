@@ -95,6 +95,21 @@ func eps4(x float64) float64 {
 	return v
 }
 
+// patterned strokes a line with a Grace pattern (docs/grace-behaviour.md):
+// none for 0, solid for 1, the pattern's cells for 2 to 31; gracebat draws
+// any other pattern solid ("invalid pattern number").
+func (r *renderer) patterned(st draw.Style, ok bool, pattern int) (draw.Style, bool) {
+	switch {
+	case !ok || pattern == 0:
+		return draw.Style{}, false
+	case pattern >= 2 && pattern < 32:
+		st.Pattern = pattern
+	case pattern != 1:
+		r.warn("line pattern %d is not one of Grace's; drawn solid, as gracebat does", pattern)
+	}
+	return st, true
+}
+
 func (r *renderer) style(color int, width float64, linestyle int) (draw.Style, bool) {
 	if linestyle == 0 {
 		return draw.Style{}, false
@@ -114,6 +129,24 @@ func (r *renderer) style(color int, width float64, linestyle int) (draw.Style, b
 func (r *renderer) path(st draw.Style, fill bool, segs ...draw.Segment) {
 	r.d.Paths = append(r.d.Paths, draw.Path{ID: r.id, Segments: segs, Fill: fill, Style: st})
 	r.d.Order = append(r.d.Order, 'p')
+}
+
+// fill fills an area with a Grace pattern (docs/grace-behaviour.md): none
+// for 0, solid for 1; 2 to 31 first fill it with the page's background
+// color, then paint the pattern's cells in color. gracebat fills any other
+// pattern solid ("invalid pattern number").
+func (r *renderer) fill(color, pattern int, segs ...draw.Segment) {
+	switch {
+	case pattern == 0:
+		return
+	case pattern >= 2 && pattern < 32:
+		r.path(draw.Style{Color: r.color(r.proj.BackgroundColor)}, true, segs...)
+		r.path(draw.Style{Color: r.color(color), Pattern: pattern}, true, segs...)
+		return
+	case pattern != 1:
+		r.warn("fill pattern %d is not one of Grace's; drawn solid, as gracebat does", pattern)
+	}
+	r.path(draw.Style{Color: r.color(color)}, true, segs...)
 }
 
 func line(pts ...draw.Point) draw.Segment { return draw.Segment{Points: pts} }
@@ -323,7 +356,8 @@ func (r *renderer) legend(t xform) {
 		top = e.base + ink.LLY - v
 		add(afm.Box{LLX: textX + ink.LLX, LLY: e.base + ink.LLY, URX: textX + ink.URX, URY: e.base + ink.URY})
 		if s.Line.Type != 0 {
-			e.lst, e.line = r.style(s.Line.Color, s.Line.LineWidth, s.Line.LineStyle)
+			st, ok := r.style(s.Line.Color, s.Line.LineWidth, s.Line.LineStyle)
+			e.lst, e.line = r.patterned(st, ok, s.Line.Pattern)
 		}
 		if e.line {
 			w := e.lst.Width / 2
@@ -354,14 +388,9 @@ func (r *renderer) legend(t xform) {
 	left, right, upper, lower := x, box.URX+dx+h, y, box.LLY+dy-v
 	r.id = fmt.Sprintf("g%d.legend", g.ID)
 	corners := []draw.Point{{X: left, Y: upper}, {X: left, Y: lower}, {X: right, Y: lower}, {X: right, Y: upper}}
-	if L.FillPattern != 0 {
-		if L.FillPattern != 1 {
-			r.warn("legend fill pattern %d is drawn solid", L.FillPattern)
-		}
-		r.path(draw.Style{Color: r.color(L.FillColor)}, true, draw.Segment{Points: corners, Closed: true})
-	}
-	if L.BoxPattern != 0 {
-		if st, ok := r.style(L.BoxColor, L.BoxWidth, L.BoxStyle); ok {
+	r.fill(L.FillColor, L.FillPattern, draw.Segment{Points: corners, Closed: true})
+	if st, ok := r.style(L.BoxColor, L.BoxWidth, L.BoxStyle); ok {
+		if st, ok = r.patterned(st, ok, L.BoxPattern); ok {
 			r.path(st, false, draw.Segment{Points: append(corners, corners[0]), Closed: true})
 		}
 	}
@@ -387,7 +416,8 @@ func (r *renderer) set(t xform, s *agr.Set) {
 		if s.Line.Type < 1 || s.Line.Type > 5 {
 			r.warn("set %d: line type %d is drawn straight", s.ID, s.Line.Type)
 		}
-		if st, ok := r.style(s.Line.Color, s.Line.LineWidth, s.Line.LineStyle); ok {
+		st, ok := r.style(s.Line.Color, s.Line.LineWidth, s.Line.LineStyle)
+		if st, ok = r.patterned(st, ok, s.Line.Pattern); ok {
 			var pts []draw.Point
 			var breaks []bool // a point that may not be joined to the one after
 			for i, row := range s.Data {
@@ -457,10 +487,13 @@ func (r *renderer) errorBars(t xform, s *agr.Set) {
 		}
 		dirs = []float64{1, -1}
 	}
+	// the error bar's pattern is the risers', caps' and arrowheads'
+	pat, _ := r.patterned(draw.Style{}, true, e.Pattern)
 	riser, hasRiser := r.style(e.Color, e.RiserWidth, e.RiserStyle)
 	capSt, hasCap := r.style(e.Color, e.LineWidth, e.LineStyle)
-	arrow := draw.Style{Color: r.color(e.Color), Width: strokeWidth(e.LineWidth)} // always solid
-	half := e.Size * symbolUnit                                                   // the cap's half length; also the arrowhead's half width
+	arrow := draw.Style{Color: r.color(e.Color), Width: strokeWidth(e.LineWidth)} // solid whatever the line style
+	riser.Pattern, capSt.Pattern, arrow.Pattern = pat.Pattern, pat.Pattern, pat.Pattern
+	half := e.Size * symbolUnit // the cap's half length; also the arrowhead's half width
 	v, w := t.g.View, t.g.World
 	r.id = fmt.Sprintf("g%d.s%d.errorbars", t.g.ID, s.ID)
 	for _, row := range s.Data {
@@ -561,7 +594,7 @@ var symbolShapes = func() map[int][][]draw.Point {
 // 11 its typeset character. ok is false when there is nothing to draw.
 type symbolPen struct {
 	sy           agr.Symbol
-	st, fst      draw.Style
+	st           draw.Style
 	stroke, fill bool
 	open         bool // plus, x, star: arms only, never filled
 	ch           typeset
@@ -569,7 +602,7 @@ type symbolPen struct {
 }
 
 // pen prepares a set's symbols (docs/grace-behaviour.md): the fill first
-// (fill color; any fill pattern drawn solid), then the outline (pattern 0:
+// (fill color and pattern), then the outline (pattern 0:
 // none), or for symbol 11 the set's character.
 func (r *renderer) pen(s *agr.Set) symbolPen {
 	sy := s.Symbol
@@ -582,14 +615,8 @@ func (r *renderer) pen(s *agr.Set) symbolPen {
 	}
 	p := symbolPen{sy: sy, open: sy.Type >= 8 && sy.Type <= 10, ok: true}
 	p.st, p.stroke = r.style(sy.Color, sy.LineWidth, sy.LineStyle)
-	p.stroke = p.stroke && sy.Pattern != 0
+	p.st, p.stroke = r.patterned(p.st, p.stroke, sy.Pattern)
 	p.fill = sy.FillPattern != 0 && !p.open && sy.Type != 11
-	if p.fill && sy.FillPattern != 1 {
-		r.warn("set %d: symbol fill pattern %d is drawn solid", s.ID, sy.FillPattern)
-	}
-	if p.fill {
-		p.fst = draw.Style{Color: r.color(sy.FillColor)}
-	}
 	if sy.Type == 11 {
 		if sy.Char <= 32 || sy.Char > 255 || sy.Char == '\\' {
 			r.warn("set %d: symbol character %d cannot be drawn", s.ID, sy.Char)
@@ -608,7 +635,7 @@ func (p symbolPen) draw(r *renderer, px, py float64) {
 		rad := sy.Size * symbolUnit
 		arc := draw.Segment{Arc: &draw.Arc{X: px, Y: py, RX: rad, RY: rad, A1: 0, A2: 360}}
 		if p.fill {
-			r.path(p.fst, true, arc)
+			r.fill(p.sy.FillColor, p.sy.FillPattern, arc)
 		}
 		if p.stroke {
 			r.path(p.st, false, arc)
@@ -624,7 +651,7 @@ func (p symbolPen) draw(r *renderer, px, py float64) {
 				pts[i] = draw.Point{X: px + q.X*sy.Size, Y: py + q.Y*sy.Size}
 			}
 			if p.fill {
-				r.path(p.fst, true, draw.Segment{Points: pts, Closed: true})
+				r.fill(p.sy.FillColor, p.sy.FillPattern, draw.Segment{Points: pts, Closed: true})
 			}
 			if p.stroke {
 				if !p.open {
@@ -758,18 +785,11 @@ func clipSegment(a, b draw.Point, v agr.Rect) (draw.Point, draw.Point, bool) {
 
 // frameBackground fills the viewport with the frame's background
 // (docs/grace-behaviour.md): before anything else of the graph, for any
-// frame type, when its pattern is not 0.
+// frame type, in its pattern.
 func (r *renderer) frameBackground(g *agr.Graph) {
-	f := g.Frame
-	if f.BackgroundPattern == 0 {
-		return
-	}
-	if f.BackgroundPattern != 1 {
-		r.warn("frame background pattern %d is drawn solid", f.BackgroundPattern)
-	}
 	v := g.View
 	r.id = fmt.Sprintf("g%d.frame", g.ID)
-	r.path(draw.Style{Color: r.color(f.BackgroundColor)}, true, draw.Segment{Points: []draw.Point{
+	r.fill(g.Frame.BackgroundColor, g.Frame.BackgroundPattern, draw.Segment{Points: []draw.Point{
 		{X: v.XMin, Y: v.YMin}, {X: v.XMin, Y: v.YMax}, {X: v.XMax, Y: v.YMax}, {X: v.XMax, Y: v.YMin},
 	}, Closed: true})
 }
@@ -805,7 +825,7 @@ func (r *renderer) frame(g *agr.Graph) {
 		return
 	}
 	st, ok := r.style(f.Color, f.LineWidth, f.LineStyle)
-	if !ok {
+	if st, ok = r.patterned(st, ok, f.Pattern); !ok {
 		return
 	}
 	r.id = fmt.Sprintf("g%d.frame", g.ID)

@@ -169,6 +169,9 @@ var pixelLimits = map[string]float64{
 	// (up to 0.0005 off the exact outlines plot-go measures); the shapes
 	// match (render's TestMatchesGracebat)
 	"style-legend-symbols": 0.004,
+	// style-legend-symbols with patterned fills: the same 597 pixels
+	// differ, of fewer inked ones
+	"style-patterns-legend": 0.005,
 }
 
 func limitFor(name string) float64 {

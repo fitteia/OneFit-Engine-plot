@@ -38,6 +38,8 @@ func WritePDF(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) 
 	p("1 0 0 1 %s %s cm\n%s 0 0 %s 0 0 cm\n", num(-bb.LLX), num(-bb.LLY), num(unit), num(unit))
 	var cur draw.Style
 	first := true
+	patterns := map[int]int{}
+	var patternOrder []int
 	pi, ti := 0, 0
 	for _, kind := range d.Order {
 		if kind == 't' {
@@ -51,10 +53,24 @@ func WritePDF(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) 
 		path := d.Paths[pi]
 		pi++
 		st := path.Style
-		if path.Fill {
+		if path.Fill && st.Pattern != 0 {
+			if _, ok := patterns[st.Pattern]; !ok {
+				patterns[st.Pattern] = len(patternOrder)
+				patternOrder = append(patternOrder, st.Pattern)
+			}
+			p("/CSP cs %s %s %s /P%d scn\n", num(st.Color[0]), num(st.Color[1]), num(st.Color[2]), st.Pattern)
+		} else if path.Fill {
 			p("%s %s %s rg\n", num(st.Color[0]), num(st.Color[1]), num(st.Color[2]))
 		} else {
-			if first || st.Color != cur.Color {
+			if st.Pattern != 0 {
+				if _, ok := patterns[st.Pattern]; !ok {
+					patterns[st.Pattern] = len(patternOrder)
+					patternOrder = append(patternOrder, st.Pattern)
+				}
+				if first || st.Color != cur.Color || st.Pattern != cur.Pattern {
+					p("/CSP CS %s %s %s /P%d SCN\n", num(st.Color[0]), num(st.Color[1]), num(st.Color[2]), st.Pattern)
+				}
+			} else if first || st.Color != cur.Color || cur.Pattern != 0 {
 				p("%s %s %s RG\n", num(st.Color[0]), num(st.Color[1]), num(st.Color[2]))
 			}
 			if first || st.Width != cur.Width {
@@ -115,7 +131,18 @@ func WritePDF(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) 
 	for i := range fontOrder {
 		fmt.Fprintf(&res, " /F%d %d 0 R", i+1, 6+i)
 	}
-	res.WriteString(" >> >>")
+	res.WriteString(" >>")
+	if len(patternOrder) > 0 {
+		// uncolored tiling patterns, as gracebat's EPS makes them: the
+		// pattern's bits as an image mask, its tiles PatternUnit of the
+		// viewport on the page, starting at the page's origin
+		res.WriteString(" /ColorSpace << /CSP [/Pattern /DeviceRGB] >> /Pattern <<")
+		for i, n := range patternOrder {
+			fmt.Fprintf(&res, " /P%d %d 0 R", n, 6+len(fontOrder)+i)
+		}
+		res.WriteString(" >>")
+	}
+	res.WriteString(" >>")
 	objs = append(objs, fmt.Sprintf("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %s %s] /Resources %s /Contents 4 0 R >>",
 		num(bb.URX-bb.LLX), num(bb.URY-bb.LLY), res.String()))
 	objs = append(objs, fmt.Sprintf("<< /Length %d /Filter /FlateDecode >>\nstream\n%s\nendstream", z.Len(), z.String()))
@@ -128,6 +155,14 @@ func WritePDF(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) 
 			enc = ""
 		}
 		objs = append(objs, fmt.Sprintf("<< /Type /Font /Subtype /Type1 /BaseFont /%s%s >>", f, enc))
+	}
+	for _, n := range patternOrder {
+		// the mask is turned on both axes, as gracebat's
+		// [-1 0 0 -1 16 16] imagemask; bits set are painted
+		body := fmt.Sprintf("q -16 0 0 16 16 0 cm\nBI /W 16 /H 16 /IM true /BPC 1 /D [1 0] /F /AHx ID\n%s>\nEI\nQ\n", draw.PatternHex(n))
+		s := unit * draw.PatternUnit
+		objs = append(objs, fmt.Sprintf("<< /Type /Pattern /PatternType 1 /PaintType 2 /TilingType 1 /BBox [0 0 16 16] /XStep 16 /YStep 16 /Resources << >> /Matrix [%s 0 0 %s %s %s] /Length %d >>\nstream\n%sendstream",
+			num(s), num(s), num(-bb.LLX), num(-bb.LLY), len(body), body))
 	}
 
 	var out bytes.Buffer

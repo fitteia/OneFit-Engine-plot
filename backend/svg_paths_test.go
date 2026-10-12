@@ -29,6 +29,14 @@ func TestSVGTextAsPathsMatchesGracebat(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			sameTime(t, name)
 			p, d := drawing(t, f)
+			for _, path := range d.Paths {
+				if path.Style.Pattern != 0 {
+					// gracebat's page was drawn by Ghostscript, which moves
+					// pattern tiles to whole pixels: TestSVGPatterns checks
+					// the SVG's patterns cell by cell instead
+					t.Skip("fill patterns: see TestSVGPatterns")
+				}
+			}
 			var b bytes.Buffer
 			if err := WriteSVGWith(&b, d, p.PageWidth, p.PageHeight, name, SVGOptions{TextAsPaths: true}); err != nil {
 				t.Fatal(err)

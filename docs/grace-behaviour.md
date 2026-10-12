@@ -48,7 +48,7 @@ Units: viewport units - the page's shorter side is 1, origin bottom left
   | 11 | the character `symbol char` in `symbol char font`, size 0.028 x `symbol size`, centred on the point by its box as labels are (below) |
 
   The fill comes first, in `symbol fill color` (fill pattern 0 is none; 1
-  solid - the hatched patterns 2 and up are drawn solid by plot-go), then
+  solid; 2 to 31 hatched, see Fill patterns), then
   the outline in `symbol color` with the symbol linewidth and linestyle
   (`symbol pattern 0`: no outline). A closed outline's path returns to its
   first point; each arm of the plus, x and star is a path of its own, and
@@ -129,6 +129,40 @@ Units: viewport units - the page's shorter side is 1, origin bottom left
 - `frame background pattern` not 0 fills the viewport with `frame
   background color`, for every frame type (6 included), first of
   everything in the graph. Pattern 0 fills nothing whatever the color.
+
+## Fill patterns
+
+Measured with `style-patterns-*`. Grace's patterns 0 to 31 are 16 by 16
+bitmaps; gracebat's EPS defines them all (`/Pattern0` ... `/Pattern31`)
+as uncolored tiling patterns painted with
+`16 16 true [-1 0 0 -1 16 16] pat_bits imagemask`, scaled by
+`[0.0017 0 0 0.0017 0 0]`:
+
+- a bit is 0.0017 of the viewport (one point on a 600-point page), so a
+  tile is 0.0272; tiles start at the page's origin, wherever the area is;
+- both axes are turned: row r, bit b (0 the high bit of the row's first
+  byte) is the cell (15-b, 15-r) of the tile;
+- set bits are painted in the color, the others left as they are.
+
+A fill (frame background, legend box, symbol) with pattern 2 to 31 is
+first filled with the page's background color (`@background color`,
+whether or not `page background fill` is on), then painted with the
+pattern. Pattern 0 draws nothing, 1 is solid, 8 is all zeros (only the
+background color shows). A pattern above 31 is "invalid pattern number"
+and drawn solid, without the background fill.
+
+Lines take a pattern too, with no background under them: `line pattern`
+(the set's line and its legend sample), `errorbar pattern` (risers, caps
+and arrowheads), `symbol pattern` (outlines), `frame pattern` and `legend
+box pattern`. Pattern 0 draws no line.
+
+plot-go writes the same definitions in its EPS, the same bitmap as an
+uncolored tiling pattern in its PDFs, and one SVG `<pattern>` per pattern
+and color. Ghostscript moves pattern tiles by up to a device pixel when it
+renders them (gracebat's EPS and plot-go's PDF alike), so at 144 dpi a
+correct pattern and one shifted by a cell look alike: the tests check
+patterns cell by cell at 10 pixels a cell instead
+(`TestPatternCellsMatchGracebat`, `TestSVGPatterns`).
 
 ## Values gracebat rejects
 
