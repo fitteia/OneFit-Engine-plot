@@ -39,7 +39,12 @@ jobs:
         run: go test ./...
 
       - name: Build every platform
-        run: VERSION="${GITHUB_REF_NAME#v}" bash scripts/build-release.sh
+        # go build stamps the git version into the binaries; in the
+        # container git refuses the checkout (owned by the runner, not
+        # root) unless it is marked safe
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          VERSION="${GITHUB_REF_NAME#v}" bash scripts/build-release.sh
 
       - name: Publish the release
         uses: softprops/action-gh-release@v2
