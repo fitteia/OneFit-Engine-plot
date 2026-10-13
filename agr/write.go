@@ -12,8 +12,8 @@ import (
 // Write writes the project as a Grace project file, in gracebat's order
 // and forms, so Grace reads it too and Parse reads it back to the same
 // Project. What the model has no place for (regions, annotated values,
-// fixed points, ...) is written as Parse kept it (Project.Kept and the
-// graphs' and sets'), so nothing is lost; what it has not kept, as
+// fixed points, ...) is written as Parse kept it (Project.Kept, Objects and
+// the graphs' and sets'), so nothing is lost; what it has not kept, as
 // gracebat writes it when off.
 func Write(w io.Writer, p *Project) error {
 	b := bufio.NewWriter(w)
@@ -67,6 +67,15 @@ func Write(w io.Writer, p *Project) error {
 	pf("@timestamp char size %s", size(ts.CharSize))
 	pf("@timestamp def %s", quote(ts.Text))
 	k.rest()
+	for _, o := range p.Objects {
+		for i, d := range o {
+			if i == 0 || i == len(o)-1 && strings.HasSuffix(d, " def") {
+				pf("@%s", d)
+			} else {
+				pf("@    %s", d)
+			}
+		}
+	}
 	for _, s := range p.Strings {
 		pf("@with string")
 		pf("@    string %s", onOff(s.On))

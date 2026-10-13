@@ -86,6 +86,57 @@ func TestWriteKeepsWhatItDoesNotModel(t *testing.T) {
 	}
 }
 
+// TestWriteKeepsDrawingObjects: each drawing object is written back whole,
+// as gracebat writes it - two lines are not one line's settings, the second
+// replacing the first.
+func TestWriteKeepsDrawingObjects(t *testing.T) {
+	objects := `@with line
+@    line on
+@    line loctype view
+@    line 0.3, 0.3, 0.6, 0.6
+@    line color 2
+@    line arrow 2
+@line def
+@with box
+@    box on
+@    box 0.4, 0.4, 0.5, 0.5
+@    box fill color 3
+@box def
+@with line
+@    line off
+@    line loctype world
+@    line g0
+@    line 0.1, 0.8, 0.2, 0.9
+@    line color 4
+@line def
+`
+	in := "@version 50125\n@timestamp def \"\"\n" + objects + "@g0 on\n@with g0\n@    world 0, 0, 1, 1\n"
+	p, err := agr.Parse(strings.NewReader(in))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Objects) != 3 {
+		t.Fatalf("%d objects read, not 3", len(p.Objects))
+	}
+	var warned []int
+	for _, w := range p.Warnings {
+		warned = append(warned, w.Line)
+	}
+	if !reflect.DeepEqual(warned, []int{4, 11}) {
+		t.Errorf("warnings on lines %v, not the two objects that are on (4, 11)", warned)
+	}
+	if len(p.Graphs) != 1 || len(p.Graphs[0].Kept) != 0 || len(p.Kept) != 0 {
+		t.Errorf("object lines kept elsewhere too: project %q, graph %q", p.Kept, p.Graphs[0].Kept)
+	}
+	var b bytes.Buffer
+	if err := agr.Write(&b, p); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), "@timestamp def \"\"\n"+objects+"@g0 on\n") {
+		t.Errorf("objects not written as read, after the timestamp:\n%s", b.String())
+	}
+}
+
 // TestWriteRoundTrip: every corpus file, written and read back, is the same
 // Project and draws the same - the figure editor saves through Write.
 func TestWriteRoundTrip(t *testing.T) {

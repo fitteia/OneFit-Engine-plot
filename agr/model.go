@@ -26,6 +26,10 @@ type Project struct {
 	// written again loses nothing, drawn by plot-go or not. Graphs and
 	// sets keep their own.
 	Kept []string
+	// Objects are Grace's drawing objects (lines, boxes, ellipses), which
+	// plot-go does not draw: each is the block as read, from "with line"
+	// to "line def", without "@". Write writes them back as they are.
+	Objects [][]string
 }
 
 // Defaults are the "@default" settings.

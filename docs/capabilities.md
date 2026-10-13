@@ -7,6 +7,7 @@ corpus file within the tolerances stated there ("How closely plot-go
 matches"). It is not a complete Grace: what is listed as not drawn is read,
 warned about, and kept, but not drawn.
 
+[roadmap.md](roadmap.md) is what is still to be drawn, in order.
 [features.md](features.md) is the original inventory (2026-10-09) of what
 OneFit's own 704 files use; it is history, not this list.
 
@@ -58,5 +59,7 @@ saved loses none of them.
 - Stacked graphs, fixed points, graph types other than XY.
 - Set types other than `xy` and `xydy` (their data rows are read as far
   as they go); axis scales other than normal and logarithmic.
+- Drawing objects: lines and arrows, boxes, ellipses (each kept whole,
+  where gracebat writes them: after the timestamp, before the strings).
 - Anything else plot-go does not know: an unknown directive warns and is
   kept like these.

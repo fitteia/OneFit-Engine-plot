@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -119,6 +120,9 @@ type parser struct {
 	// inString: the last "@with" was "@with string", so a directive that
 	// names no graph, set or region is not the graph's
 	inString bool
+	// object: the kind of the drawing object being read ("line", "box",
+	// "ellipse"), "" outside one
+	object string
 }
 
 func (p *parser) warn(format string, a ...any) {
@@ -320,6 +324,37 @@ func directiveKey(line string) string {
 		f[0] = strings.ToUpper(f[0][:1]) + "#"
 	}
 	return "?" + strings.Join(f, " ")
+}
+
+// drawingObject reads Grace's drawing objects, "with line" (box, ellipse)
+// to "line def": each is kept whole, in a block of its own
+// (Project.Objects), since one object's lines are not settings a later
+// object's replace. It tells whether line was part of one.
+func (p *parser) drawingObject(toks []token, line string) bool {
+	word := func(i int) string {
+		if i < len(toks) && !toks[i].isNum && !toks[i].isStr {
+			return strings.ToLower(toks[i].word)
+		}
+		return ""
+	}
+	if word(0) == "with" && len(toks) == 2 && slices.Contains([]string{"line", "box", "ellipse"}, word(1)) {
+		p.object = word(1)
+		p.proj.Objects = append(p.proj.Objects, []string{strings.TrimSpace(line)})
+		return true
+	}
+	if p.object == "" || word(0) != p.object {
+		p.object = ""
+		return false
+	}
+	o := &p.proj.Objects[len(p.proj.Objects)-1]
+	*o = append(*o, strings.TrimSpace(line))
+	switch {
+	case len(toks) == 2 && word(1) == "def":
+		p.object = ""
+	case len(toks) == 2 && (word(1) == "on" || word(1) == "true"):
+		p.warn("a drawing object (%s) is not drawn by plot-go", p.object)
+	}
+	return true
 }
 
 // keepIn adds line to kept, replacing what set the same before it (key
@@ -844,6 +879,9 @@ func (p *parser) directive(line string) {
 		return
 	}
 	if len(toks) == 0 {
+		return
+	}
+	if p.drawingObject(toks, line) {
 		return
 	}
 	for i := range rules {
