@@ -10,6 +10,8 @@ package figure
 import (
 	"fmt"
 	"math"
+	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -76,6 +78,10 @@ func FromPlot(plot *agr.Project, path string) *agr.Project {
 // figure's last; the colors they use come along when the figure's color
 // map lacks them. It returns the new sets' numbers.
 func AddSets(fig *agr.Project, g int, src *agr.Project, path string, sets []int) ([]int, error) {
+	return addSets(fig, g, src, path, sets, newImporter(fig, src))
+}
+
+func addSets(fig *agr.Project, g int, src *agr.Project, path string, sets []int, in *importer) ([]int, error) {
 	dst := graph(fig, g)
 	if dst == nil {
 		return nil, fmt.Errorf("the figure has no graph %d", g)
@@ -107,21 +113,143 @@ func AddSets(fig *agr.Project, g int, src *agr.Project, path string, sets []int)
 		}
 		c.ID = next
 		c.Comment = Ref{Path: path, Graph: 0, Set: id}.String()
+		in.remap(&c)
 		dst.Sets = append(dst.Sets, &c)
 		added = append(added, next)
 		next++
-		for _, n := range []int{c.Line.Color, c.Symbol.Color, c.Symbol.FillColor, c.Fill.Color, c.ErrorBar.Color} {
-			if _, ok := fig.Colors[n]; !ok {
-				if col, ok := src.Colors[n]; ok {
-					if fig.Colors == nil {
-						fig.Colors = map[int]agr.Color{}
-					}
-					fig.Colors[n] = col
+	}
+	return added, nil
+}
+
+// importer brings a plot's colors and fonts into a figure by what they
+// are, not by number: a color or font the figure maps to the same thing
+// keeps its number; one the figure lacks comes in under it; one whose
+// number the figure uses for something else comes in under a free number,
+// and what is imported is renumbered to it - so a plot keeps its own
+// colors, and the figure's sets keep theirs.
+type importer struct {
+	fig, src      *agr.Project
+	colors, fonts map[int]int
+}
+
+func newImporter(fig, src *agr.Project) *importer {
+	return &importer{fig: fig, src: src, colors: map[int]int{}, fonts: map[int]int{}}
+}
+
+func (in *importer) color(n int) int {
+	if m, ok := in.colors[n]; ok {
+		return m
+	}
+	def, ok := in.src.Colors[n]
+	if !ok {
+		def, ok = DefaultColors[n]
+	}
+	m := n
+	if ok {
+		if in.fig.Colors == nil {
+			in.fig.Colors = map[int]agr.Color{}
+		}
+		same := func(c agr.Color) bool { return c.R == def.R && c.G == def.G && c.B == def.B }
+		if have, used := in.fig.Colors[n]; !used {
+			in.fig.Colors[n] = def
+		} else if !same(have) {
+			m = -1
+			for _, k := range sortedInts(in.fig.Colors) {
+				if same(in.fig.Colors[k]) {
+					m = k
+					break
+				}
+			}
+			if m < 0 {
+				m = nextKey(in.fig.Colors)
+				in.fig.Colors[m] = def
+			}
+		}
+	}
+	in.colors[n] = m
+	return m
+}
+
+func (in *importer) font(n int) int {
+	if m, ok := in.fonts[n]; ok {
+		return m
+	}
+	m := n
+	if def, ok := in.src.Fonts[n]; ok {
+		if in.fig.Fonts == nil {
+			in.fig.Fonts = map[int]agr.Font{}
+		}
+		if have, used := in.fig.Fonts[n]; !used {
+			in.fig.Fonts[n] = def
+		} else if have.Name != def.Name {
+			m = -1
+			for _, k := range sortedInts(in.fig.Fonts) {
+				if in.fig.Fonts[k].Name == def.Name {
+					m = k
+					break
+				}
+			}
+			if m < 0 {
+				m = nextKey(in.fig.Fonts)
+				in.fig.Fonts[m] = def
+			}
+		}
+	}
+	in.fonts[n] = m
+	return m
+}
+
+// remap renumbers every color and font an imported element uses: each int
+// field named ...Color or ...Font, in it and in what it holds (a set; a
+// graph's axes, frame, legend and titles; a text).
+func (in *importer) remap(v any) {
+	var walk func(r reflect.Value)
+	walk = func(r reflect.Value) {
+		switch r.Kind() {
+		case reflect.Pointer:
+			if !r.IsNil() {
+				walk(r.Elem())
+			}
+		case reflect.Slice:
+			// a set's data rows and kept lines hold no colors
+			if k := r.Type().Elem().Kind(); k != reflect.Pointer && k != reflect.Struct {
+				return
+			}
+			for i := 0; i < r.Len(); i++ {
+				walk(r.Index(i))
+			}
+		case reflect.Struct:
+			for i := 0; i < r.NumField(); i++ {
+				f, name := r.Field(i), r.Type().Field(i).Name
+				switch {
+				case f.Kind() == reflect.Int && strings.HasSuffix(name, "Color"):
+					f.SetInt(int64(in.color(int(f.Int()))))
+				case f.Kind() == reflect.Int && strings.HasSuffix(name, "Font"):
+					f.SetInt(int64(in.font(int(f.Int()))))
+				default:
+					walk(f)
 				}
 			}
 		}
 	}
-	return added, nil
+	walk(reflect.ValueOf(v))
+}
+
+func sortedInts[V any](m map[int]V) []int {
+	keys := make([]int, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	return keys
+}
+
+func nextKey[V any](m map[int]V) int {
+	n := 0
+	for k := range m {
+		n = max(n, k+1)
+	}
+	return n
 }
 
 // Update brings each set's data up to date from its source, through load
@@ -163,6 +291,12 @@ func Update(fig *agr.Project, load func(path string) (*agr.Project, error)) (int
 				warnings = append(warnings, fmt.Sprintf("set %d: %s has no G%d.S%d; its data is kept", s.ID, ref.Path, ref.Graph, ref.Set))
 				continue
 			}
+			// the data's columns are the source's type's: a set whose
+			// source changed type (an xy fit re-run with x errors) follows it
+			if s.Type != from.Type {
+				warnings = append(warnings, fmt.Sprintf("set %d: its source's type changed from %s to %s; the set follows it", s.ID, s.Type, from.Type))
+				s.Type = from.Type
+			}
 			s.Data = make([][]float64, len(from.Data))
 			for i, row := range from.Data {
 				s.Data[i] = append([]float64(nil), row...)
@@ -187,15 +321,17 @@ func AddGraph(fig *agr.Project, src *agr.Project, path string) (int, error) {
 	for _, g := range fig.Graphs {
 		id = max(id, g.ID+1)
 	}
+	in := newImporter(fig, src)
 	g := *from
 	g.ID = id
 	g.Sets = nil
+	in.remap(&g)
 	fig.Graphs = append(fig.Graphs, &g)
 	sets := make([]int, 0, len(from.Sets))
 	for _, s := range from.Sets {
 		sets = append(sets, s.ID)
 	}
-	if _, err := AddSets(fig, id, src, path, sets); err != nil {
+	if _, err := addSets(fig, id, src, path, sets, in); err != nil {
 		return id, err
 	}
 	// AddSets numbers sets after the graph's last; a new graph starts at 0,
@@ -204,15 +340,8 @@ func AddGraph(fig *agr.Project, src *agr.Project, path string) (int, error) {
 		if s.LocType == "world" && s.Graph == 0 {
 			c := *s
 			c.Graph = id
+			in.remap(&c)
 			fig.Strings = append(fig.Strings, &c)
-		}
-	}
-	for n, c := range src.Fonts {
-		if _, ok := fig.Fonts[n]; !ok {
-			if fig.Fonts == nil {
-				fig.Fonts = map[int]agr.Font{}
-			}
-			fig.Fonts[n] = c
 		}
 	}
 	return id, nil

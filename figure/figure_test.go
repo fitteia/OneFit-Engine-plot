@@ -290,3 +290,79 @@ func TestUseColor(t *testing.T) {
 		t.Errorf("%d default colors", len(DefaultColors))
 	}
 }
+
+// TestUpdateFollowsTheSourceType: a source whose set changed type (an xy
+// fit re-run with x errors) brings its type with its data, so the new
+// columns are read as what they are.
+func TestUpdateFollowsTheSourceType(t *testing.T) {
+	fig := FromPlot(load(t, "test3-1.agr"), "a/fit-curves-1.agr")
+	s := fig.Graphs[0].Sets[0]
+	s.Type, s.Data = "xy", [][]float64{{1, 2}}
+	s.Line.Color = 5
+	newer := load(t, "test3-1.agr")
+	newer.Graphs[0].Sets[0].Type = "xydx"
+	newer.Graphs[0].Sets[0].Data = [][]float64{{1, 2, 0.1}, {2, 3, 0.2}}
+	_, warnings := Update(fig, func(string) (*agr.Project, error) { return newer, nil })
+	if s.Type != "xydx" || len(s.Data) != 2 || len(s.Data[1]) != 3 || s.Line.Color != 5 {
+		t.Errorf("after Update: type %s, data %v, color %d", s.Type, s.Data, s.Line.Color)
+	}
+	if !strings.Contains(strings.Join(warnings, "\n"), "xy to xydx") {
+		t.Errorf("no note of the type change: %v", warnings)
+	}
+}
+
+// TestAddKeepsTheSourceColors: a plot's color 2 that is not the figure's
+// color 2 comes in as its own color, under a free number - the figure's
+// sets keep theirs; a color both map alike keeps its number. Fonts alike.
+func TestAddKeepsTheSourceColors(t *testing.T) {
+	red, green := agr.Color{R: 255, Name: "red"}, agr.Color{G: 255, Name: "green"}
+	fig := FromPlot(load(t, "test3-1.agr"), "a/fit-curves-1.agr")
+	fig.Colors = map[int]agr.Color{0: {R: 255, G: 255, B: 255, Name: "white"}, 1: {}, 2: red}
+	fig.Fonts = map[int]agr.Font{0: {Name: "Times-Roman"}, 4: {Name: "Helvetica"}}
+	mine := fig.Graphs[0].Sets[0]
+	mine.Line.Color = 2
+	src := load(t, "test3-1.agr")
+	src.Colors = map[int]agr.Color{0: {R: 255, G: 255, B: 255, Name: "white"}, 1: {}, 2: green}
+	src.Fonts = map[int]agr.Font{0: {Name: "Times-Roman"}, 4: {Name: "Courier"}}
+	in := src.Graphs[0].Sets[0]
+	in.Line.Color, in.Symbol.Color, in.ErrorBar.Color, in.Symbol.FillColor, in.Fill.Color = 2, 2, 1, 2, 0
+	in.Symbol.CharFont = 4
+	added, err := AddSets(fig, 0, src, "b/fit-curves-1.agr", []int{0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got *agr.Set
+	for _, s := range fig.Graphs[0].Sets {
+		if s.ID == added[0] {
+			got = s
+		}
+	}
+	if c := got.Line.Color; c == 2 || fig.Colors[c] != green || got.Symbol.Color != c || got.Symbol.FillColor != c {
+		t.Errorf("imported green is color %d (%+v), symbol %d, fill %d", c, fig.Colors[c], got.Symbol.Color, got.Symbol.FillColor)
+	}
+	if got.ErrorBar.Color != 1 || got.Fill.Color != 0 {
+		t.Errorf("colors both map alike were renumbered: error bars %d, fill %d", got.ErrorBar.Color, got.Fill.Color)
+	}
+	if fig.Colors[2] != red || mine.Line.Color != 2 {
+		t.Errorf("the figure's own red changed: %+v, its set uses %d", fig.Colors[2], mine.Line.Color)
+	}
+	if f := got.Symbol.CharFont; f == 4 || fig.Fonts[f].Name != "Courier" || fig.Fonts[4].Name != "Helvetica" {
+		t.Errorf("imported Courier is font %d (%+v); the figure's 4 is %+v", f, fig.Fonts[f], fig.Fonts[4])
+	}
+
+	// a whole graph: its axes, frame and texts follow its colors too
+	src.Graphs[0].Frame.Color = 2
+	src.Strings = append(src.Strings, &agr.Text{LocType: "world", Graph: 0, Color: 2, Font: 4, Text: "label"})
+	id, err := AddGraph(fig, src, "b/fit-curves-1.agr")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := graph(fig, id)
+	if fig.Colors[g.Frame.Color] != green {
+		t.Errorf("the added graph's frame is color %d (%+v), not green", g.Frame.Color, fig.Colors[g.Frame.Color])
+	}
+	last := fig.Strings[len(fig.Strings)-1]
+	if fig.Colors[last.Color] != green || fig.Fonts[last.Font].Name != "Courier" {
+		t.Errorf("the added text: color %d %+v, font %d %+v", last.Color, fig.Colors[last.Color], last.Font, fig.Fonts[last.Font])
+	}
+}
