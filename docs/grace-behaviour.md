@@ -370,7 +370,9 @@ Measured with `style-axes-sides`, `-perp`, `-angle`, `-noticks` and
 
 Text is measured with the URW base-35 fonts' glyphs, as gracebat does (its
 fonts are those files): plot-go reads each character's ink box from the
-installed URW OpenType font and falls back to Adobe's metrics, whose ink
+installed URW OpenType font (Debian's fonts-urw-base35, macOS's
+~/Library/Fonts from the font-urw-base35 cask, or $OFE_URW_FONTS) and
+falls back to Adobe's metrics, whose ink
 differs by up to 0.02 em, where the URW fonts are not installed; advance
 widths are Adobe's either way (the URW fonts are metric compatible).
 gracebat takes its boxes from its 300 dpi glyph rasters, rounded and hinted

@@ -9,7 +9,9 @@
 // shipped. Otherwise it uses the Liberation fonts it carries, whose advance
 // widths are those of Helvetica, Times and Courier; the Symbol font's
 // letters are then Liberation Serif's Greek. OFE_URW_FONTS names another
-// directory holding the URW OpenType files.
+// directory holding the URW OpenType files. On macOS, Homebrew's
+// font-urw-base35 cask puts them in ~/Library/Fonts (also searched, with
+// /Library/Fonts).
 //
 // The Liberation fonts are distributed under the SIL Open Font License 1.1
 // (see FontLicense).
@@ -144,11 +146,23 @@ var urwFiles = map[string]string{
 	"Symbol":                "StandardSymbolsPS.otf",
 }
 
-// urwDirs are searched in order, after $OFE_URW_FONTS.
-var urwDirs = []string{
+// urwDirs are searched in order, after $OFE_URW_FONTS: Debian's and
+// Fedora's places, then macOS's font folders.
+var urwDirs = append([]string{
 	"/usr/share/fonts/opentype/urw-base35",
 	"/usr/local/share/fonts/opentype/urw-base35",
 	"/usr/share/fonts/urw-base35",
+}, macFontDirs(os.Getenv("HOME"))...)
+
+// macFontDirs are the folders macOS installs fonts in - a user's (where
+// "brew install --cask font-urw-base35" puts the URW fonts) and the
+// machine's.
+func macFontDirs(home string) []string {
+	var dirs []string
+	if home != "" {
+		dirs = append(dirs, filepath.Join(home, "Library", "Fonts"))
+	}
+	return append(dirs, "/Library/Fonts")
 }
 
 type font struct {

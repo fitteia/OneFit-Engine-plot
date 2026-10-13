@@ -1,6 +1,8 @@
 package glyph
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -95,5 +97,28 @@ func TestLiberationFallback(t *testing.T) {
 	}
 	if d := (ux - lx) - (0.567 - 0.033); d > 1e-9 || d < -1e-9 {
 		t.Errorf("Liberation mu spans %.3f..%.3f, want Adobe's Symbol box 0.033..0.567", lx, ux)
+	}
+}
+
+// On macOS the URW fonts are found where Homebrew's font-urw-base35 cask
+// puts them: ~/Library/Fonts.
+func TestFindsURWInMacFontFolders(t *testing.T) {
+	home := t.TempDir()
+	fonts := filepath.Join(home, "Library", "Fonts")
+	if err := os.MkdirAll(fonts, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(fonts, "NimbusSans-Regular.otf"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	saved := urwDirs
+	urwDirs = macFontDirs(home)
+	t.Setenv("OFE_URW_FONTS", "")
+	defer func() { urwDirs = saved }()
+	if got, want := urwPath("Helvetica"), filepath.Join(fonts, "NimbusSans-Regular.otf"); got != want {
+		t.Errorf("Helvetica found at %q, want %q", got, want)
+	}
+	if got := urwPath("Times-Roman"); got != "" {
+		t.Errorf("Times-Roman found at %q, but it is not there", got)
 	}
 }
