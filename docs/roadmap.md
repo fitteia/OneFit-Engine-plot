@@ -1,6 +1,7 @@
 # Roadmap
 
-What plot-go does not draw yet, and in which order it is to be done.
+What plot-go does not draw yet, and in which order it is to be done
+(on hold since 2026-10-13).
 [capabilities.md](capabilities.md) is what it draws now. Every gap below is
 read, warned about and kept when a project is saved; none of them is on in
 the files OneFit itself writes ([inventory.md](inventory.md)), so they
@@ -10,14 +11,16 @@ Each step is measured from gracebat like the rest
 ([grace-behaviour.md](grace-behaviour.md)), released as its own tag, and
 then vendored in the GUI and pinned in the debs.
 
-## Next (the ones that matter for OneFit)
+## On hold (the ones that matter for OneFit, when taken up again)
 
 1. **The secondary axis**: alternate axes (`altxaxis`, `altyaxis`), the
    reciprocal scale, tick label formulas and tick label start/stop - the
    "1000/T on top" axis of relaxation plots. Formulas need an evaluator for
    Grace's expression syntax.
 2. **An axis at zero and axis bars** (`type zero true`, `bar on`). Reuses
-   the axis drawing.
+   the axis drawing. Measured so far: a graph gracebat makes itself (one
+   a file says nothing about) has its axis bars on, and the bars are drawn
+   before the ticks.
 
 ## Done
 

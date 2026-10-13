@@ -14,8 +14,18 @@ permissions:
 
 jobs:
   release:
+    # the tests as CI runs them (ci.yml): in Debian, with the URW fonts
+    # plot-go measures text with - without them legends and texts move and
+    # the tests fail, and nothing is published
     runs-on: ubuntu-24.04
+    container: debian:trixie
     steps:
+      - name: Debian packages
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends git ca-certificates \
+            ghostscript poppler-utils fonts-urw-base35
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
