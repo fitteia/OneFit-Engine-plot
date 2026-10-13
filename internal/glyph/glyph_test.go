@@ -122,3 +122,23 @@ func TestFindsURWInMacFontFolders(t *testing.T) {
 		t.Errorf("Times-Roman found at %q, but it is not there", got)
 	}
 }
+
+// Homebrew's place is searched - the onefite-go formula installs the URW
+// fonts in share/fonts/urw-base35 - and so is the same folder next to the
+// running program's bin.
+func TestSearchesHomebrewPlaces(t *testing.T) {
+	for _, d := range []string{"/opt/homebrew/share/fonts/urw-base35", "/usr/local/share/fonts/urw-base35"} {
+		found := false
+		for _, u := range urwDirs {
+			found = found || u == d
+		}
+		if !found {
+			t.Errorf("%s is not searched: %v", d, urwDirs)
+		}
+	}
+	exe, _ := os.Executable()
+	want := filepath.Join(filepath.Dir(filepath.Dir(exe)), "share", "fonts", "urw-base35")
+	if dirs := besideExecutable(); len(dirs) == 0 || dirs[0] != want {
+		t.Errorf("beside the program: %v, want %s first", dirs, want)
+	}
+}

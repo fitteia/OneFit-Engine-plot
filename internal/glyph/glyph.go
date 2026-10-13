@@ -9,9 +9,9 @@
 // shipped. Otherwise it uses the Liberation fonts it carries, whose advance
 // widths are those of Helvetica, Times and Courier; the Symbol font's
 // letters are then Liberation Serif's Greek. OFE_URW_FONTS names another
-// directory holding the URW OpenType files. On macOS, Homebrew's
-// font-urw-base35 cask puts them in ~/Library/Fonts (also searched, with
-// /Library/Fonts).
+// directory holding the URW OpenType files. On macOS the onefite-go
+// formula installs them in Homebrew's share/fonts/urw-base35, and the
+// font-urw-base35 cask in ~/Library/Fonts; both are searched.
 //
 // The Liberation fonts are distributed under the SIL Open Font License 1.1
 // (see FontLicense).
@@ -147,12 +147,36 @@ var urwFiles = map[string]string{
 }
 
 // urwDirs are searched in order, after $OFE_URW_FONTS: Debian's and
-// Fedora's places, then macOS's font folders.
-var urwDirs = append([]string{
+// Fedora's places, Homebrew's (where the onefite-go formula installs
+// them: share/fonts/urw-base35 under its prefix, or next to plot-go's own
+// install), then macOS's font folders.
+var urwDirs = append(append([]string{
 	"/usr/share/fonts/opentype/urw-base35",
 	"/usr/local/share/fonts/opentype/urw-base35",
 	"/usr/share/fonts/urw-base35",
-}, macFontDirs(os.Getenv("HOME"))...)
+	"/opt/homebrew/share/fonts/urw-base35",
+	"/usr/local/share/fonts/urw-base35",
+}, besideExecutable()...), macFontDirs(os.Getenv("HOME"))...)
+
+// besideExecutable is share/fonts/urw-base35 next to the running
+// program's bin folder - the program as invoked and as its links resolve
+// (Homebrew links bin/plot-go into its prefix from the formula's own
+// folder; either holds the fonts).
+func besideExecutable() []string {
+	exe, err := os.Executable()
+	if err != nil {
+		return nil
+	}
+	paths := []string{exe}
+	if real, err := filepath.EvalSymlinks(exe); err == nil && real != exe {
+		paths = append(paths, real)
+	}
+	var dirs []string
+	for _, p := range paths {
+		dirs = append(dirs, filepath.Join(filepath.Dir(filepath.Dir(p)), "share", "fonts", "urw-base35"))
+	}
+	return dirs
+}
 
 // macFontDirs are the folders macOS installs fonts in - a user's (where
 // "brew install --cask font-urw-base35" puts the URW fonts) and the
