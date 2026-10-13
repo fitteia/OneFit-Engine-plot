@@ -10,7 +10,7 @@ Status: steps 1 to 6 of the plan below are done; step 7 is the OneFit
 GUI's Figures editor, in use and growing. What plot-go draws, and
 what it reads and keeps without drawing, is in
 [docs/capabilities.md](docs/capabilities.md): a measured subset of Grace,
-not all of it. On every corpus file plot-go matches gracebat within stated
+not all of it; what is still to come, in [docs/roadmap.md](docs/roadmap.md). On every corpus file plot-go matches gracebat within stated
 tolerances - primitive by primitive, and on the rendered page - not
 exactly; the tolerances are in
 [docs/grace-behaviour.md](docs/grace-behaviour.md) ("How closely plot-go

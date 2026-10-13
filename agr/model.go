@@ -5,6 +5,8 @@
 // Grace source code (see AGENTS.md).
 package agr
 
+import "math"
+
 // Project is one Grace project: a page, its graphs, and the free text
 // strings on it.
 type Project struct {
@@ -225,7 +227,7 @@ type Frame struct {
 type Set struct {
 	ID       int
 	Hidden   bool
-	Type     string // "xy" or "xydy"
+	Type     string // "xy", "xydy", ... (see Columns)
 	Symbol   Symbol
 	Line     Line
 	Baseline Baseline
@@ -234,7 +236,8 @@ type Set struct {
 	ErrorBar ErrorBar
 	Comment  string
 	Legend   string
-	// Data holds one row per point: x, y, and dy for an xydy set.
+	// Data holds one row per point: x, y and the errors its type has
+	// (see Columns).
 	Data [][]float64
 	// Kept are the set's directives the model has no place for (annotated
 	// values, ...), as read but without "sN", so they stay with the set
@@ -285,7 +288,7 @@ type Fill struct {
 	Pattern int
 }
 
-// ErrorBar is how an xydy set's dy is drawn.
+// ErrorBar is how a set's errors are drawn (see Set.Errors).
 type ErrorBar struct {
 	On            bool
 	Place         string
@@ -328,4 +331,59 @@ type Warning struct {
 	Line int
 	Text string
 	Msg  string
+}
+
+// Columns is how many numbers a row of each set type plot-go draws holds:
+// x, y, then the errors - one per axis for both sides (dx, dy), or one
+// per side, right then left (dxdx) and up then down (dydy).
+var Columns = map[string]int{"xy": 2, "xydx": 3, "xydy": 3, "xydxdx": 4, "xydydy": 4, "xydxdy": 4, "xydxdxdydy": 6}
+
+// Errors are a point's error bars, by side, as drawn: world lengths, 0
+// where there is none.
+type Errors struct{ Right, Left, Up, Down float64 }
+
+// Errors gives the error bars of a row of the set's data, by its type and
+// its error bar place (measured from gracebat, see
+// docs/grace-behaviour.md): an error given once for an axis is drawn on
+// both sides of the point, only the right/upper one with place normal,
+// only the left/lower one with opposite; errors given per side are drawn
+// as given, swapped with opposite. Their signs do not matter.
+func (s *Set) Errors(row []float64) Errors {
+	col := func(i int) float64 {
+		if i < len(row) {
+			return math.Abs(row[i])
+		}
+		return 0
+	}
+	one := func(v float64) [2]float64 {
+		switch s.ErrorBar.Place {
+		case "normal":
+			return [2]float64{v, 0}
+		case "opposite":
+			return [2]float64{0, v}
+		}
+		return [2]float64{v, v}
+	}
+	two := func(plus, minus float64) [2]float64 {
+		if s.ErrorBar.Place == "opposite" {
+			return [2]float64{minus, plus}
+		}
+		return [2]float64{plus, minus}
+	}
+	var x, y [2]float64
+	switch s.Type {
+	case "xydx":
+		x = one(col(2))
+	case "xydy":
+		y = one(col(2))
+	case "xydxdy":
+		x, y = one(col(2)), one(col(3))
+	case "xydxdx":
+		x = two(col(2), col(3))
+	case "xydydy":
+		y = two(col(2), col(3))
+	case "xydxdxdydy":
+		x, y = two(col(2), col(3)), two(col(4), col(5))
+	}
+	return Errors{Right: x[0], Left: x[1], Up: y[0], Down: y[1]}
 }

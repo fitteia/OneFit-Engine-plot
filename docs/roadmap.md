@@ -12,15 +12,17 @@ then vendored in the GUI and pinned in the debs.
 
 ## Next (the ones that matter for OneFit)
 
-1. **Set types with other error bars**: `xydx`, `xydxdx`, `xydxdy`,
-   `xydydy`, `xydxdxdydy` - x errors and uneven errors. Error bars are already
-   drawn; what changes is which columns give them.
-2. **The secondary axis**: alternate axes (`altxaxis`, `altyaxis`), the
+1. **The secondary axis**: alternate axes (`altxaxis`, `altyaxis`), the
    reciprocal scale, tick label formulas and tick label start/stop - the
    "1000/T on top" axis of relaxation plots. Formulas need an evaluator for
    Grace's expression syntax.
-3. **An axis at zero and axis bars** (`type zero true`, `bar on`). Reuses
+2. **An axis at zero and axis bars** (`type zero true`, `bar on`). Reuses
    the axis drawing.
+
+## Done
+
+- The set types with other error bars (`xydx`, `xydxdx`, `xydxdy`,
+  `xydydy`, `xydxdxdydy`): v0.2.4.
 
 ## Later
 

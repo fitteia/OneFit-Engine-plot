@@ -436,7 +436,7 @@ func (r *renderer) set(t xform, s *agr.Set) {
 	if ok && (s.Dropline || s.Baseline.On) {
 		r.droplines(t, s, st)
 	}
-	if s.ErrorBar.On && s.Type == "xydy" {
+	if s.ErrorBar.On {
 		r.errorBars(t, s)
 	}
 	if s.Symbol.Type != 0 {
@@ -579,30 +579,20 @@ func (r *renderer) droplines(t xform, s *agr.Set, st draw.Style) {
 	}
 }
 
-// errorBars draws an xydy set's error bars (docs/grace-behaviour.md), after
-// its line and before its symbols: for each point inside the world window
-// with an error (its size; the sign does not matter, 0 is none), the riser
-// from the point to y+dy, then the cap across its end, then the same down
-// to y-dy - only up for place "normal", only down for "opposite". A riser
-// whose end is out of the viewport has no cap: it runs to the frame, or
-// with riser clip on, for the clip length and ends in an arrowhead. All of
-// it is cut at the frame.
+// errorBars draws a set's error bars (docs/grace-behaviour.md), after its
+// line and before its symbols: for each point inside the world window, its
+// x errors then its y errors (Set.Errors; 0 is none), each side - right
+// before left, up before down - a riser from the point to the error's
+// end, then the cap across that end. A riser whose end is out of the
+// viewport has no cap: it runs to the frame, or with riser clip on, for
+// the clip length and ends in an arrowhead. All of it is cut at the frame.
 func (r *renderer) errorBars(t xform, s *agr.Set) {
 	e := s.ErrorBar
 	if e.Pattern == 0 {
 		return
 	}
-	var dirs []float64
-	switch e.Place {
-	case "normal":
-		dirs = []float64{1}
-	case "opposite":
-		dirs = []float64{-1}
-	default:
-		if e.Place != "both" && e.Place != "" {
-			r.warn("set %d: error bar place %q is drawn as both", s.ID, e.Place)
-		}
-		dirs = []float64{1, -1}
+	if e.Place != "both" && e.Place != "normal" && e.Place != "opposite" && e.Place != "" {
+		r.warn("set %d: error bar place %q is drawn as both", s.ID, e.Place)
 	}
 	// the error bar's pattern is the risers', caps' and arrowheads'
 	pat, _ := r.patterned(draw.Style{}, true, e.Pattern)
@@ -620,66 +610,80 @@ func (r *renderer) errorBars(t xform, s *agr.Set) {
 		if len(row) < 3 {
 			continue
 		}
-		x, y, dy := row[0], row[1], math.Abs(row[2])
+		x, y := row[0], row[1]
 		if !t.ok(x, y) || x < min(w.XMin, w.XMax) || x > max(w.XMin, w.XMax) || y < min(w.YMin, w.YMax) || y > max(w.YMin, w.YMax) {
 			continue
 		}
-		if dy == 0 || math.IsNaN(dy) {
-			continue
-		}
-		px, py := t.x(x), t.y(y)
-		for _, d := range dirs {
-			end := y + d*dy
-			// up the page when the error's side and the world's y run the
-			// same way (an inverted axis turns it round)
-			up := ((d > 0) == (w.YMax >= w.YMin)) != t.g.Y.Invert
+		p := draw.Point{X: t.x(x), Y: t.y(y)}
+		errs := s.Errors(row)
+		for _, b := range []struct {
+			xAxis bool
+			d     float64 // the side: +1 right/up, -1 left/down
+			size  float64
+		}{{true, 1, errs.Right}, {true, -1, errs.Left}, {false, 1, errs.Up}, {false, -1, errs.Down}} {
+			if b.size == 0 || math.IsNaN(b.size) {
+				continue
+			}
+			// the error's end, along its axis in the viewport: out of it
+			// when the axis cannot place it (a log axis at or below 0);
+			// forward: the error runs up or right on the page (an
+			// inverted axis turns it round)
+			at, lo, hi, end := p.Y, v.YMin, v.YMax, y+b.d*b.size
+			forward := (b.d > 0) == (w.YMax >= w.YMin) != t.g.Y.Invert
+			placed := t.ok(x, end)
+			if b.xAxis {
+				at, lo, hi, end = p.X, v.XMin, v.XMax, x+b.d*b.size
+				forward = (b.d > 0) == (w.XMax >= w.XMin) != t.g.X.Invert
+				placed = t.ok(end, y)
+			}
+			// an end the axis cannot place is off the page's left or
+			// bottom, whichever way the axis runs (measured)
 			sign := -1.0
-			if up {
+			if forward && placed {
 				sign = 1
 			}
-			// the end in the viewport; out of it when an axis cannot place
-			// it (a log axis at or below 0)
-			ey := math.Inf(-1)
-			if up {
-				ey = math.Inf(1)
+			ep := math.Inf(int(sign))
+			if placed && !math.IsInf(end, 0) {
+				ep = t.y(end)
+				if b.xAxis {
+					ep = t.x(end)
+				}
 			}
-			if t.ok(x, end) && !math.IsInf(end, 0) {
-				ey = t.y(end)
+			// pt is the point at along on the error's axis, across off it:
+			// across runs to the right of the way the error runs (an
+			// upward error's cap is drawn left to right, a rightward one's
+			// top to bottom)
+			pt := func(along, across float64) draw.Point {
+				if b.xAxis {
+					return draw.Point{X: along, Y: p.Y - sign*across}
+				}
+				return draw.Point{X: p.X + sign*across, Y: along}
 			}
-			if ey >= v.YMin && ey <= v.YMax {
+			if ep >= lo && ep <= hi {
 				if hasRiser {
-					r.clipped(riser, v, draw.Point{X: px, Y: py}, draw.Point{X: px, Y: ey})
+					r.clipped(riser, v, pt(at, 0), pt(ep, 0))
 				}
 				if hasCap {
-					// the upper cap is drawn left to right, the lower right to left
-					a, b := px-half, px+half
-					if !up {
-						a, b = b, a
-					}
-					r.clipped(capSt, v, draw.Point{X: a, Y: ey}, draw.Point{X: b, Y: ey})
+					r.clipped(capSt, v, pt(ep, -half), pt(ep, half))
 				}
 				continue
 			}
 			if !e.RiserClip {
 				// to the frame
 				if hasRiser {
-					r.clipped(riser, v, draw.Point{X: px, Y: py}, draw.Point{X: px, Y: py + sign*2*(v.YMax-v.YMin)})
+					r.clipped(riser, v, pt(at, 0), pt(at+sign*2*(hi-lo), 0))
 				}
 				continue
 			}
-			// riser clip: the clip length, then an arrowhead (up: from the
-			// right, through the tip, to the left; down the other way),
+			// riser clip: the clip length, then an arrowhead (from the
+			// right of the way it runs, through the tip, to the left),
 			// both cut at the frame like everything else
-			tip := py + sign*e.RiserClipSize
+			tip := at + sign*e.RiserClipSize
 			if hasRiser {
-				r.clipped(riser, v, draw.Point{X: px, Y: py}, draw.Point{X: px, Y: tip})
-			}
-			a, b := px+half, px-half
-			if !up {
-				a, b = b, a
+				r.clipped(riser, v, pt(at, 0), pt(tip, 0))
 			}
 			back := tip - sign*2*half
-			r.clipped(arrow, v, draw.Point{X: a, Y: back}, draw.Point{X: px, Y: tip}, draw.Point{X: b, Y: back})
+			r.clipped(arrow, v, pt(back, half), pt(tip, 0), pt(back, -half))
 		}
 	}
 }

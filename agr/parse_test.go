@@ -337,3 +337,28 @@ func TestSetFill(t *testing.T) {
 		t.Error("fill rule 1 not kept")
 	}
 }
+
+// TestSetTypeTakesColumns: a type given after the data (a parameter file's)
+// keeps the columns in order, drops those past the type's and adds 0s, as
+// gracebat does.
+func TestSetTypeTakesColumns(t *testing.T) {
+	for _, c := range []struct {
+		data, typ string
+		want      [][]float64
+	}{
+		{"xydxdx", "xydy", [][]float64{{1, 2, 0.3}}},
+		{"xydy", "xydxdxdydy", [][]float64{{1, 2, 0.3, 0, 0, 0}}},
+		{"xydxdy", "xy", [][]float64{{1, 2}}},
+		{"xydxdy", "xydydy", [][]float64{{1, 2, 0.3, 0.4}}},
+	} {
+		row := map[string]string{"xydy": "1 2 0.3", "xydxdx": "1 2 0.3 0.4", "xydxdy": "1 2 0.3 0.4"}[c.data]
+		p, err := Parse(strings.NewReader("@target G0.S0\n@type " + c.data + "\n" + row + "\n&\nwith g0\n    s0 type " + c.typ + "\n"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		s := p.Graphs[0].Sets[0]
+		if s.Type != c.typ || !reflect.DeepEqual(s.Data, c.want) {
+			t.Errorf("%s data as %s: %s %v, want %v", c.data, c.typ, s.Type, s.Data, c.want)
+		}
+	}
+}

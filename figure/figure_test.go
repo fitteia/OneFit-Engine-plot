@@ -264,6 +264,14 @@ func TestExtend(t *testing.T) {
 	if lg.World.XMax != 1e4 {
 		t.Errorf("log x max = %g, want 10000", lg.World.XMax)
 	}
+	// x errors, each side its own: the right one widens the log axis, the
+	// left one reaching below 0 is drawn to the frame and leaves it be
+	lg.Sets = append(lg.Sets, &agr.Set{ID: 101, Type: "xydxdx", ErrorBar: agr.ErrorBar{On: true},
+		Data: [][]float64{{1e4, 0, 9e4, 2e4}}})
+	Extend(lf, 0, []int{101})
+	if lg.World.XMin != 1e-6 || lg.World.XMax != 1e5 {
+		t.Errorf("log x with errors = %g..%g, want 1e-06..1e+05", lg.World.XMin, lg.World.XMax)
+	}
 }
 
 func TestUseColor(t *testing.T) {

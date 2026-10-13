@@ -433,21 +433,27 @@ func Extend(fig *agr.Project, g int, sets []int) (bool, error) {
 				continue
 			}
 			x, y := row[0], row[1]
-			if math.IsNaN(x) || math.IsInf(x, 0) || (xlog && x <= 0) {
+			var e agr.Errors
+			if s.ErrorBar.On {
+				e = s.Errors(row)
+			}
+			// the span from v-minus to v+plus; on a log axis an end at or
+			// below 0 (drawn to the frame) is left out
+			span := func(v, minus, plus float64, log bool) (float64, float64, bool) {
+				lo, hi := v-minus, v+plus
+				if log && lo <= 0 {
+					lo = v
+				}
+				ok := !math.IsNaN(lo) && !math.IsInf(lo, 0) && !math.IsNaN(hi) && !math.IsInf(hi, 0) && (!log || lo > 0)
+				return lo, hi, ok
+			}
+			x0, x1, okx := span(x, e.Left, e.Right, xlog)
+			y0, y1, oky := span(y, e.Down, e.Up, ylog)
+			if !okx || !oky {
 				continue
 			}
-			lo, hi := y, y
-			if s.Type == "xydy" && len(row) > 2 && s.ErrorBar.On {
-				lo, hi = y-math.Abs(row[2]), y+math.Abs(row[2])
-			}
-			if ylog && lo <= 0 {
-				lo = y
-			}
-			if math.IsNaN(lo) || math.IsInf(lo, 0) || math.IsNaN(hi) || math.IsInf(hi, 0) || (ylog && lo <= 0) {
-				continue
-			}
-			xlo, xhi = min(xlo, x), max(xhi, x)
-			ylo, yhi = min(ylo, lo), max(yhi, hi)
+			xlo, xhi = min(xlo, x0), max(xhi, x1)
+			ylo, yhi = min(ylo, y0), max(yhi, y1)
 		}
 	}
 	if xlo > xhi {

@@ -178,9 +178,9 @@ func isProject(s string) bool {
 // readData reads whitespace-separated rows; "&" ends a set. Comments (#)
 // and blank lines are skipped, rows with too few numbers warned about.
 func readData(s, typ string) ([][][]float64, error) {
-	want := map[string]int{"xy": 2, "xydy": 3}[typ]
+	want := agr.Columns[typ]
 	if want == 0 {
-		return nil, fmt.Errorf("set type %q is not supported (xy, xydy)", typ)
+		return nil, fmt.Errorf("set type %q is not supported (xy and those with error bars: xydx, xydy, xydxdx, xydydy, xydxdy, xydxdxdydy)", typ)
 	}
 	var sets [][][]float64
 	var cur [][]float64
@@ -303,7 +303,13 @@ func (g *graceRun) dataText(types map[int]string) string {
 			typ = t
 		}
 		fmt.Fprintf(&b, "@target G0.S%d\n@type %s\n", i, typ)
+		// a type the parameter file changed takes its columns as Grace
+		// does: the same in order, extra ones dropped, missing ones 0
+		n := agr.Columns[typ]
 		for _, row := range d.rows {
+			if n > 0 && len(row) != n {
+				row = append(row[:min(len(row), n):min(len(row), n)], make([]float64, max(n-len(row), 0))...)
+			}
 			for k, v := range row {
 				if k > 0 {
 					b.WriteByte(' ')

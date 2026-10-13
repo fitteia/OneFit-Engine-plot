@@ -36,11 +36,12 @@ OneFit's own 704 files use; it is history, not this list.
   and are left out.
 - Legends: position (viewport or world), box, fill, gaps, length,
   inverted order, every set's line and symbol.
-- Sets of type `xy` and `xydy`: line types 0 to 5 (straight, stairs,
+- Sets of type `xy` and those with error bars (`xydx`, `xydy`, `xydxdx`,
+  `xydydy`, `xydxdy`, `xydxdxdydy`): line types 0 to 5 (straight, stairs,
   segments), line styles 0 to 8, widths, colors, patterns; symbols 0 to
   11 (character symbols included) with size, outline and fill, symbol
-  skip; error bars (place, size, widths and styles, riser clip with
-  arrowheads); fills of types 1 and 2 with their rule, color and pattern;
+  skip; error bars in x and y (place, size, widths and styles, riser clip
+  with arrowheads); fills of types 1 and 2 with their rule, color and pattern;
   baselines (types 0 to 5) and droplines.
 - Grace's 32 fill patterns, on any fill and line.
 - Values gracebat rejects (negative colors, styles, ...) are rejected the
@@ -57,7 +58,7 @@ saved loses none of them.
 - Alternate axes, an axis at zero (`type zero true`), axis bars.
 - Tick label formulas and start/stop.
 - Stacked graphs, fixed points, graph types other than XY.
-- Set types other than `xy` and `xydy` (their data rows are read as far
+- Other set types (bar, xyhilo, xyr, ...; their data rows are read as far
   as they go); axis scales other than normal and logarithmic.
 - Drawing objects: lines and arrows, boxes, ellipses (each kept whole,
   where gracebat writes them: after the timestamp, before the strings).
