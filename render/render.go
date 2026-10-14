@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/fitteia/OneFit-Engine-plot/agr"
@@ -1294,7 +1295,7 @@ func (r *renderer) axis(t xform, isX, alt bool) {
 			}
 		}
 		if err != nil {
-			r.warn("the %s axis's tick label formula %q: %v; no tick labels", axisName, ax.TickLabel.Formula, err)
+			r.warn("the %s axis's tick label formula %q: %v; no tick labels", strings.Replace(axisName, "alt", "alternate ", 1), ax.TickLabel.Formula, err)
 			labelsOn = false
 		}
 		fm = f
