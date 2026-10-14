@@ -309,7 +309,7 @@ func Update(fig *agr.Project, load func(path string) (*agr.Project, error)) (int
 
 // AddGraph adds graph 0 of a plot (recorded as path) to the figure as a new
 // graph - its axes, frame and sets (data copied, each remembering its
-// source) and the texts placed in its world coordinates - numbered after
+// source), and its world-coordinate texts and drawing objects - numbered after
 // the figure's last. The page's own texts (the run's name) stay out. The
 // new graph keeps the plot's viewport; Layout places the graphs.
 func AddGraph(fig *agr.Project, src *agr.Project, path string) (int, error) {
@@ -344,10 +344,17 @@ func AddGraph(fig *agr.Project, src *agr.Project, path string) (int, error) {
 			fig.Strings = append(fig.Strings, &c)
 		}
 	}
+	for i, s := range src.Shapes {
+		if s.LocType == "world" && (s.Graph == 0 || s.Graph == -1) {
+			c := fig.CopyShapeFrom(src, i)
+			c.Graph = id
+			in.remap(c)
+		}
+	}
 	return id, nil
 }
 
-// RemoveGraph takes a graph and the texts placed in it out of the figure,
+// RemoveGraph takes a graph and its world-coordinate texts and objects out,
 // and places the others again: the last one left gets back the place of a
 // one-graph plot ("single", OneFit's own, as before graphs were added),
 // several keep their arrangement - stacked, side by side or a grid - and
@@ -406,6 +413,12 @@ func removeGraph(fig *agr.Project, id int) error {
 		}
 	}
 	fig.Strings = kept
+	for k := len(fig.Shapes) - 1; k >= 0; k-- {
+		s := fig.Shapes[k]
+		if s.LocType == "world" && (s.Graph == id || id == 0 && s.Graph == -1) {
+			fig.DeleteShape(k)
+		}
+	}
 	return nil
 }
 

@@ -30,11 +30,51 @@ type Project struct {
 	Kept []string
 	// Objects are Grace's drawing objects (lines, boxes, ellipses): each
 	// is the block as read, from "with line" to "line def", without "@".
-	// Write writes them back as they are.
+	// Write keeps untouched blocks as read. For edited Shapes it writes the
+	// current settings after the original lines, preserving unknown settings.
 	Objects [][]string
 	// Shapes are the same objects read (Shapes[i] is Objects[i]): what
-	// plot-go draws.
-	Shapes []*Shape
+	// plot-go draws. Use AddShape and DeleteShape to keep the slices aligned.
+	Shapes         []*Shape
+	originalShapes []*Shape
+}
+
+// AddShape appends a drawing object. Its full settings are written by Write.
+func (p *Project) AddShape(s *Shape) {
+	p.Shapes = append(p.Shapes, s)
+	p.Objects = append(p.Objects, nil)
+	p.originalShapes = append(p.originalShapes, nil)
+}
+
+// CopyShapeFrom adds a copy of one source object's model and original
+// directives. The caller may then change the returned shape (for example,
+// to attach it to a different graph); Write keeps any unknown directives.
+func (p *Project) CopyShapeFrom(src *Project, i int) *Shape {
+	if i < 0 || i >= len(src.Shapes) {
+		return nil
+	}
+	copy := *src.Shapes[i]
+	p.AddShape(&copy)
+	if i < len(src.Objects) {
+		p.Objects[len(p.Objects)-1] = append([]string(nil), src.Objects[i]...)
+	}
+	return &copy
+}
+
+// DeleteShape removes the object at index i from the drawing and project.
+func (p *Project) DeleteShape(i int) bool {
+	if i < 0 || i >= len(p.Shapes) || i >= len(p.Objects) {
+		return false
+	}
+	p.Shapes = append(p.Shapes[:i], p.Shapes[i+1:]...)
+	p.Objects = append(p.Objects[:i], p.Objects[i+1:]...)
+	if i < len(p.originalShapes) {
+		p.originalShapes = append(p.originalShapes[:i], p.originalShapes[i+1:]...)
+	}
+	// Later blocks may inherit settings from the removed object. Write all
+	// remaining shapes explicitly so their appearance does not change.
+	p.originalShapes = nil
+	return true
 }
 
 // Shape is a drawing object: a line (with arrows), a box or an ellipse,
@@ -60,6 +100,14 @@ type Shape struct {
 	// ArrowLL how far its notch reaches (1: none).
 	Arrow, ArrowType              int
 	ArrowLength, ArrowDL, ArrowLL float64
+}
+
+// NewShape starts an object with Grace's first-object defaults. Callers
+// placing it in a figure set On and its coordinates before AddShape.
+func NewShape(kind string, d Defaults) *Shape {
+	return &Shape{Kind: kind, LocType: "view", Graph: 0,
+		LineStyle: d.LineStyle, LineWidth: d.LineWidth, Color: d.Color,
+		FillColor: 1, ArrowLength: 1, ArrowDL: 1, ArrowLL: 1}
 }
 
 // Defaults are the "@default" settings.

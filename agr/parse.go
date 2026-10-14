@@ -989,6 +989,10 @@ func Parse(rd io.Reader) (*Project, error) {
 	if p.inData {
 		p.warn("file ended inside a set's data (no \"&\")")
 	}
+	for _, s := range p.proj.Shapes {
+		original := *s
+		p.proj.originalShapes = append(p.proj.originalShapes, &original)
+	}
 	return p.proj, sc.Err()
 }
 

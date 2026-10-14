@@ -53,8 +53,10 @@ OneFit's own 704 files use; it is history, not this list.
 - Drawing objects, on the page or in a graph's world: lines with arrow
   heads (at either end or both; line, filled or opaque; length and
   layout), boxes and ellipses (outline style, width and color, fill color
-  and pattern). Each is written back whole, where gracebat writes them
-  (after the timestamp, before the strings).
+  and pattern). Untouched objects are written back exactly as read. Edited
+  and newly added objects are saved from their current settings; unknown
+  directives in an edited object are retained. They stay where gracebat
+  writes them (after the timestamp, before the strings).
 - Grace's 32 fill patterns, on any fill and line.
 - Values gracebat rejects (negative colors, styles, ...) are rejected the
   same way.

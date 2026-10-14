@@ -144,6 +144,128 @@ func TestWriteKeepsDrawingObjects(t *testing.T) {
 	}
 }
 
+func TestEditedDrawingObjectsSurviveRoundTrip(t *testing.T) {
+	in := `@with line
+@    line on
+@    line loctype world
+@    line g0
+@    line 1, 2, 3, 4
+@    line color 2
+@    line future setting 42
+@line def
+@with box
+@    box on
+@    box 0.1, 0.2, 0.3, 0.4
+@box def
+@g0 on
+@with g0
+@    world 0, 0, 5, 5
+`
+	p, err := agr.Parse(strings.NewReader(in))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The second block's effective settings must stay the same even if
+	// Grace inherited them from the first block.
+	box := *p.Shapes[1]
+	p.Shapes[0].X2 = 4.5
+	p.Shapes[0].Arrow = 3
+	p.Shapes[0].ArrowType = 1
+	p.Shapes[0].ArrowLength = 2
+	p.Shapes[0].ArrowDL = 0.8
+	p.Shapes[0].ArrowLL = 0.5
+	var b bytes.Buffer
+	if err := agr.Write(&b, p); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), "line future setting 42") {
+		t.Fatal("the unknown setting was lost")
+	}
+	q, err := agr.Parse(strings.NewReader(b.String()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if *q.Shapes[0] != *p.Shapes[0] || *q.Shapes[1] != box {
+		t.Fatalf("edited shape or later shape changed: %+v; %+v", q.Shapes[0], q.Shapes[1])
+	}
+	var again bytes.Buffer
+	if err := agr.Write(&again, q); err != nil || again.String() != b.String() {
+		t.Fatal("edited object is not stable after reopening")
+	}
+}
+
+func TestAddAndDeleteShapesKeepInheritedSettings(t *testing.T) {
+	p, err := agr.Parse(strings.NewReader(`@with box
+@    box on
+@    box 0.1, 0.2, 0.3, 0.4
+@    box color 5
+@box def
+@with box
+@    box on
+@    box 0.5, 0.6, 0.7, 0.8
+@box def
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Shapes[1].Color != 5 || !p.DeleteShape(0) || p.DeleteShape(9) {
+		t.Fatal("deleting the first box failed")
+	}
+	for _, s := range []*agr.Shape{
+		{Kind: "line", On: true, LocType: "view", Graph: 0, X1: 0.1, Y1: 0.2, X2: 0.7, Y2: 0.8, LineStyle: 1, LineWidth: 2, Color: 3, FillColor: 1, Arrow: 2, ArrowType: 1, ArrowLength: 2, ArrowDL: 0.8, ArrowLL: 0.5},
+		{Kind: "ellipse", On: true, LocType: "view", Graph: 0, X1: 0.2, Y1: 0.3, X2: 0.8, Y2: 0.9, LineStyle: 1, LineWidth: 1, Color: 4, FillColor: 6, FillPattern: 3, ArrowLength: 1, ArrowDL: 1, ArrowLL: 1},
+	} {
+		p.AddShape(s)
+	}
+	var b bytes.Buffer
+	if err := agr.Write(&b, p); err != nil {
+		t.Fatal(err)
+	}
+	q, err := agr.Parse(strings.NewReader(b.String()))
+	if err != nil || len(q.Shapes) != len(p.Shapes) {
+		t.Fatalf("reopen: %v, shapes %d", err, len(q.Shapes))
+	}
+	for i, s := range p.Shapes {
+		want := *s
+		// Grace's unspecified graph (-1) and explicit g0 have the same
+		// effect on page objects; the edited first block writes g0.
+		if want.LocType == "view" && want.Graph == -1 {
+			want.Graph = 0
+		}
+		if *q.Shapes[i] != want {
+			t.Errorf("shape %d after reopen: %+v, want %+v", i, q.Shapes[i], s)
+		}
+	}
+}
+
+func TestEditedShapeDoesNotChangeLaterInheritedShape(t *testing.T) {
+	p, err := agr.Parse(strings.NewReader(`@with line
+@    line on
+@    line 0, 0, 1, 1
+@    line color 2
+@line def
+@with line
+@    line on
+@    line 0, 1, 1, 0
+@line def
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Shapes[1].Color != 2 {
+		t.Fatal("second line should inherit the first's color")
+	}
+	p.Shapes[0].Color = 3
+	var b bytes.Buffer
+	if err := agr.Write(&b, p); err != nil {
+		t.Fatal(err)
+	}
+	q, err := agr.Parse(strings.NewReader(b.String()))
+	if err != nil || q.Shapes[0].Color != 3 || q.Shapes[1].Color != 2 {
+		t.Fatalf("changed an inherited style: %v; first %+v, second %+v", err, q.Shapes[0], q.Shapes[1])
+	}
+}
+
 // TestWriteRoundTrip: every corpus file, written and read back, is the same
 // Project and draws the same - the figure editor saves through Write.
 func TestWriteRoundTrip(t *testing.T) {

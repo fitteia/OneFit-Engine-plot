@@ -68,13 +68,24 @@ func Write(w io.Writer, p *Project) error {
 	pf("@timestamp char size %s", size(ts.CharSize))
 	pf("@timestamp def %s", quote(ts.Text))
 	k.rest()
-	for _, o := range p.Objects {
-		for i, d := range o {
-			if i == 0 || i == len(o)-1 && strings.HasSuffix(d, " def") {
-				pf("@%s", d)
-			} else {
-				pf("@    %s", d)
-			}
+	forceExplicit := false
+	for i := 0; i < max(len(p.Objects), len(p.Shapes)); i++ {
+		var raw []string
+		if i < len(p.Objects) {
+			raw = p.Objects[i]
+		}
+		var shape *Shape
+		if i < len(p.Shapes) {
+			shape = p.Shapes[i]
+		}
+		unchanged := !forceExplicit && (shape == nil || i < len(p.originalShapes) && p.originalShapes[i] != nil && *shape == *p.originalShapes[i])
+		if unchanged {
+			writeRawObject(pf, raw)
+			continue
+		}
+		forceExplicit = true
+		if err := writeShape(pf, raw, shape); err != nil {
+			return err
 		}
 	}
 	for _, s := range p.Strings {
@@ -117,6 +128,74 @@ func Write(w io.Writer, p *Project) error {
 		}
 	}
 	return b.Flush()
+}
+
+func writeRawObject(pf func(string, ...any), raw []string) {
+	for i, d := range raw {
+		if i == 0 || i == len(raw)-1 && strings.HasSuffix(d, " def") {
+			pf("@%s", d)
+		} else {
+			pf("@    %s", d)
+		}
+	}
+}
+
+// writeShape keeps the original object's unknown lines and writes all known
+// settings last. Grace and Parse use the last setting of each kind; writing
+// all fields also keeps a shape independent of defaults inherited from an
+// earlier object that the editor may have deleted.
+func writeShape(pf func(string, ...any), raw []string, s *Shape) error {
+	if s == nil {
+		return fmt.Errorf("cannot write nil drawing object")
+	}
+	if s.Kind != "line" && s.Kind != "box" && s.Kind != "ellipse" {
+		return fmt.Errorf("cannot write drawing object with kind %q", s.Kind)
+	}
+	k := s.Kind
+	if len(raw) > 0 && raw[0] != "with "+k {
+		return fmt.Errorf("drawing object changed kind from %q to %q", raw[0], k)
+	}
+	pf("@with %s", k)
+	if len(raw) > 1 {
+		end := len(raw)
+		if raw[end-1] == k+" def" {
+			end--
+		}
+		for _, d := range raw[1:end] {
+			// A previous graph reference must not survive a change back to
+			// the unspecified graph (-1).
+			if s.Graph < 0 && strings.HasPrefix(d, k+" g") {
+				if _, err := strconv.Atoi(strings.TrimPrefix(d, k+" g")); err == nil {
+					continue
+				}
+			}
+			pf("@    %s", d)
+		}
+	}
+	pf("@    %s %s", k, onOff(s.On))
+	loc := s.LocType
+	if loc == "" {
+		loc = "view"
+	}
+	pf("@    %s loctype %s", k, loc)
+	if s.Graph >= 0 {
+		pf("@    %s g%d", k, s.Graph)
+	}
+	pf("@    %s %s, %s, %s, %s", k, num(s.X1), num(s.Y1), num(s.X2), num(s.Y2))
+	pf("@    %s linestyle %d", k, s.LineStyle)
+	pf("@    %s linewidth %s", k, num(s.LineWidth))
+	pf("@    %s color %d", k, s.Color)
+	if k == "line" {
+		pf("@    line arrow %d", s.Arrow)
+		pf("@    line arrow type %d", s.ArrowType)
+		pf("@    line arrow length %s", num(s.ArrowLength))
+		pf("@    line arrow layout %s, %s", num(s.ArrowDL), num(s.ArrowLL))
+	} else {
+		pf("@    %s fill color %d", k, s.FillColor)
+		pf("@    %s fill pattern %d", k, s.FillPattern)
+	}
+	pf("@%s def", k)
+	return nil
 }
 
 // kept writes kept directives (see Project.Kept): each in place of the

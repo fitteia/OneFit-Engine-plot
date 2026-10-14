@@ -231,6 +231,33 @@ func TestRemoveGraphPlacesTheOthers(t *testing.T) {
 	}
 }
 
+func TestGraphObjectsFollowAddedAndRemovedGraph(t *testing.T) {
+	fig := FromPlot(load(t, "test3-1.agr"), "a/fit-curves-1.agr")
+	fig.AddShape(&agr.Shape{Kind: "box", On: true, LocType: "view", Graph: -1,
+		X1: 0.1, Y1: 0.1, X2: 0.2, Y2: 0.2, LineStyle: 1, LineWidth: 1, Color: 1})
+	src := load(t, "test7-10.agr")
+	src.AddShape(&agr.Shape{Kind: "line", On: true, LocType: "world", Graph: 0,
+		X1: 1, Y1: 2, X2: 3, Y2: 4, LineStyle: 1, LineWidth: 1, Color: 2, Arrow: 2})
+	id, err := AddGraph(fig, src, "b/fit-curves-10.agr")
+	if err != nil || len(fig.Shapes) != 2 || fig.Shapes[1].Graph != id {
+		t.Fatalf("added graph %d: %v; objects %+v", id, err, fig.Shapes)
+	}
+	var b bytes.Buffer
+	if err := agr.Write(&b, fig); err != nil {
+		t.Fatal(err)
+	}
+	q, err := agr.Parse(strings.NewReader(b.String()))
+	if err != nil || len(q.Shapes) != 2 || q.Shapes[1].Graph != id {
+		t.Fatalf("reopened graph object: %v; %+v", err, q.Shapes)
+	}
+	if err := RemoveGraph(fig, id); err != nil {
+		t.Fatal(err)
+	}
+	if len(fig.Shapes) != 1 || fig.Shapes[0].Kind != "box" || len(fig.Objects) != 1 {
+		t.Fatalf("removed graph retained its object: %+v", fig.Shapes)
+	}
+}
+
 func TestDistinctColors(t *testing.T) {
 	fig := FromPlot(load(t, "test3-1.agr"), "a/fit-curves-1.agr")
 	seen := map[int]bool{}
