@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -29,8 +30,11 @@ var graceFlags = map[string]bool{
 	"-nxy": true, "-settype": true, "-settypexydy": true, "-param": true, "-log": true,
 	"-hdevice": true, "-device": true, "-hardcopy": true, "-printfile": true, "-saveall": true,
 	"-version": true, "-batch": true, "-noask": true, "-nosafe": true, "-safe": true, "-free": true,
-	"-xydy": true,
+	"-xydy": true, "-pexec": true,
 }
+
+// deviceDPI is Grace's command DEVICE "name" DPI n (any case).
+var deviceDPI = regexp.MustCompile(`(?i)^\s*device\s+"([^"]+)"\s+dpi\s+(\d+)\s*$`)
 
 // isGrace reports whether args are a gracebat command line.
 func isGrace(args []string) bool {
@@ -53,6 +57,7 @@ type graceRun struct {
 	settings strings.Builder // directives, in order, each starting with "@"
 	data     []dataset
 	device   string
+	dpi      map[string]int // DEVICE "name" DPI n (-pexec), by lower-case device name
 	print    string
 	saveall  string
 	warn     func(string)
@@ -124,6 +129,22 @@ func runGrace(args []string, stdout, stderr io.Writer) int {
 				return 2
 			}
 			g.device = v
+		case "-pexec":
+			// of Grace's commands only a device's resolution:
+			// DEVICE "PNG" DPI 144
+			v, ok := next(&i, a)
+			if !ok {
+				return 2
+			}
+			if m := deviceDPI.FindStringSubmatch(v); m != nil {
+				n, _ := strconv.Atoi(m[2])
+				if g.dpi == nil {
+					g.dpi = map[string]int{}
+				}
+				g.dpi[strings.ToLower(m[1])] = n
+			} else {
+				g.warn("-pexec " + v + ": only DEVICE \"name\" DPI n is supported; ignored")
+			}
 		case "-printfile":
 			v, ok := next(&i, a)
 			if !ok {
@@ -350,8 +371,15 @@ func (g *graceRun) finish() int {
 			format = "pdf"
 		}
 		write := writers[format]
+		if format == "png" {
+			dpi := defaultDPI
+			if n, ok := g.dpi["png"]; ok {
+				dpi = n
+			}
+			write = pngWriter(dpi)
+		}
 		if write == nil {
-			g.warn("device " + g.device + " is not supported (EPS, PostScript, PDF, SVG)")
+			g.warn("device " + g.device + " is not supported (EPS, PostScript, PDF, SVG, PNG)")
 			return 1
 		}
 		if err := writeFile(g.print, func(w io.Writer) error {

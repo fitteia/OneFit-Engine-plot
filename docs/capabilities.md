@@ -14,7 +14,11 @@ OneFit's own 704 files use; it is history, not this list.
 ## Output
 
 - PDF, EPS and SVG (`plot-go`, and gracebat's command line as OneFit's C
-  core calls it). No PNG: convert the PDF or SVG.
+  core calls it).
+- PNG (`-format png`, `-dpi`; gracebat's `-hdevice PNG` and `-pexec
+  'DEVICE "PNG" DPI n'`): the whole page as gracebat's PNG is, made by an
+  installed converter - pdftoppm, else Ghostscript, else ImageMagick
+  ([grace-behaviour.md](grace-behaviour.md), "PNG").
 - Fonts: the standard 14 PostScript fonts by Grace's font map, measured
   with Adobe's metrics; others warn and use Helvetica.
 

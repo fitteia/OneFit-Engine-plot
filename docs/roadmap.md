@@ -14,6 +14,8 @@ then vendored in the GUI and pinned in the debs.
 
 ## Done
 
+- PNG output (`-format png`, gracebat's `-hdevice PNG`) through an
+  installed converter: v0.2.13.
 - The secondary axis: alternate axes (`altxaxis`, `altyaxis`), the
   reciprocal scale, tick label formulas and start/stop: v0.2.12. The
   Figures editor's control for it is in the GUI.
@@ -36,6 +38,4 @@ then vendored in the GUI and pinned in the debs.
   fixed.
 - **Text**: Grace's escapes plot-go leaves out (underline, overline, zoom,
   the other font forms) and fonts outside the standard 14.
-- **PNG output**: `-format png` handing the PDF or SVG to an installed
-  converter (`pdftoppm`, `gs`, `rsvg-convert`); until then, convert by hand.
 - **Packages**: RPM, SUSE and Arch packages of plot-go.

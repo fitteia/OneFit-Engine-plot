@@ -20,9 +20,29 @@ const kappa = 0.5522847498
 // OneFit's PDFs from gracebat's EPS. The standard fonts are named, not
 // embedded.
 func WritePDF(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) error {
+	return WritePDFWith(w, d, pageW, pageH, title, PDFOptions{})
+}
+
+// PDFOptions: FullPage keeps the whole page, not cropped (what a raster
+// made from it needs: gracebat's PNG is the whole page). PixelsPerPoint,
+// when set, rounds every line's width to whole pixels of a raster at that
+// scale, one at least: gracebat's PNG lines are each a whole number of
+// pixels thick (measured; docs/grace-behaviour.md, "PNG"). EvenOdd fills
+// every area by the even-odd rule, the only one gracebat's raster devices
+// have (a star's middle stays empty).
+type PDFOptions struct {
+	FullPage       bool
+	PixelsPerPoint float64
+	EvenOdd        bool
+}
+
+func WritePDFWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string, opt PDFOptions) error {
 	pageW, pageH = draw.PageSize(pageW, pageH)
 	unit := math.Min(pageW, pageH)
 	bb := BoundingBox(d, unit)
+	if opt.FullPage {
+		bb = Box{0, 0, pageW, pageH}
+	}
 
 	fonts := map[string]int{}
 	var fontOrder []string
@@ -74,7 +94,11 @@ func WritePDF(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) 
 				p("%s %s %s RG\n", num(st.Color[0]), num(st.Color[1]), num(st.Color[2]))
 			}
 			if first || st.Width != cur.Width {
-				p("%s w\n", num(st.Width))
+				w := st.Width
+				if px := unit * opt.PixelsPerPoint; px > 0 {
+					w = math.Max(1, math.Round(w*px)) / px
+				}
+				p("%s w\n", num(w))
 			}
 			if first || !sameDash(st.Dash, cur.Dash) {
 				p("[")
@@ -110,7 +134,7 @@ func WritePDF(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) 
 				p("h\n")
 			}
 		}
-		if path.Fill && path.EvenOdd {
+		if path.Fill && (path.EvenOdd || opt.EvenOdd) {
 			p("f*\n")
 		} else if path.Fill {
 			p("f\n")

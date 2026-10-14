@@ -542,6 +542,31 @@ What this covers is the corpus: the features listed in this file, as
 OneFit and the Figures editor use them - not all of Grace (see
 docs/features.md for what plot-go does not draw).
 
+## PNG
+
+Measured with `gracebat -hdevice PNG` (and `-pexec 'DEVICE "PNG" DPI n'`):
+
+- The image is the whole page, not cropped: the page's size in points
+  times dpi/72 pixels (773x600 points: 773x600 pixels at the default 72
+  dpi, 1546x1200 at 144), with the resolution recorded in the file.
+- Lines are not antialiased, and each is a whole number of pixels thick:
+  the width in pixels rounded, one at least (at 300 dpi Grace widths 0.5,
+  1, 2, 3, 6 are 2, 4, 8, 11, 23 pixels).
+- Every area is filled even-odd, also those the vector devices fill
+  non-zero (a star drawn in one stroke keeps its middle empty) - the
+  User's Guide says the raster devices have only that rule.
+
+plot-go makes the PNG from its own full-page PDF with an installed
+converter: pdftoppm (given the whole-pixel widths, which it then draws as
+gracebat does), else Ghostscript or ImageMagick (the widths as they are,
+since Ghostscript inks every pixel a line touches). Every fill is even-odd.
+Unlike gracebat's, the image is antialiased, and a converter places each
+line to the pixel its own way, so a line may sit a pixel from gracebat's.
+Over the corpus at 72 dpi every image has gracebat's size, and at most
+3.6% of the pixels differ by more than 30% (edges and pattern tile
+phases); at 144 dpi pdftoppm's image matches the gracebat references
+(testdata/ref) to 0.5% of its ink, Ghostscript's to 5%.
+
 ## The command line OneFit uses
 
 Recorded from a real fit (OneFit-Engine test 3 on a OneFit server, with a

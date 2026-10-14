@@ -1,9 +1,11 @@
 // plot-go renders a Grace project file (.agr) the way gracebat does,
-// without Grace: to PDF, EPS or SVG.
+// without Grace: to PDF, EPS, SVG or PNG.
 //
-//	plot-go [-o OUT] [-format pdf|eps|svg] FILE.agr
+//	plot-go [-o OUT] [-format pdf|eps|svg|png] [-dpi N] FILE.agr
 //
-// Without -o the output is FILE.pdf (or .eps, .svg) next to the input.
+// Without -o the output is FILE.pdf (or .eps, .svg, .png) next to the
+// input. PNG is the whole page at -dpi (72, gracebat's, by default), made
+// by pdftoppm or Ghostscript (png.go).
 // Lines plot-go cannot use, and features it does not draw, are warnings on
 // stderr; it still writes the file, as gracebat does.
 //
@@ -73,13 +75,14 @@ func main() {
 		os.Exit(runGrace(os.Args[1:], os.Stdout, os.Stderr))
 	}
 	out := flag.String("o", "", "output file (default: the input with the format's extension)")
-	format := flag.String("format", "", "pdf, eps or svg (default: from -o's extension, else pdf)")
+	format := flag.String("format", "", "pdf, eps, svg or png (default: from -o's extension, else pdf)")
+	dpi := flag.Int("dpi", defaultDPI, "png: resolution; the image is the page's size in points times dpi/72")
 	quiet := flag.Bool("q", false, "do not print warnings")
 	showVersion := flag.Bool("version", false, "print the version and exit")
 	showNotices := flag.Bool("notices", false, "print the license and third-party notices and exit")
 	outlineText := flag.Bool("outline-text", false, "SVG: draw text as glyph outlines (the same in every browser) instead of <text>")
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: plot-go [-o OUT] [-format pdf|eps|svg] [-q] FILE.agr")
+		fmt.Fprintln(os.Stderr, "usage: plot-go [-o OUT] [-format pdf|eps|svg|png] [-dpi N] [-q] FILE.agr")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -99,18 +102,21 @@ func main() {
 	f := strings.ToLower(*format)
 	if f == "" {
 		f = strings.TrimPrefix(strings.ToLower(filepath.Ext(*out)), ".")
-		if writers[f] == nil {
+		if writers[f] == nil && f != "png" {
 			f = "pdf"
 		}
 	}
 	write := writers[f]
+	if f == "png" {
+		write = pngWriter(*dpi)
+	}
 	if f == "svg" && *outlineText {
 		write = func(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) error {
 			return backend.WriteSVGWith(w, d, pageW, pageH, title, backend.SVGOptions{TextAsPaths: true})
 		}
 	}
 	if write == nil {
-		fail(fmt.Errorf("unknown format %q (pdf, eps or svg)", f))
+		fail(fmt.Errorf("unknown format %q (pdf, eps, svg or png)", f))
 	}
 	if *out == "" {
 		*out = strings.TrimSuffix(in, filepath.Ext(in)) + "." + f
