@@ -89,9 +89,13 @@ type Graph struct {
 	Title    Title
 	Subtitle Title
 	X, Y     Axis
-	Legend   Legend
-	Frame    Frame
-	Sets     []*Set
+	// AltX, AltY are the alternate axes ("altxaxis", "altyaxis"): axes of
+	// their own in the same world and scale, drawn after the y axis; Grace's
+	// default axis (DefaultAxis) unless the file sets them
+	AltX, AltY Axis
+	Legend     Legend
+	Frame      Frame
+	Sets       []*Set
 	// Kept are the graph's directives the model has no place for: those
 	// in its "@with g" block (alternate axes, axis bars, ...) as read, and
 	// in KeptHeader those of its "@gN" header (stacked, fixed point) as
@@ -122,6 +126,21 @@ type Axis struct {
 	Label     AxisLabel
 	Tick      Ticks
 	TickLabel TickLabels
+}
+
+// DefaultAxis is Grace's axis before a file sets it - an alternate axis
+// switched on with nothing else (measured: the axis gracebat saves for a
+// graph it makes itself), off.
+func DefaultAxis() Axis {
+	marks := func(size float64) TickMarks { return TickMarks{Size: size, Color: 1, LineWidth: 1, LineStyle: 1} }
+	return Axis{
+		Scale: "Normal",
+		Bar:   AxisBar{On: true, Color: 1, LineStyle: 1, LineWidth: 1},
+		Label: AxisLabel{Layout: "para", Place: "normal", CharSize: 1, Color: 1},
+		Tick: Ticks{On: true, Major: 0.2, MinorTicks: 1, Default: 6, Rounded: true, Direction: "in", Place: "both",
+			MajorMarks: marks(1), MinorMarks: marks(0.5), SpecType: "none"},
+		TickLabel: TickLabels{On: true, Format: "general", Prec: 5, Place: "normal", CharSize: 1, Color: 1, Offset: [2]float64{0, 0.01}},
+	}
 }
 
 // AxisBar is the line drawn along an axis ("bar on"), on the sides its
@@ -204,6 +223,13 @@ type TickLabels struct {
 	Color      int
 	OffsetSpec bool       // "ticklabel offset spec": Offset, not the default 0, 0.01
 	Offset     [2]float64 // along the axis, out from it
+	// Formula ("ticklabel formula"): each label is this expression of $t,
+	// the tick's value, instead of the value (render/formula.go)
+	Formula string
+	// "ticklabel start/stop type spec": labels only for the ticks whose
+	// values are from Start to Stop, before any formula
+	StartSpec, StopSpec bool
+	Start, Stop         float64
 }
 
 // Legend is a graph's legend box.

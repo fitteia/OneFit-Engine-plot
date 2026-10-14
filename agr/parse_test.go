@@ -200,7 +200,7 @@ func TestWarnings(t *testing.T) {
 	p, err := Parse(strings.NewReader(`@version 50125
 @with g0
 @    s0 avalue on
-@    xaxes scale Reciprocal
+@    xaxes scale Logit
 @    frobnicate 3
 @target G0.S0
 @type xy
@@ -211,7 +211,7 @@ func TestWarnings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"annotated values is not drawn", "axis scale Reciprocal", "unknown directive", "row has 1 numbers"}
+	want := []string{"annotated values is not drawn", "axis scale Logit", "unknown directive", "row has 1 numbers"}
 	if len(p.Warnings) != len(want) {
 		t.Fatalf("warnings = %+v", p.Warnings)
 	}

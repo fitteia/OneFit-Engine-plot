@@ -23,12 +23,14 @@ OneFit's own 704 files use; it is history, not this list.
 - Page: size, background color and fill.
 - Graphs: any number, `type XY`, each with its world and viewport;
   hidden graphs skipped.
-- Axes: normal and logarithmic scales, inverted axes, axis sides and
-  offsets, an axis at zero (`type zero true`), axis bars, axis labels (placement, layout, side), major and minor ticks
+- Axes: normal, logarithmic and reciprocal scales, inverted axes,
+  alternate axes (`altxaxis`, `altyaxis`), axis sides and offsets, an axis
+  at zero (`type zero true`), axis bars, axis labels (placement, layout, side), major and minor ticks
   (size, color, width, style, direction, sides), special ticks (`tick
   spec`, types ticks and both), grid lines, tick labels in all of Grace's
   32 formats with precision, prepend/append, angle, skip, stagger, side
-  and offset.
+  and offset, tick label formulas (`ticklabel formula`, Grace's expression
+  language) and start/stop.
 - Frames: types 0 to 5, background color and pattern.
 - Titles, subtitles, the timestamp, and strings in viewport or world
   coordinates, with justification, rotation, size, color, font and Grace's
@@ -55,11 +57,9 @@ saved loses none of them.
 
 - Annotated values (`avalue`).
 - Regions (`r0` ...).
-- Alternate axes.
-- Tick label formulas and start/stop.
 - Stacked graphs, fixed points, graph types other than XY.
 - Other set types (bar, xyhilo, xyr, ...; their data rows are read as far
-  as they go); axis scales other than normal and logarithmic.
+  as they go); axis scales other than normal, logarithmic and reciprocal.
 - Drawing objects: lines and arrows, boxes, ellipses (each kept whole,
   where gracebat writes them: after the timestamp, before the strings).
 - Anything else plot-go does not know: an unknown directive warns and is

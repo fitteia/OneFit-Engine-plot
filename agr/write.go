@@ -207,8 +207,18 @@ func writeGraph(out func(string, ...any), g *Graph) {
 	pf("@    yaxes invert %s", onOff(g.Y.Invert))
 	writeAxis(pf, "xaxis", g.X)
 	writeAxis(pf, "yaxis", g.Y)
-	pf("@    altxaxis  off")
-	pf("@    altyaxis  off")
+	// an alternate axis that is off is one line, as Grace writes it (Grace
+	// itself writes them off even when on - plot-go writes them whole)
+	for _, alt := range []struct {
+		name string
+		a    Axis
+	}{{"altxaxis", g.AltX}, {"altyaxis", g.AltY}} {
+		if alt.a.On {
+			writeAxis(pf, alt.name, alt.a)
+		} else {
+			pf("@    %s  off", alt.name)
+		}
+	}
 	l := g.Legend
 	pf("@    legend %s", onOff(l.On))
 	loc := l.LocType
@@ -286,7 +296,7 @@ func writeAxis(pf func(string, ...any), name string, a Axis) {
 	pf("@    %s  ticklabel %s", name, onOff(l.On))
 	pf("@    %s  ticklabel format %s", name, or(l.Format, "general"))
 	pf("@    %s  ticklabel prec %d", name, l.Prec)
-	pf("@    %s  ticklabel formula \"\"", name)
+	pf("@    %s  ticklabel formula %s", name, quote(l.Formula))
 	pf("@    %s  ticklabel append %s", name, quote(l.Append))
 	pf("@    %s  ticklabel prepend %s", name, quote(l.Prepend))
 	pf("@    %s  ticklabel angle %s", name, num(l.Angle))
@@ -300,10 +310,10 @@ func writeAxis(pf func(string, ...any), name string, a Axis) {
 		pf("@    %s  ticklabel offset auto", name)
 		pf("@    %s  ticklabel offset 0.000000 , 0.010000", name)
 	}
-	pf("@    %s  ticklabel start type auto", name)
-	pf("@    %s  ticklabel start 0.000000", name)
-	pf("@    %s  ticklabel stop type auto", name)
-	pf("@    %s  ticklabel stop 0.000000", name)
+	pf("@    %s  ticklabel start type %s", name, map[bool]string{true: "spec", false: "auto"}[l.StartSpec])
+	pf("@    %s  ticklabel start %s", name, size(l.Start))
+	pf("@    %s  ticklabel stop type %s", name, map[bool]string{true: "spec", false: "auto"}[l.StopSpec])
+	pf("@    %s  ticklabel stop %s", name, size(l.Stop))
 	pf("@    %s  ticklabel char size %s", name, size(l.CharSize))
 	pf("@    %s  ticklabel font %d", name, l.Font)
 	pf("@    %s  ticklabel color %d", name, l.Color)

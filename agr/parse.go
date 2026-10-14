@@ -93,7 +93,7 @@ func (r rule) match(toks []token) ([]string, bool) {
 		case "G#", "S#", "R#":
 			ok = !t.isStr && matchIndex(p[:1], t.word)
 		case "AXIS":
-			ok = !t.isStr && (t.word == "xaxis" || t.word == "yaxis")
+			ok = !t.isStr && (t.word == "xaxis" || t.word == "yaxis" || t.word == "altxaxis" || t.word == "altyaxis")
 		case "AXES":
 			ok = !t.isStr && (t.word == "xaxes" || t.word == "yaxes")
 		default:
@@ -216,6 +216,7 @@ func (p *parser) graphByID(id int) *Graph {
 		ax.Tick.SpecType = "none"
 		ax.Bar = AxisBar{Color: 1, LineStyle: 1, LineWidth: 1}
 	}
+	g.AltX, g.AltY = DefaultAxis(), DefaultAxis()
 	p.proj.Graphs = append(p.proj.Graphs, g)
 	return g
 }
@@ -250,10 +251,16 @@ func (p *parser) set(a []string) *Set {
 }
 
 func (p *parser) axis(name string) *Axis {
-	if strings.HasPrefix(name, "x") {
-		return &p.currentGraph().X
+	g := p.currentGraph()
+	switch {
+	case strings.HasPrefix(name, "altx"):
+		return &g.AltX
+	case strings.HasPrefix(name, "alty"):
+		return &g.AltY
+	case strings.HasPrefix(name, "x"):
+		return &g.X
 	}
-	return &p.currentGraph().Y
+	return &g.Y
 }
 
 func (p *parser) currentString() *Text {
@@ -540,15 +547,13 @@ func init() {
 		// axes
 		r("AXES scale W", func(p *parser, a []string) {
 			switch a[1] {
-			case "Normal", "Logarithmic":
+			case "Normal", "Logarithmic", "Reciprocal":
 			default:
 				p.warn("axis scale %s is not drawn by plot-go", a[1])
 			}
 			p.axis(a[0]).Scale = a[1]
 		}),
 		r("AXES invert W", func(p *parser, a []string) { p.axis(a[0]).Invert = p.bool(a[1]) }),
-		r("altxaxis W", unsupportedWhenOn("an alternate x axis", 0)),
-		r("altyaxis W", unsupportedWhenOn("an alternate y axis", 0)),
 		r("AXIS W", func(p *parser, a []string) { p.axis(a[0]).On = p.bool(a[1]) }),
 		r("AXIS type zero W", func(p *parser, a []string) { p.axis(a[0]).Zero = p.bool(a[1]) }),
 		r("AXIS offset N N", func(p *parser, a []string) { p.axis(a[0]).Offset = [2]float64{p.num(a[1]), p.num(a[2])} }),
@@ -657,12 +662,7 @@ func init() {
 			p.axis(a[0]).TickLabel.Format = f
 		}),
 		r("AXIS ticklabel prec N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Prec = p.nonNeg(p.axis(a[0]).TickLabel.Prec, a[1]) }),
-		r("AXIS ticklabel formula S", func(p *parser, a []string) {
-			p.keep()
-			if a[1] != "" {
-				p.warn("tick label formulas are not applied by plot-go")
-			}
-		}),
+		r("AXIS ticklabel formula S", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Formula = a[1] }),
 		r("AXIS ticklabel append S", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Append = a[1] }),
 		r("AXIS ticklabel prepend S", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Prepend = a[1] }),
 		r("AXIS ticklabel angle N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Angle = p.num(a[1]) }),
@@ -675,20 +675,10 @@ func init() {
 		r("AXIS ticklabel offset N N", func(p *parser, a []string) {
 			p.axis(a[0]).TickLabel.Offset = [2]float64{p.num(a[1]), p.num(a[2])}
 		}),
-		r("AXIS ticklabel start type W", func(p *parser, a []string) {
-			p.keep()
-			if a[1] != "auto" {
-				p.warn("tick label start/stop are not applied by plot-go")
-			}
-		}),
-		r("AXIS ticklabel start N", ignore),
-		r("AXIS ticklabel stop type W", func(p *parser, a []string) {
-			p.keep()
-			if a[1] != "auto" {
-				p.warn("tick label start/stop are not applied by plot-go")
-			}
-		}),
-		r("AXIS ticklabel stop N", ignore),
+		r("AXIS ticklabel start type W", func(p *parser, a []string) { p.axis(a[0]).TickLabel.StartSpec = a[1] == "spec" }),
+		r("AXIS ticklabel start N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Start = p.num(a[1]) }),
+		r("AXIS ticklabel stop type W", func(p *parser, a []string) { p.axis(a[0]).TickLabel.StopSpec = a[1] == "spec" }),
+		r("AXIS ticklabel stop N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Stop = p.num(a[1]) }),
 		r("AXIS ticklabel char size N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.CharSize = p.num(a[1]) }),
 		r("AXIS ticklabel font N", func(p *parser, a []string) { p.axis(a[0]).TickLabel.Font = p.nonNeg(p.axis(a[0]).TickLabel.Font, a[1]) }),
 		r("AXIS ticklabel color N", func(p *parser, a []string) {

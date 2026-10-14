@@ -317,6 +317,63 @@ Measured with `style-axes-zero`, `-zero-edge`, `-zero-outside`,
   (at zero both sides draw it on the same line). An axis that is off has
   no bar. Each axis draws its bar first, then its ticks.
 
+## Alternate axes
+
+Measured with `style-axes-alt` and black-box runs of gracebat.
+
+- `altxaxis` and `altyaxis` are axes of their own in the graph's world and
+  scale (`xaxes`/`yaxes`), set with the same directives as `xaxis`/`yaxis`
+  and drawn by the same rules - an alternate axis with the x axis's
+  settings draws exactly what the x axis does. They are drawn after the y
+  axis (x, then y), before the frame.
+- One switched on with nothing else is Grace's default axis - the axis
+  gracebat saves for a graph it makes itself: bar on, ticks every 0.2
+  (size 1, minor 0.5, in, both sides), tick labels and title in font 0 at
+  size 1 on the normal side, general format, precision 5.
+- Grace does not save them: `-saveall` writes `altxaxis off` even for one
+  that is on and drawn, and none of its settings. A file with one comes
+  from plot-go's writer (the Figures editor) or is written by hand; plot-go
+  writes them whole.
+
+## Tick label formulas
+
+Measured with `style-axes-formula` and grace-probe runs over some 80
+formulas.
+
+- `ticklabel formula` makes each tick's label the formula of `$t`, the
+  tick's value, in the axis's format: `1000/$t` labels the ticks at 1 to 5
+  1000, 500, 333.33, ... Ticks stay where they are.
+- The language: numbers (`1`, `2.5`, `.5`, `2.`, `1e-3`), `pi`, `$t` (any
+  case); `||`/`or`, `&&`/`and`, `== != < > <= >=` (giving 0 or 1), `+ -`,
+  `* / %`, unary `-`, `!`, `not`, and `^` - tighter than unary minus
+  (`-$t^2` is -(t^2)) and grouping from the right; the functions `abs sqr
+  sqrt exp ln log10 log2 floor ceil rint` (to even), `sin cos tan asin
+  acos atan sinh cosh tanh asinh acosh atanh`, `mod(a, b)`. Not: `log`,
+  `int`, `min`, `max`, `pow`, `e`, `**`, unary `+`.
+- A formula gracebat cannot read, or one dividing by zero (`/` or `%` by
+  0 at any tick), is "Error in tick transformation formula": that axis has
+  no tick labels. `mod(a, 0)`, `sqrt` of a negative, and the like give NaN.
+- Not a number prints `nan`, infinity `inf` and `-inf` - in power format
+  10 to the `nan`/`inf` (`-10` for -inf), in scientific `nan` times 10 to
+  0 (NaN) or 2147483647 (either infinity).
+
+## Tick label start and stop
+
+- `ticklabel start type spec` with `ticklabel start a`, and `stop type
+  spec` with `stop b`: only the ticks whose own values are from a to b
+  (both included, before any formula) are labelled; every tick is still
+  drawn.
+
+## Reciprocal scale
+
+Measured with `style-axes-reciprocal` and `-reciprocal-zero`.
+
+- `xaxes scale Reciprocal` places values linearly in -1/v (v still grows to
+  the right, or up): ticks at multiples of `tick major`, minor ticks evenly
+  between them in v, as on a normal axis. Inverted, it is mirrored.
+- A window holding 0 is "X-axis contains 0" (or Y), and nothing of the
+  graph is drawn.
+
 ## Text
 
 - Font size: 0.028 per unit of char size (1.5 -> 0.042).
@@ -453,7 +510,8 @@ and `style-legend-world`.
 
 Page background; then per graph: each set (fill, line, droplines,
 baseline, error bars, symbols), the x axis
-(bar, minor ticks, major ticks, tick labels, label), the y axis likewise, the
+(bar, minor ticks, major ticks, tick labels, label), the y axis likewise,
+the alternate x and y axes likewise, the
 frame, and the strings placed in that graph's world coordinates; then the
 strings placed on the page (view coordinates). Each tick is drawn on the
 normal side, then the opposite one.

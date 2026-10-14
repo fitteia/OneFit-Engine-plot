@@ -13,6 +13,34 @@ import (
 // formatNumber is a value in one of the numeric formats.
 func formatNumber(v float64, format string, prec int) string {
 	p := max(prec, 0)
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		// as gracebat prints them (a tick label formula's sqrt(-1), exp(1000),
+		// measured): C's "nan", "inf", "-inf"; power and scientific build
+		// theirs around them
+		switch format {
+		case "power":
+			switch {
+			case math.IsNaN(v):
+				return `10\Snan\N`
+			case v > 0:
+				return `10\Sinf\N`
+			}
+			return `-10\Sinf\N`
+		case "scientific":
+			e := "0"
+			if math.IsInf(v, 0) {
+				e = "2147483647"
+			}
+			return `nan\x` + "\xb4" + `\f{}10\S` + e + `\N`
+		}
+		if math.IsNaN(v) {
+			return "nan"
+		}
+		if v > 0 {
+			return "inf"
+		}
+		return "-inf"
+	}
 	switch format {
 	case "general", "":
 		return fmt.Sprintf("%.*g", max(p, 1), v)

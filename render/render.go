@@ -206,15 +206,20 @@ func Now() time.Time {
 type xform struct {
 	g          *agr.Graph
 	logX, logY bool
+	recX, recY bool // "Reciprocal": linear in -1/v, v growing as usual
 }
 
 func newXform(g *agr.Graph) xform {
-	return xform{g: g, logX: g.X.Scale == "Logarithmic", logY: g.Y.Scale == "Logarithmic"}
+	return xform{g: g, logX: g.X.Scale == "Logarithmic", logY: g.Y.Scale == "Logarithmic",
+		recX: g.X.Scale == "Reciprocal", recY: g.Y.Scale == "Reciprocal"}
 }
 
-func scale(v, lo, hi, vlo, vhi float64, log bool) float64 {
-	if log {
+func scale(v, lo, hi, vlo, vhi float64, log, rec bool) float64 {
+	switch {
+	case log:
 		v, lo, hi = math.Log10(v), math.Log10(lo), math.Log10(hi)
+	case rec:
+		v, lo, hi = -1/v, -1/lo, -1/hi
 	}
 	return vlo + (v-lo)/(hi-lo)*(vhi-vlo)
 }
@@ -225,22 +230,23 @@ func scale(v, lo, hi, vlo, vhi float64, log bool) float64 {
 func (t xform) x(v float64) float64 {
 	w, vw := t.g.World, t.g.View
 	if t.g.X.Invert {
-		return scale(v, w.XMin, w.XMax, vw.XMax, vw.XMin, t.logX)
+		return scale(v, w.XMin, w.XMax, vw.XMax, vw.XMin, t.logX, t.recX)
 	}
-	return scale(v, w.XMin, w.XMax, vw.XMin, vw.XMax, t.logX)
+	return scale(v, w.XMin, w.XMax, vw.XMin, vw.XMax, t.logX, t.recX)
 }
 
 func (t xform) y(v float64) float64 {
 	w, vw := t.g.World, t.g.View
 	if t.g.Y.Invert {
-		return scale(v, w.YMin, w.YMax, vw.YMax, vw.YMin, t.logY)
+		return scale(v, w.YMin, w.YMax, vw.YMax, vw.YMin, t.logY, t.recY)
 	}
-	return scale(v, w.YMin, w.YMax, vw.YMin, vw.YMax, t.logY)
+	return scale(v, w.YMin, w.YMax, vw.YMin, vw.YMax, t.logY, t.recY)
 }
 
-// ok reports whether a point can be placed at all (log axes need > 0).
+// ok reports whether a point can be placed at all (log axes need > 0,
+// reciprocal ones not 0).
 func (t xform) ok(x, y float64) bool {
-	return (!t.logX || x > 0) && (!t.logY || y > 0)
+	return (!t.logX || x > 0) && (!t.logY || y > 0) && (!t.recX || x != 0) && (!t.recY || y != 0)
 }
 
 func (r *renderer) graph(g *agr.Graph) {
@@ -253,6 +259,18 @@ func (r *renderer) graph(g *agr.Graph) {
 		r.warn("graph %d has an empty world window; not drawn", g.ID)
 		return
 	}
+	// a reciprocal axis whose window holds 0: gracebat says "X-axis contains
+	// 0" and draws nothing of the graph (measured)
+	for _, a := range []struct {
+		name   string
+		scale  string
+		lo, hi float64
+	}{{"x", g.X.Scale, g.World.XMin, g.World.XMax}, {"y", g.Y.Scale, g.World.YMin, g.World.YMax}} {
+		if a.scale == "Reciprocal" && min(a.lo, a.hi) <= 0 && max(a.lo, a.hi) >= 0 {
+			r.warn("graph %d: its reciprocal %s axis's window contains 0; not drawn", g.ID, a.name)
+			return
+		}
+	}
 	t := newXform(g)
 	r.frameBackground(g)
 	r.grid(t, true)
@@ -262,8 +280,11 @@ func (r *renderer) graph(g *agr.Graph) {
 			r.set(t, s)
 		}
 	}
-	r.axis(t, true)
-	r.axis(t, false)
+	r.axis(t, true, false)
+	r.axis(t, false, false)
+	// the alternate axes, after the y axis (measured), in the same world
+	r.axis(t, true, true)
+	r.axis(t, false, true)
 	r.frame(g)
 	for i, s := range r.proj.Strings {
 		if s.LocType == "world" && s.Graph == g.ID {
@@ -1084,19 +1105,25 @@ func (r *renderer) grid(t xform, isX bool) {
 	}
 }
 
-func (r *renderer) axis(t xform, isX bool) {
+func (r *renderer) axis(t xform, isX, alt bool) {
 	g := t.g
-	ax := &g.Y
+	ax, main := &g.Y, &g.Y
 	lo, hi := g.World.YMin, g.World.YMax
 	if isX {
-		ax = &g.X
+		ax, main = &g.X, &g.X
 		lo, hi = g.World.XMin, g.World.XMax
+	}
+	if alt { // an alternate axis: its own settings, the main axis's scale
+		ax = map[bool]*agr.Axis{true: &g.AltX, false: &g.AltY}[isX]
 	}
 	if !ax.On {
 		return
 	}
 	v := g.View
 	axisName := map[bool]string{true: "x", false: "y"}[isX]
+	if alt {
+		axisName = "alt" + axisName
+	}
 	part := func(name string) string { return fmt.Sprintf("g%d.%s.%s", g.ID, axisName, name) }
 
 	// "type zero" (docs/grace-behaviour.md): the axis at the other axis's 0
@@ -1147,7 +1174,9 @@ func (r *renderer) axis(t xform, isX bool) {
 			}
 		}
 	}
-	tk := makeTicks(*ax, lo, hi)
+	scaled := *ax
+	scaled.Scale = main.Scale
+	tk := makeTicks(scaled, lo, hi)
 	if tk.auto {
 		r.warn("too many ticks on the %s axis; tick spacing chosen automatically", map[bool]string{true: "x", false: "y"}[isX])
 	}
@@ -1250,7 +1279,27 @@ func (r *renderer) axis(t xform, isX bool) {
 	// by their box (their turned glyphs' when at an angle); every
 	// (skip+1)th tick; staggered over stagger+1 rows, the label of tick k in
 	// row k%(stagger+1), moved out by row x (0.02 x char size + 0.01)
-	if ax.TickLabel.On {
+	// "ticklabel formula": each label is the formula of its tick's value;
+	// one gracebat cannot read or evaluate leaves the axis without labels
+	var fm *formula
+	labelsOn := ax.TickLabel.On
+	if labelsOn && ax.TickLabel.Formula != "" && tk.labels == nil {
+		f, err := parseFormula(ax.TickLabel.Formula)
+		if err == nil {
+			for _, w := range tk.majors {
+				if _, e := f.eval(w); e != nil {
+					err = e
+					break
+				}
+			}
+		}
+		if err != nil {
+			r.warn("the %s axis's tick label formula %q: %v; no tick labels", axisName, ax.TickLabel.Formula, err)
+			labelsOn = false
+		}
+		fm = f
+	}
+	if labelsOn {
 		size := ax.TickLabel.CharSize * charUnit
 		step := max(ax.TickLabel.Skip, 0) + 1
 		rows := max(ax.TickLabel.Stagger, 0) + 1
@@ -1272,7 +1321,17 @@ func (r *renderer) axis(t xform, isX bool) {
 					if k%step != 0 {
 						continue
 					}
-					text := r.label(w, ax.TickLabel)
+					// "ticklabel start/stop type spec": only ticks from start to
+					// stop, by their own values (before any formula)
+					tl := ax.TickLabel
+					if tl.StartSpec && w < tl.Start-1e-9*math.Abs(tl.Start) || tl.StopSpec && w > tl.Stop+1e-9*math.Abs(tl.Stop) {
+						continue
+					}
+					lv := w
+					if fm != nil {
+						lv, _ = fm.eval(w)
+					}
+					text := r.label(lv, ax.TickLabel)
 					if tk.labels != nil { // special ticks with their own labels ("" if none)
 						text = ax.TickLabel.Prepend + tk.labels[k] + ax.TickLabel.Append
 					}
