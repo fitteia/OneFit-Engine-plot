@@ -22,8 +22,14 @@ import (
 	"github.com/fitteia/OneFit-Engine-plot/draw"
 )
 
-// defaultDPI is gracebat's PNG resolution.
-const defaultDPI = 72
+// graceDPI is gracebat's PNG resolution, what its command line (-hdevice
+// PNG) gets here too; plot-go's own -format png defaults to defaultDPI,
+// enough for a journal figure (pass -dpi 600 for line art where 600 is
+// asked).
+const (
+	graceDPI   = 72
+	defaultDPI = 300
+)
 
 // pngConverters, in the order tried; each turns in.pdf into out.png.
 // wholePixels: lines are given whole-pixel widths, gracebat's; pdftoppm

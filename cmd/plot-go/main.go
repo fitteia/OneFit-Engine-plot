@@ -4,8 +4,9 @@
 //	plot-go [-o OUT] [-format pdf|eps|svg|png] [-dpi N] FILE.agr
 //
 // Without -o the output is FILE.pdf (or .eps, .svg, .png) next to the
-// input. PNG is the whole page at -dpi (72, gracebat's, by default), made
-// by pdftoppm or Ghostscript (png.go).
+// input. PNG is the whole page at -dpi (300 by default; gracebat's
+// command line gets gracebat's 72), made
+// by pdftoppm, Ghostscript or ImageMagick (png.go).
 // Lines plot-go cannot use, and features it does not draw, are warnings on
 // stderr; it still writes the file, as gracebat does.
 //

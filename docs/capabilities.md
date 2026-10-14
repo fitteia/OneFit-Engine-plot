@@ -15,7 +15,8 @@ OneFit's own 704 files use; it is history, not this list.
 
 - PDF, EPS and SVG (`plot-go`, and gracebat's command line as OneFit's C
   core calls it).
-- PNG (`-format png`, `-dpi`; gracebat's `-hdevice PNG` and `-pexec
+- PNG (`-format png`, `-dpi`, 300 by default; gracebat's `-hdevice PNG`,
+  at gracebat's 72 dpi unless `-pexec
   'DEVICE "PNG" DPI n'`): the whole page as gracebat's PNG is, made by an
   installed converter - pdftoppm, else Ghostscript, else ImageMagick
   ([grace-behaviour.md](grace-behaviour.md), "PNG").

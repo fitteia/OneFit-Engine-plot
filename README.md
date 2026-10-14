@@ -25,7 +25,8 @@ go install ./cmd/plot-go
 plot-go fit-curves-1.agr                  # -> fit-curves-1.pdf
 plot-go -o plot.svg fit-curves-1.agr      # format from the extension
 plot-go -format eps fit-curves-1.agr      # what OneFit's C core asks for
-plot-go -dpi 144 -o plot.png fit-curves-1.agr   # the whole page, 2 px a point
+plot-go -o plot.png fit-curves-1.agr      # the whole page at 300 dpi
+plot-go -dpi 600 -o plot.png fit-curves-1.agr   # line art at 600 dpi
 
 # gracebat's command line, as OneFit's C core calls Grace:
 plot-go -settype xydy gnu0.da_ -nxy fit-curves-1 -param fit1.agr-par \

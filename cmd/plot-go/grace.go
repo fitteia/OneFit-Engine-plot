@@ -372,7 +372,7 @@ func (g *graceRun) finish() int {
 		}
 		write := writers[format]
 		if format == "png" {
-			dpi := defaultDPI
+			dpi := graceDPI
 			if n, ok := g.dpi["png"]; ok {
 				dpi = n
 			}

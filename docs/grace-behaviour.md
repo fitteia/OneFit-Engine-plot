@@ -589,8 +589,10 @@ Measured with `gracebat -hdevice PNG` (and `-pexec 'DEVICE "PNG" DPI n'`):
   non-zero (a star drawn in one stroke keeps its middle empty) - the
   User's Guide says the raster devices have only that rule.
 
-plot-go makes the PNG from its own full-page PDF with an installed
-converter: pdftoppm (given the whole-pixel widths, which it then draws as
+plot-go's own `-format png` is at 300 dpi unless `-dpi` says otherwise
+(72 is too coarse for a publication); gracebat's command line
+(`-hdevice PNG`) gets gracebat's 72, or the `-pexec` DPI. It makes the
+PNG from its own full-page PDF with an installed converter: pdftoppm (given the whole-pixel widths, which it then draws as
 gracebat does), else Ghostscript or ImageMagick (the widths as they are,
 since Ghostscript inks every pixel a line touches). Every fill is even-odd.
 Unlike gracebat's, the image is antialiased, and a converter places each

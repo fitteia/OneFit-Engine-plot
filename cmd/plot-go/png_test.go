@@ -57,13 +57,13 @@ func pngOf(t *testing.T, name string, dpi int) map[string]image.Image {
 }
 
 // TestPNGIsTheWholePage: gracebat's PNG is the page, its points times
-// dpi/72 pixels (measured: 773x600 points -> 773x600 at 72 dpi, 1546x1200
-// at 144).
+// dpi/72 pixels, rounded (measured: 773x600 points -> 773x600 at 72 dpi,
+// 1546x1200 at 144, 3221x2500 at 300 - plot-go's own default).
 func TestPNGIsTheWholePage(t *testing.T) {
-	for _, dpi := range []int{72, 144} {
-		for conv, img := range pngOf(t, "p96-10-1.agr", dpi) {
-			if b := img.Bounds(); b.Dx() != 773*dpi/72 || b.Dy() != 600*dpi/72 {
-				t.Errorf("%s at %d dpi: %dx%d, gracebat %dx%d", conv, dpi, b.Dx(), b.Dy(), 773*dpi/72, 600*dpi/72)
+	for _, c := range []struct{ dpi, w, h int }{{72, 773, 600}, {144, 1546, 1200}, {defaultDPI, 3221, 2500}} {
+		for conv, img := range pngOf(t, "p96-10-1.agr", c.dpi) {
+			if b := img.Bounds(); b.Dx() != c.w || b.Dy() != c.h {
+				t.Errorf("%s at %d dpi: %dx%d, gracebat %dx%d", conv, c.dpi, b.Dx(), b.Dy(), c.w, c.h)
 			}
 		}
 	}
@@ -118,31 +118,37 @@ func TestPNGFillsEvenOdd(t *testing.T) {
 	}
 }
 
-// TestGracebatCallPNG: -hdevice PNG writes a PNG, at the DPI a -pexec
-// DEVICE "PNG" DPI command sets.
+// TestGracebatCallPNG: -hdevice PNG writes a PNG at gracebat's 72 dpi
+// (not plot-go's own 300), or at the DPI a -pexec DEVICE "PNG" DPI
+// command sets.
 func TestGracebatCallPNG(t *testing.T) {
 	needConverter(t)
-	dir := t.TempDir()
 	agrFile, err := filepath.Abs("../../testdata/corpus/p96-10-1.agr")
 	if err != nil {
 		t.Fatal(err)
 	}
-	out := filepath.Join(dir, "x.png")
-	var stdout, stderr bytes.Buffer
-	if code := runGrace([]string{"-hdevice", "PNG", "-pexec", `DEVICE "PNG" DPI 144`, "-hardcopy", "-printfile", out, agrFile}, &stdout, &stderr); code != 0 {
-		t.Fatalf("exit %d: %s", code, stderr.String())
-	}
-	f, err := os.Open(out)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
-	cfg, err := png.DecodeConfig(f)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.Width != 1546 || cfg.Height != 1200 {
-		t.Errorf("%dx%d, gracebat 1546x1200", cfg.Width, cfg.Height)
+	for _, c := range []struct {
+		pexec []string
+		w, h  int
+	}{{nil, 773, 600}, {[]string{"-pexec", `DEVICE "PNG" DPI 144`}, 1546, 1200}} {
+		out := filepath.Join(t.TempDir(), "x.png")
+		args := append(append([]string{"-hdevice", "PNG"}, c.pexec...), "-hardcopy", "-printfile", out, agrFile)
+		var stdout, stderr bytes.Buffer
+		if code := runGrace(args, &stdout, &stderr); code != 0 {
+			t.Fatalf("exit %d: %s", code, stderr.String())
+		}
+		f, err := os.Open(out)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cfg, err := png.DecodeConfig(f)
+		f.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.Width != c.w || cfg.Height != c.h {
+			t.Errorf("%v: %dx%d, gracebat %dx%d", c.pexec, cfg.Width, cfg.Height, c.w, c.h)
+		}
 	}
 }
 
