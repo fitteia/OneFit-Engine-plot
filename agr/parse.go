@@ -214,6 +214,7 @@ func (p *parser) graphByID(id int) *Graph {
 		ax.TickLabel.Format = "general"
 		ax.TickLabel.Prec = 5
 		ax.Tick.SpecType = "none"
+		ax.Bar = AxisBar{Color: 1, LineStyle: 1, LineWidth: 1}
 	}
 	p.proj.Graphs = append(p.proj.Graphs, g)
 	return g
@@ -549,12 +550,12 @@ func init() {
 		r("altxaxis W", unsupportedWhenOn("an alternate x axis", 0)),
 		r("altyaxis W", unsupportedWhenOn("an alternate y axis", 0)),
 		r("AXIS W", func(p *parser, a []string) { p.axis(a[0]).On = p.bool(a[1]) }),
-		r("AXIS type zero W", unsupportedWhenOn("an axis at zero", 1)),
+		r("AXIS type zero W", func(p *parser, a []string) { p.axis(a[0]).Zero = p.bool(a[1]) }),
 		r("AXIS offset N N", func(p *parser, a []string) { p.axis(a[0]).Offset = [2]float64{p.num(a[1]), p.num(a[2])} }),
-		r("AXIS bar W", unsupportedWhenOn("an axis bar", 1)),
-		r("AXIS bar color N", ignore),
-		r("AXIS bar linestyle N", ignore),
-		r("AXIS bar linewidth N", ignore),
+		r("AXIS bar W", func(p *parser, a []string) { p.axis(a[0]).Bar.On = p.bool(a[1]) }),
+		r("AXIS bar color N", func(p *parser, a []string) { b := &p.axis(a[0]).Bar; b.Color = p.nonNeg(b.Color, a[1]) }),
+		r("AXIS bar linestyle N", func(p *parser, a []string) { b := &p.axis(a[0]).Bar; b.LineStyle = p.nonNeg(b.LineStyle, a[1]) }),
+		r("AXIS bar linewidth N", func(p *parser, a []string) { p.axis(a[0]).Bar.LineWidth = p.width(a[1]) }),
 		r("AXIS label S", func(p *parser, a []string) { p.axis(a[0]).Label.Text = a[1] }),
 		r("AXIS label layout W", func(p *parser, a []string) { p.axis(a[0]).Label.Layout = a[1] }),
 		r("AXIS label place N N", func(p *parser, a []string) { p.axis(a[0]).Label.SpecAt = [2]float64{p.num(a[1]), p.num(a[2])} }),

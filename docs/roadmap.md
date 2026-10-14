@@ -17,12 +17,10 @@ then vendored in the GUI and pinned in the debs.
    reciprocal scale, tick label formulas and tick label start/stop - the
    "1000/T on top" axis of relaxation plots. Formulas need an evaluator for
    Grace's expression syntax.
-2. **An axis at zero and axis bars** (`type zero true`, `bar on`). Reuses
-   the axis drawing. Measured so far: a graph gracebat makes itself (one
-   a file says nothing about) has its axis bars on, and the bars are drawn
-   before the ticks.
 
 ## Done
+
+- An axis at zero and axis bars (`type zero true`, `bar on`): v0.2.11.
 
 - The set types with other error bars (`xydx`, `xydxdx`, `xydxdy`,
   `xydydy`, `xydxdxdydy`): v0.2.4.

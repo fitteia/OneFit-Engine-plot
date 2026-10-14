@@ -111,13 +111,26 @@ type Title struct {
 // Axis is one axis with its scale ("@xaxes scale ...") and its ticks,
 // labels and axis label ("@xaxis ...").
 type Axis struct {
-	Scale     string // "Normal" or "Logarithmic"
-	Invert    bool
-	On        bool
-	Offset    [2]float64 // the axis moved out from the frame: normal side, opposite
+	Scale  string // "Normal" or "Logarithmic"
+	Invert bool
+	On     bool
+	Offset [2]float64 // the axis moved out from the frame: normal side, opposite
+	// Zero ("type zero true"): the axis is drawn at the other axis's 0
+	// instead of at the frame - not at all when 0 is outside its window
+	Zero      bool
+	Bar       AxisBar // a line along the axis, on its tick sides
 	Label     AxisLabel
 	Tick      Ticks
 	TickLabel TickLabels
+}
+
+// AxisBar is the line drawn along an axis ("bar on"), on the sides its
+// ticks are placed on.
+type AxisBar struct {
+	On        bool
+	Color     int
+	LineStyle int
+	LineWidth float64
 }
 
 // AxisLabel is the axis title.

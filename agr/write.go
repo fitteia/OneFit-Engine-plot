@@ -246,12 +246,12 @@ func writeGraph(out func(string, ...any), g *Graph) {
 
 func writeAxis(pf func(string, ...any), name string, a Axis) {
 	pf("@    %s  %s", name, onOff(a.On))
-	pf("@    %s  type zero false", name)
+	pf("@    %s  type zero %s", name, map[bool]string{true: "true", false: "false"}[a.Zero])
 	pf("@    %s  offset %s , %s", name, size(a.Offset[0]), size(a.Offset[1]))
-	pf("@    %s  bar off", name)
-	pf("@    %s  bar color 1", name)
-	pf("@    %s  bar linestyle 1", name)
-	pf("@    %s  bar linewidth 1.0", name)
+	pf("@    %s  bar %s", name, onOff(a.Bar.On))
+	pf("@    %s  bar color %d", name, a.Bar.Color)
+	pf("@    %s  bar linestyle %d", name, a.Bar.LineStyle)
+	pf("@    %s  bar linewidth %s", name, num(a.Bar.LineWidth))
 	pf("@    %s  label %s", name, quote(a.Label.Text))
 	pf("@    %s  label layout %s", name, or(a.Label.Layout, "para"))
 	// how ("auto"/"spec", and where), then the side - Grace's own order

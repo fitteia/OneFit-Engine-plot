@@ -190,6 +190,9 @@ func TestSVGIsWellFormed(t *testing.T) {
 		if strings.Contains(f, "style-formats-") {
 			ids = ids[:3] // tick labels only, no axis labels
 		}
+		if strings.Contains(f, "style-axes-zero-outside") || strings.Contains(f, "style-axes-zero-log") {
+			ids = append(ids[:2], ids[3]) // no x axis: its 0 is outside the window
+		}
 		for _, id := range ids {
 			if !strings.Contains(b.String(), id) {
 				t.Errorf("%s: no %s", f, id)

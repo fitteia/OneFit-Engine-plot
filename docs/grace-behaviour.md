@@ -294,6 +294,29 @@ Measured with `style-axes-sides`, `-perp`, `-angle`, `-noticks` and
   ink. `label place spec` with `label place a, b` instead puts its ink
   centre at a along the axis from its middle and b out from the axis.
 
+## Axis at zero, axis bars
+
+Measured with `style-axes-zero`, `-zero-edge`, `-zero-outside`,
+`-zero-log`, `style-axes-bar` and `-bar-zero`.
+
+- `type zero true` draws the axis where the other axis is 0 instead of at
+  the frame: its ticks and tick labels there, `offset` moving each side
+  away from that line. When 0 is outside the other axis's window - or that
+  axis is logarithmic - nothing of the axis is drawn, its title and bar
+  included; 0 exactly at the window's edge is drawn there.
+- At zero, `tick in` and `out` swap: "in" points away from the graph's
+  middle (down from an x axis), "out" towards it; `both` is drawn as at the
+  frame. Tick labels go 0.01 beyond the ticks reaching out on their side,
+  as at the frame.
+- The axis title stays by the frame: 0.01 beyond a line 0.0015 out from the
+  frame - whatever the tick and frame line widths - or beyond the tick
+  labels when they reach further out (with 0 at the window's edge).
+- `bar on` draws a line along the whole axis (`bar color`, `linestyle`,
+  `linewidth`) on each side the ticks are placed on (`tick place`), the
+  ticks themselves on or off; at the axis, so `offset` and zero move it
+  (at zero both sides draw it on the same line). An axis that is off has
+  no bar. Each axis draws its bar first, then its ticks.
+
 ## Text
 
 - Font size: 0.028 per unit of char size (1.5 -> 0.042).
@@ -430,7 +453,7 @@ and `style-legend-world`.
 
 Page background; then per graph: each set (fill, line, droplines,
 baseline, error bars, symbols), the x axis
-(minor ticks, major ticks, tick labels, label), the y axis likewise, the
+(bar, minor ticks, major ticks, tick labels, label), the y axis likewise, the
 frame, and the strings placed in that graph's world coordinates; then the
 strings placed on the page (view coordinates). Each tick is drawn on the
 normal side, then the opposite one.

@@ -28,6 +28,7 @@ const (
 	staggerUnit  = 0.02   // a staggered tick label row's height per unit of char size
 	subtitleGap  = 0.02   // a subtitle's
 	labelOffset  = 0.01   // tick labels from the axis, axis labels from them
+	zeroFrameGap = 0.0015 // an axis at zero: its title's edge out from the frame
 )
 
 // dashes are the line styles' dash patterns, in multiples of the line
@@ -1097,6 +1098,55 @@ func (r *renderer) axis(t xform, isX bool) {
 	v := g.View
 	axisName := map[bool]string{true: "x", false: "y"}[isX]
 	part := func(name string) string { return fmt.Sprintf("g%d.%s.%s", g.ID, axisName, name) }
+
+	// "type zero" (docs/grace-behaviour.md): the axis at the other axis's 0
+	// instead of at the frame - and nothing of it at all (ticks, labels, its
+	// title, its bar) when 0 is outside the other axis's window, a log one
+	// included; at its edge, it is drawn there
+	zeroAt := 0.0
+	if ax.Zero {
+		other, olo, ohi := g.Y, g.World.YMin, g.World.YMax
+		if !isX {
+			other, olo, ohi = g.X, g.World.XMin, g.World.XMax
+		}
+		if other.Scale == "Logarithmic" || 0 < min(olo, ohi) || 0 > max(olo, ohi) {
+			return
+		}
+		if isX {
+			zeroAt = t.y(0)
+		} else {
+			zeroAt = t.x(0)
+		}
+	}
+	// per side (0 normal: bottom/left; 1 opposite: top/right): which way is
+	// out, and where the axis is - at the frame or at zero, moved out by its
+	// offset
+	dir := func(sd int) float64 { return float64(2*sd - 1) }
+	frameAt := func(sd int) float64 {
+		return map[bool][2]float64{true: {v.YMin, v.YMax}, false: {v.XMin, v.XMax}}[isX][sd]
+	}
+	base := func(sd int) float64 {
+		if ax.Zero {
+			return zeroAt + dir(sd)*ax.Offset[sd]
+		}
+		return frameAt(sd) + dir(sd)*ax.Offset[sd]
+	}
+
+	// the axis bar: a line along the axis on each side its ticks are placed
+	// on (whether the ticks are on or not), drawn before them
+	if ax.Bar.On {
+		if st, ok := r.style(ax.Bar.Color, ax.Bar.LineWidth, ax.Bar.LineStyle); ok {
+			r.id = part("bar")
+			for _, sd := range r.tickSides(ax.Tick.Place) {
+				b := base(sd)
+				if isX {
+					r.path(st, false, line(draw.Point{X: v.XMin, Y: b}, draw.Point{X: v.XMax, Y: b}))
+				} else {
+					r.path(st, false, line(draw.Point{X: b, Y: v.YMin}, draw.Point{X: b, Y: v.YMax}))
+				}
+			}
+		}
+	}
 	tk := makeTicks(*ax, lo, hi)
 	if tk.auto {
 		r.warn("too many ticks on the %s axis; tick spacing chosen automatically", map[bool]string{true: "x", false: "y"}[isX])
@@ -1122,22 +1172,19 @@ func (r *renderer) axis(t xform, isX bool) {
 				p := pos(w)
 				for _, side := range r.tickSides(ax.Tick.Place) {
 					a, b := tickEnds(length, ax.Tick.Direction)
-					if side == 1 { // opposite side: mirror
+					// the opposite side mirrors the normal one; at zero, "in"
+					// and "out" swap (measured: "in" points away from the
+					// graph's middle there - down from an x axis at zero),
+					// "both" is drawn as at the frame
+					if side == 1 != (ax.Zero && ax.Tick.Direction != "both") {
 						a, b = -a, -b
 					}
-					// at the axis, which "offset" moves out from the frame
+					// at the axis (base: the frame or zero, moved by "offset")
+					at := base(side)
 					if isX {
-						base := v.YMin - ax.Offset[0]
-						if side == 1 {
-							base = v.YMax + ax.Offset[1]
-						}
-						r.path(st, false, line(draw.Point{X: p, Y: base + a}, draw.Point{X: p, Y: base + b}))
+						r.path(st, false, line(draw.Point{X: p, Y: at + a}, draw.Point{X: p, Y: at + b}))
 					} else {
-						base := v.XMin - ax.Offset[0]
-						if side == 1 {
-							base = v.XMax + ax.Offset[1]
-						}
-						r.path(st, false, line(draw.Point{X: base + a, Y: p}, draw.Point{X: base + b, Y: p}))
+						r.path(st, false, line(draw.Point{X: at + a, Y: p}, draw.Point{X: at + b, Y: p}))
 					}
 				}
 			}
@@ -1147,13 +1194,7 @@ func (r *renderer) axis(t xform, isX bool) {
 		drawTicks(tk.majors, majorLen, ax.Tick.MajorMarks)
 	}
 
-	// per side (0 normal: bottom/left; 1 opposite: top/right): where the
-	// axis is, which way is out, and how far the ticks drawn there reach
-	dir := func(sd int) float64 { return float64(2*sd - 1) }
-	base := func(sd int) float64 { // the axis, moved out by its offset
-		f := map[bool][2]float64{true: {v.YMin, v.YMax}, false: {v.XMin, v.XMax}}[isX][sd]
-		return f + dir(sd)*ax.Offset[sd]
-	}
+	// how far the ticks drawn on a side reach out from the axis
 	ticksOn := func(sd int) bool {
 		if !ax.Tick.On {
 			return false
@@ -1166,7 +1207,11 @@ func (r *renderer) axis(t xform, isX bool) {
 		return false
 	}
 	reach := func(sd int) float64 { // the ticks' length outward
-		if ticksOn(sd) && (ax.Tick.Direction == "out" || ax.Tick.Direction == "both") {
+		outward := ax.Tick.Direction == "out" // at zero, "in" points outward
+		if ax.Zero {
+			outward = ax.Tick.Direction == "in" || ax.Tick.Direction == ""
+		}
+		if ticksOn(sd) && (outward || ax.Tick.Direction == "both") {
 			return max(ax.Tick.MajorMarks.Size, ax.Tick.MinorMarks.Size) * tickUnit
 		}
 		return 0
@@ -1175,18 +1220,28 @@ func (r *renderer) axis(t xform, isX bool) {
 	// their line's half width included (gracebat measures it so) - which the
 	// axis label goes beyond
 	var edge [2]float64
-	for sd := range 2 {
-		edge[sd] = base(sd)
-		if ticksOn(sd) {
-			hw := max(ax.Tick.MajorMarks.LineWidth, ax.Tick.MinorMarks.LineWidth) * lineUnit / 2
-			edge[sd] += dir(sd) * (reach(sd) + hw)
-		}
-	}
 	far := func(sd int, x float64) {
 		if sd == 0 {
 			edge[sd] = min(edge[sd], x)
 		} else {
 			edge[sd] = max(edge[sd], x)
+		}
+	}
+	for sd := range 2 {
+		hw := max(ax.Tick.MajorMarks.LineWidth, ax.Tick.MinorMarks.LineWidth) * lineUnit / 2
+		if ax.Zero {
+			// at zero the title stays by the frame: 0.0015 out from it
+			// (whatever the tick or frame line widths - measured), unless
+			// what is drawn at zero reaches further out
+			edge[sd] = frameAt(sd) + dir(sd)*zeroFrameGap
+			if ticksOn(sd) && reach(sd) > 0 {
+				far(sd, base(sd)+dir(sd)*(reach(sd)+hw))
+			}
+			continue
+		}
+		edge[sd] = base(sd)
+		if ticksOn(sd) {
+			edge[sd] += dir(sd) * (reach(sd) + hw)
 		}
 	}
 

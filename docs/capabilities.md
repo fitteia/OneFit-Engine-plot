@@ -24,7 +24,7 @@ OneFit's own 704 files use; it is history, not this list.
 - Graphs: any number, `type XY`, each with its world and viewport;
   hidden graphs skipped.
 - Axes: normal and logarithmic scales, inverted axes, axis sides and
-  offsets, axis labels (placement, layout, side), major and minor ticks
+  offsets, an axis at zero (`type zero true`), axis bars, axis labels (placement, layout, side), major and minor ticks
   (size, color, width, style, direction, sides), special ticks (`tick
   spec`, types ticks and both), grid lines, tick labels in all of Grace's
   32 formats with precision, prepend/append, angle, skip, stagger, side
@@ -55,7 +55,7 @@ saved loses none of them.
 
 - Annotated values (`avalue`).
 - Regions (`r0` ...).
-- Alternate axes, an axis at zero (`type zero true`), axis bars.
+- Alternate axes.
 - Tick label formulas and start/stop.
 - Stacked graphs, fixed points, graph types other than XY.
 - Other set types (bar, xyhilo, xyr, ...; their data rows are read as far
