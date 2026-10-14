@@ -49,6 +49,11 @@ OneFit's own 704 files use; it is history, not this list.
   skip; error bars in x and y (place, size, widths and styles, riser clip
   with arrowheads); fills of types 1 and 2 with their rule, color and pattern;
   baselines (types 0 to 5) and droplines.
+- Drawing objects, on the page or in a graph's world: lines with arrow
+  heads (at either end or both; line, filled or opaque; length and
+  layout), boxes and ellipses (outline style, width and color, fill color
+  and pattern). Each is written back whole, where gracebat writes them
+  (after the timestamp, before the strings).
 - Grace's 32 fill patterns, on any fill and line.
 - Values gracebat rejects (negative colors, styles, ...) are rejected the
   same way.
@@ -64,7 +69,5 @@ saved loses none of them.
 - Stacked graphs, fixed points, graph types other than XY.
 - Other set types (bar, xyhilo, xyr, ...; their data rows are read as far
   as they go); axis scales other than normal, logarithmic and reciprocal.
-- Drawing objects: lines and arrows, boxes, ellipses (each kept whole,
-  where gracebat writes them: after the timestamp, before the strings).
 - Anything else plot-go does not know: an unknown directive warns and is
   kept like these.

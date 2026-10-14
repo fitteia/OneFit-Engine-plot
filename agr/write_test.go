@@ -118,12 +118,19 @@ func TestWriteKeepsDrawingObjects(t *testing.T) {
 	if len(p.Objects) != 3 {
 		t.Fatalf("%d objects read, not 3", len(p.Objects))
 	}
-	var warned []int
-	for _, w := range p.Warnings {
-		warned = append(warned, w.Line)
+	if len(p.Warnings) != 0 {
+		t.Errorf("warnings: %v", p.Warnings)
 	}
-	if !reflect.DeepEqual(warned, []int{4, 11}) {
-		t.Errorf("warnings on lines %v, not the two objects that are on (4, 11)", warned)
+	// each read as well (defaults: measured from gracebat)
+	want := []agr.Shape{
+		{Kind: "line", On: true, LocType: "view", X1: 0.3, Y1: 0.3, X2: 0.6, Y2: 0.6, LineStyle: 1, LineWidth: 1, Color: 2, FillColor: 1, Arrow: 2, ArrowLength: 1, ArrowDL: 1, ArrowLL: 1},
+		{Kind: "box", On: true, LocType: "view", X1: 0.4, Y1: 0.4, X2: 0.5, Y2: 0.5, LineStyle: 1, LineWidth: 1, Color: 1, FillColor: 3, ArrowLength: 1, ArrowDL: 1, ArrowLL: 1},
+		{Kind: "line", LocType: "world", X1: 0.1, Y1: 0.8, X2: 0.2, Y2: 0.9, LineStyle: 1, LineWidth: 1, Color: 4, FillColor: 1, Arrow: 2, ArrowLength: 1, ArrowDL: 1, ArrowLL: 1},
+	}
+	for i, s := range p.Shapes {
+		if *s != want[i] {
+			t.Errorf("object %d read as %+v, not %+v", i, *s, want[i])
+		}
 	}
 	if len(p.Graphs) != 1 || len(p.Graphs[0].Kept) != 0 || len(p.Kept) != 0 {
 		t.Errorf("object lines kept elsewhere too: project %q, graph %q", p.Kept, p.Graphs[0].Kept)

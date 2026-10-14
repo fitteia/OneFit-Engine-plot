@@ -175,8 +175,9 @@ func Render(p *agr.Project) (*draw.Drawing, []string) {
 			r.graph(g)
 		}
 	}
-	// strings in world coordinates were drawn with their graph; the ones
-	// placed on the page come last (gracebat's order)
+	// objects and strings in world coordinates were drawn with their
+	// graph; the ones placed on the page come last (gracebat's order)
+	r.shapes(nil, 0)
 	for i, s := range p.Strings {
 		if s.LocType != "world" {
 			r.id = fmt.Sprintf("string.%d", i)
@@ -287,6 +288,7 @@ func (r *renderer) graph(g *agr.Graph) {
 	r.axis(t, true, true)
 	r.axis(t, false, true)
 	r.frame(g)
+	r.shapes(&t, g.ID)
 	for i, s := range r.proj.Strings {
 		if s.LocType == "world" && s.Graph == g.ID {
 			r.id = fmt.Sprintf("string.%d", i)
@@ -295,6 +297,111 @@ func (r *renderer) graph(g *agr.Graph) {
 	}
 	r.legend(t)
 	r.titles(g)
+}
+
+// shapes draws the drawing objects (docs/grace-behaviour.md, "Drawing
+// objects") of graph gid's world, or with t nil those on the page: the
+// boxes, then the ellipses, then the lines, each kind in file order, not
+// clipped.
+func (r *renderer) shapes(t *xform, gid int) {
+	for _, kind := range []string{"box", "ellipse", "line"} {
+		for i, s := range r.proj.Shapes {
+			// graph -1 (an object read without one) is graph 0's
+			// (measured)
+			graph := max(s.Graph, 0)
+			if s.Kind != kind || !s.On || (s.LocType == "world") != (t != nil) || (t != nil && graph != gid) {
+				continue
+			}
+			a, b := draw.Point{X: s.X1, Y: s.Y1}, draw.Point{X: s.X2, Y: s.Y2}
+			if t != nil {
+				// a value the axis cannot place is at the page's left or
+				// bottom edge (measured)
+				x := func(v float64) float64 {
+					if !t.ok(v, 1) {
+						return 0
+					}
+					return t.x(v)
+				}
+				y := func(v float64) float64 {
+					if !t.ok(1, v) {
+						return 0
+					}
+					return t.y(v)
+				}
+				if !t.ok(a.X, a.Y) || !t.ok(b.X, b.Y) {
+					r.warn("a %s is at a point its graph's axes cannot place; drawn from the page's edge, as gracebat does", kind)
+				}
+				a, b = draw.Point{X: x(a.X), Y: y(a.Y)}, draw.Point{X: x(b.X), Y: y(b.Y)}
+			}
+			r.id = fmt.Sprintf("object.%d", i)
+			st, stroke := r.style(s.Color, s.LineWidth, s.LineStyle)
+			switch kind {
+			case "box":
+				corners := []draw.Point{a, {X: a.X, Y: b.Y}, b, {X: b.X, Y: a.Y}}
+				r.fill(s.FillColor, s.FillPattern, draw.Segment{Points: corners, Closed: true})
+				if stroke {
+					r.path(st, false, draw.Segment{Points: append(corners, corners[0]), Closed: true})
+				}
+			case "ellipse":
+				arc := draw.Segment{Arc: &draw.Arc{X: (a.X + b.X) / 2, Y: (a.Y + b.Y) / 2,
+					RX: math.Abs(b.X-a.X) / 2, RY: math.Abs(b.Y-a.Y) / 2, A1: 0, A2: 360}}
+				r.fill(s.FillColor, s.FillPattern, arc)
+				if stroke {
+					r.path(st, false, arc)
+				}
+			case "line":
+				if stroke {
+					r.path(st, false, line(a, b))
+				}
+				r.arrows(s, a, b)
+			}
+		}
+	}
+}
+
+// arrows draws a line's arrow heads, the start's first (measured): length
+// 0.01 times "arrow length" back from the tip, as wide as ArrowDL times
+// that, the notch ArrowLL of it from the back; drawn solid with the
+// line's width, whatever its style. Type 0 is the two strokes, 1 the head
+// filled with the line's color, 2 filled with the page's background, both
+// then outlined. A line of no length has none; gracebat draws none for a
+// type it does not have ("Internal error in draw_arrowhead()").
+func (r *renderer) arrows(s *agr.Shape, a, b draw.Point) {
+	if s.Arrow == 0 || a == b {
+		return
+	}
+	if s.ArrowType > 2 {
+		r.warn("arrow type %d is not one of Grace's; no arrow heads drawn, as gracebat does", s.ArrowType)
+		return
+	}
+	st, _ := r.style(s.Color, s.LineWidth, 1)
+	head := func(tip, from draw.Point) {
+		l := math.Hypot(tip.X-from.X, tip.Y-from.Y)
+		ux, uy := (tip.X-from.X)/l, (tip.Y-from.Y)/l
+		L := 0.01 * s.ArrowLength
+		h := L * s.ArrowDL / 2
+		bx, by := tip.X-L*ux, tip.Y-L*uy
+		left := draw.Point{X: bx + uy*h, Y: by - ux*h}
+		right := draw.Point{X: bx - uy*h, Y: by + ux*h}
+		if s.ArrowType == 0 {
+			r.path(st, false, line(left, tip, right))
+			return
+		}
+		notch := draw.Point{X: tip.X - L*(1-s.ArrowLL)*ux, Y: tip.Y - L*(1-s.ArrowLL)*uy}
+		pts := []draw.Point{left, tip, right, notch}
+		fill := s.Color
+		if s.ArrowType == 2 {
+			fill = r.proj.BackgroundColor
+		}
+		r.path(draw.Style{Color: r.color(fill)}, true, draw.Segment{Points: pts, Closed: true})
+		r.path(st, false, draw.Segment{Points: append(pts, pts[0]), Closed: true})
+	}
+	if s.Arrow&1 != 0 {
+		head(a, b)
+	}
+	if s.Arrow&2 != 0 {
+		head(b, a)
+	}
 }
 
 // titles draws a graph's title and subtitle (docs/grace-behaviour.md):

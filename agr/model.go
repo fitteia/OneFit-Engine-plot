@@ -28,10 +28,38 @@ type Project struct {
 	// written again loses nothing, drawn by plot-go or not. Graphs and
 	// sets keep their own.
 	Kept []string
-	// Objects are Grace's drawing objects (lines, boxes, ellipses), which
-	// plot-go does not draw: each is the block as read, from "with line"
-	// to "line def", without "@". Write writes them back as they are.
+	// Objects are Grace's drawing objects (lines, boxes, ellipses): each
+	// is the block as read, from "with line" to "line def", without "@".
+	// Write writes them back as they are.
 	Objects [][]string
+	// Shapes are the same objects read (Shapes[i] is Objects[i]): what
+	// plot-go draws.
+	Shapes []*Shape
+}
+
+// Shape is a drawing object: a line (with arrows), a box or an ellipse,
+// between two corners (a line's ends), on the page (LocType "view") or in
+// a graph's world. What a block leaves out is as the last object of its
+// kind had it, "on" included (measured; corners 0, graph -1); for the
+// first Grace's default: off, the "@default" line settings, fill color 1,
+// fill pattern 0, no arrow.
+type Shape struct {
+	Kind           string // "line", "box" or "ellipse"
+	On             bool
+	LocType        string
+	Graph          int
+	X1, Y1, X2, Y2 float64
+	LineStyle      int
+	LineWidth      float64
+	Color          int
+	FillColor      int
+	FillPattern    int
+	// Arrow: 0 none, 1 at the start, 2 at the end, 3 both; ArrowType 0 a
+	// line, 1 filled, 2 opaque (filled with the background, outlined).
+	// ArrowLength scales its length, ArrowDL its width (to the length),
+	// ArrowLL how far its notch reaches (1: none).
+	Arrow, ArrowType              int
+	ArrowLength, ArrowDL, ArrowLL float64
 }
 
 // Defaults are the "@default" settings.

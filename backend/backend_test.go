@@ -193,6 +193,9 @@ func TestSVGIsWellFormed(t *testing.T) {
 		if strings.Contains(f, "style-axes-zero-outside") || strings.Contains(f, "style-axes-zero-log") {
 			ids = append(ids[:2], ids[3]) // no x axis: its 0 is outside the window
 		}
+		if strings.Contains(f, "style-objects") {
+			ids = append(ids[:3], `<g data-id="object.0">`) // no axis labels; drawing objects
+		}
 		if strings.Contains(f, "style-axes-reciprocal-zero") {
 			ids = ids[:1] // no graph: a reciprocal axis's window holds 0
 		}

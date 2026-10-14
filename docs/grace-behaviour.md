@@ -506,14 +506,47 @@ and `style-legend-world`.
   box of everything drawn counts), so it may overlap them, as in Grace.
 
 
+## Drawing objects
+
+Lines, boxes and ellipses (`@with line` ... `@line def`), measured from
+gracebat's EPS (corpus style-objects, style-objects-order,
+style-objects-carry):
+
+- Order: in each place (a graph's world, after its frame; the page,
+  after every graph) the boxes, then the ellipses, then the lines - each
+  kind in file order, whatever order the kinds come in. Not clipped to the
+  graph.
+- A box is the path corner 1, (x1, y2), corner 2, (x2, y1), as given
+  (reversed corners stay reversed); an ellipse is the full ellipse in the
+  box of its corners. Each is filled (fill color and pattern; pattern 0
+  none) then outlined (color, width, style; style 0 none).
+- A line is drawn, then its arrow heads, the start's first (arrow 1 the
+  start, 2 the end, 3 both). With L 0.01 times "arrow length" (viewport
+  units, whatever the line's width) and "arrow layout" a, b: the head's
+  back corners are L back from the tip and L*a/2 either side of the line,
+  its notch L*(1-b) back from the tip (b 1: no notch). Type 0 is the two
+  sides as one stroke; 1 is filled with the line's color, 2 with the
+  page's background color, both then outlined. Heads are solid, in the
+  line's width and color, also when the line's style is 0. A line of no
+  length gets no head; an arrow type other than 0 to 2 none either
+  (gracebat: "Internal error in draw_arrowhead()").
+- What a block leaves out is as the previous object of its kind had it,
+  "on" included; corners are 0, 0, 0, 0 and the graph -1 (drawn in graph
+  0's world). The first of a kind starts off, with the "@default" line
+  settings, fill color 1, pattern 0, no arrow. An object that is off is
+  not saved by gracebat.
+- In a graph's world, a value its axis cannot place (log at or below 0,
+  reciprocal at 0) is at the page's left or bottom edge.
+
 ## Drawing order
 
 Page background; then per graph: each set (fill, line, droplines,
 baseline, error bars, symbols), the x axis
 (bar, minor ticks, major ticks, tick labels, label), the y axis likewise,
 the alternate x and y axes likewise, the
-frame, and the strings placed in that graph's world coordinates; then the
-strings placed on the page (view coordinates). Each tick is drawn on the
+frame, the drawing objects in that graph's world, the strings placed in
+it, the legend and the titles; then the drawing objects and the strings
+placed on the page (view coordinates), and the timestamp. Each tick is drawn on the
 normal side, then the opposite one.
 
 ## How closely plot-go matches

@@ -113,8 +113,9 @@ func TestParseCorpus(t *testing.T) {
 			}
 			t.Errorf("%s:%d: %s (%s)", name, w.Line, w.Msg, w.Text)
 		}
-		if strings.HasPrefix(name, "style-formats-") {
-			// one graph per case, a single tick label each, no data
+		if strings.HasPrefix(name, "style-formats-") || name == "style-objects-order.agr" {
+			// one graph per case, a single tick label each, no data (the
+			// objects' order: two graphs)
 			if len(p.Graphs) < 2 {
 				t.Errorf("%s: %d graphs", name, len(p.Graphs))
 			}

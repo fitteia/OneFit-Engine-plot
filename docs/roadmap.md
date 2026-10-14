@@ -15,7 +15,8 @@ then vendored in the GUI and pinned in the debs.
 ## Done
 
 - PNG output (`-format png`, gracebat's `-hdevice PNG`) through an
-  installed converter: v0.2.13.
+  installed converter, and drawing objects (lines with arrows, boxes,
+  ellipses): v0.2.13. The Figures editor can now be given annotations.
 - The secondary axis: alternate axes (`altxaxis`, `altyaxis`), the
   reciprocal scale, tick label formulas and start/stop: v0.2.12. The
   Figures editor's control for it is in the GUI.
@@ -26,9 +27,6 @@ then vendored in the GUI and pinned in the debs.
 
 ## Later
 
-- **Drawing objects**: lines with arrows, boxes and ellipses (`@with line`,
-  `@with box`, `@with ellipse`). Today they are kept,
-  each whole, but not drawn. With them the Figures editor could add annotations.
 - **Annotated values** (`avalue`): numbers or labels next to the points.
 - **Regions and fixed points**: measure first whether gracebat draws them
   at all; if it does not, only the warning goes.

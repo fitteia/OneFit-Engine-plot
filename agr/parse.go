@@ -348,6 +348,22 @@ func (p *parser) drawingObject(toks []token, line string) bool {
 	if word(0) == "with" && len(toks) == 2 && slices.Contains([]string{"line", "box", "ellipse"}, word(1)) {
 		p.object = word(1)
 		p.proj.Objects = append(p.proj.Objects, []string{strings.TrimSpace(line)})
+		// a new object starts as the kind's last one was (measured): on or
+		// off, its place, line, fill and arrows, but at 0, 0, 0, 0 in
+		// graph -1; the first off, with the "@default" line settings
+		d := p.proj.Defaults
+		s := &Shape{Kind: p.object, LocType: "view",
+			LineStyle: d.LineStyle, LineWidth: d.LineWidth, Color: d.Color, FillColor: 1,
+			ArrowLength: 1, ArrowDL: 1, ArrowLL: 1}
+		for _, prev := range slices.Backward(p.proj.Shapes) {
+			if prev.Kind == p.object {
+				*s = *prev
+				s.Graph = -1
+				s.X1, s.Y1, s.X2, s.Y2 = 0, 0, 0, 0
+				break
+			}
+		}
+		p.proj.Shapes = append(p.proj.Shapes, s)
 		return true
 	}
 	if p.object == "" || word(0) != p.object {
@@ -356,13 +372,58 @@ func (p *parser) drawingObject(toks []token, line string) bool {
 	}
 	o := &p.proj.Objects[len(p.proj.Objects)-1]
 	*o = append(*o, strings.TrimSpace(line))
-	switch {
-	case len(toks) == 2 && word(1) == "def":
-		p.object = ""
-	case len(toks) == 2 && (word(1) == "on" || word(1) == "true"):
-		p.warn("a drawing object (%s) is not drawn by plot-go", p.object)
-	}
+	p.shapeLine(p.proj.Shapes[len(p.proj.Shapes)-1], toks[1:], word)
 	return true
+}
+
+// shapeLine reads one line of a drawing object's block (toks after the
+// object's word): its settings, as gracebat saves them.
+func (p *parser) shapeLine(s *Shape, toks []token, word func(int) string) {
+	w := func(i int) string { return word(i + 1) }
+	nums := func(from int) []float64 {
+		var v []float64
+		for _, t := range toks[from:] {
+			if !t.isNum {
+				return nil
+			}
+			v = append(v, t.num)
+		}
+		return v
+	}
+	n := len(toks)
+	switch {
+	case n == 1 && w(0) == "def":
+		p.object = ""
+	case n == 1 && slices.Contains([]string{"on", "off", "true", "false"}, w(0)):
+		s.On = p.bool(w(0))
+	case n == 2 && w(0) == "loctype" && (w(1) == "view" || w(1) == "world"):
+		s.LocType = w(1)
+	case n == 1 && matchIndex("g", w(0)):
+		s.Graph = p.index(w(0))
+	case n == 4 && len(nums(0)) == 4:
+		v := nums(0)
+		s.X1, s.Y1, s.X2, s.Y2 = v[0], v[1], v[2], v[3]
+	case n == 2 && w(0) == "linestyle" && toks[1].isNum:
+		s.LineStyle = p.nonNeg(s.LineStyle, toks[1].word)
+	case n == 2 && w(0) == "linewidth" && toks[1].isNum:
+		s.LineWidth = p.width(toks[1].word)
+	case n == 2 && w(0) == "color" && toks[1].isNum:
+		s.Color = p.nonNeg(s.Color, toks[1].word)
+	case n == 3 && w(0) == "fill" && w(1) == "color" && toks[2].isNum:
+		s.FillColor = p.nonNeg(s.FillColor, toks[2].word)
+	case n == 3 && w(0) == "fill" && w(1) == "pattern" && toks[2].isNum:
+		s.FillPattern = p.nonNeg(s.FillPattern, toks[2].word)
+	case n == 2 && w(0) == "arrow" && toks[1].isNum:
+		s.Arrow = p.nonNeg(s.Arrow, toks[1].word)
+	case n == 3 && w(0) == "arrow" && w(1) == "type" && toks[2].isNum:
+		s.ArrowType = p.nonNeg(s.ArrowType, toks[2].word)
+	case n == 3 && w(0) == "arrow" && w(1) == "length" && toks[2].isNum:
+		s.ArrowLength = toks[2].num
+	case n == 4 && w(0) == "arrow" && w(1) == "layout" && len(nums(2)) == 2:
+		s.ArrowDL, s.ArrowLL = toks[2].num, toks[3].num
+	default:
+		p.warn("a %s's setting plot-go does not know; kept, not used", p.object)
+	}
 }
 
 // keepIn adds line to kept, replacing what set the same before it (key
