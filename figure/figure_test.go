@@ -180,6 +180,57 @@ func TestAddGraphAndLayout(t *testing.T) {
 	}
 }
 
+// TestRemoveGraphPlacesTheOthers: removing the graph added beside the first
+// gives the first its shape back - its place and its sizes, as before the
+// grid; several left keep their arrangement and close the gap.
+func TestRemoveGraphPlacesTheOthers(t *testing.T) {
+	fig := FromPlot(load(t, "test3-1.agr"), "a/fit-curves-1.agr")
+	view, size := fig.Graphs[0].View, fig.Graphs[0].X.TickLabel.CharSize
+	if _, err := AddGraph(fig, load(t, "test7-10.agr"), "b/fit-curves-10.agr"); err != nil {
+		t.Fatal(err)
+	}
+	if err := Layout(fig, "grid"); err != nil { // as the GUI's Add graph does
+		t.Fatal(err)
+	}
+	if fig.Graphs[0].View == view {
+		t.Fatal("the grid did not move the first graph")
+	}
+	if err := RemoveGraph(fig, 1); err != nil {
+		t.Fatal(err)
+	}
+	g := fig.Graphs[0]
+	for _, d := range []float64{g.View.XMin - view.XMin, g.View.YMin - view.YMin, g.View.XMax - view.XMax, g.View.YMax - view.YMax} {
+		if math.Abs(d) > 1e-6 {
+			t.Errorf("view %+v after the remove, want the plot's own %+v", g.View, view)
+			break
+		}
+	}
+	if math.Abs(g.X.TickLabel.CharSize-size) > 1e-9 {
+		t.Errorf("tick label size %g after the remove, want %g", g.X.TickLabel.CharSize, size)
+	}
+
+	for _, layout := range []string{"stacked", "side-by-side"} {
+		fig := FromPlot(load(t, "test3-1.agr"), "a/fit-curves-1.agr")
+		for i := 0; i < 2; i++ {
+			if _, err := AddGraph(fig, load(t, "test7-10.agr"), "b/fit-curves-10.agr"); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := Layout(fig, layout); err != nil {
+			t.Fatal(err)
+		}
+		if err := RemoveGraph(fig, 1); err != nil {
+			t.Fatal(err)
+		}
+		a, b := fig.Graphs[0].View, fig.Graphs[1].View
+		ok := layout == "stacked" && a.XMin == b.XMin && b.YMax < a.YMin && a.YMax > 0.9 && b.YMin < 0.2 ||
+			layout == "side-by-side" && a.YMax == b.YMax && a.XMax < b.XMin && a.XMin < 0.2 && b.XMax > 1.1
+		if !ok {
+			t.Errorf("%s, a graph removed: %+v %+v - not %s over the whole page", layout, a, b, layout)
+		}
+	}
+}
+
 func TestDistinctColors(t *testing.T) {
 	fig := FromPlot(load(t, "test3-1.agr"), "a/fit-curves-1.agr")
 	seen := map[int]bool{}

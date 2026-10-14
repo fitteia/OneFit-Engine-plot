@@ -347,8 +347,45 @@ func AddGraph(fig *agr.Project, src *agr.Project, path string) (int, error) {
 	return id, nil
 }
 
-// RemoveGraph takes a graph and the texts placed in it out of the figure.
+// RemoveGraph takes a graph and the texts placed in it out of the figure,
+// and places the others again: the last one left gets back the place of a
+// one-graph plot ("single", OneFit's own, as before graphs were added),
+// several keep their arrangement - stacked, side by side or a grid - and
+// close the gap.
 func RemoveGraph(fig *agr.Project, id int) error {
+	layout := arrangement(fig)
+	if err := removeGraph(fig, id); err != nil {
+		return err
+	}
+	if len(fig.Graphs) == 1 {
+		layout = "single"
+	}
+	return Layout(fig, layout)
+}
+
+// arrangement is how the figure's graphs sit: "stacked" when they share
+// their left edge, "side-by-side" when they share their top, else "grid".
+func arrangement(fig *agr.Project) string {
+	same := func(v func(agr.Rect) float64) bool {
+		for _, g := range fig.Graphs {
+			if math.Abs(v(g.View)-v(fig.Graphs[0].View)) > 1e-6 {
+				return false
+			}
+		}
+		return true
+	}
+	switch {
+	case len(fig.Graphs) < 2:
+		return "single"
+	case same(func(r agr.Rect) float64 { return r.XMin }):
+		return "stacked"
+	case same(func(r agr.Rect) float64 { return r.YMax }):
+		return "side-by-side"
+	}
+	return "grid"
+}
+
+func removeGraph(fig *agr.Project, id int) error {
 	if len(fig.Graphs) == 1 {
 		return fmt.Errorf("a figure keeps at least one graph")
 	}
