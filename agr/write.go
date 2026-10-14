@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -207,13 +208,15 @@ func writeGraph(out func(string, ...any), g *Graph) {
 	pf("@    yaxes invert %s", onOff(g.Y.Invert))
 	writeAxis(pf, "xaxis", g.X)
 	writeAxis(pf, "yaxis", g.Y)
-	// an alternate axis that is off is one line, as Grace writes it (Grace
-	// itself writes them off even when on - plot-go writes them whole)
+	// an alternate axis at Grace's defaults and off is one line, as Grace
+	// writes it; one that is on, or off with settings of its own (hidden
+	// in the Figures editor, to come back as it was), is written whole -
+	// Grace itself writes them "off", and nothing else, even when on
 	for _, alt := range []struct {
 		name string
 		a    Axis
 	}{{"altxaxis", g.AltX}, {"altyaxis", g.AltY}} {
-		if alt.a.On {
+		if alt.a.On || !reflect.DeepEqual(alt.a, DefaultAxis()) {
 			writeAxis(pf, alt.name, alt.a)
 		} else {
 			pf("@    %s  off", alt.name)

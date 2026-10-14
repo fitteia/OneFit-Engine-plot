@@ -182,3 +182,35 @@ func TestWriteRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+// TestWriteKeepsAHiddenAlternateAxis: an alternate axis switched off with
+// settings of its own is written whole, and comes back with them; one at
+// Grace's defaults stays the single "off" line.
+func TestWriteKeepsAHiddenAlternateAxis(t *testing.T) {
+	p, err := agr.ParseFile("../testdata/corpus/style-axes-alt.agr")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := p.Graphs[0]
+	g.AltX.On = false
+	var b bytes.Buffer
+	if err := agr.Write(&b, p); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), "@    altxaxis  off\n@    altxaxis  type zero false") {
+		t.Error("a hidden alternate axis with settings is not written whole")
+	}
+	q, err := agr.Parse(strings.NewReader(b.String()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q.Graphs[0].AltX.On || q.Graphs[0].AltX.TickLabel.Formula != g.AltX.TickLabel.Formula || q.Graphs[0].AltX.Label.Text != g.AltX.Label.Text {
+		t.Errorf("read back: on %v, formula %q, label %q", q.Graphs[0].AltX.On, q.Graphs[0].AltX.TickLabel.Formula, q.Graphs[0].AltX.Label.Text)
+	}
+	g.AltX = agr.DefaultAxis()
+	b.Reset()
+	agr.Write(&b, p)
+	if strings.Count(b.String(), "altxaxis") != 1 {
+		t.Error("an alternate axis at Grace's defaults is more than one line")
+	}
+}
