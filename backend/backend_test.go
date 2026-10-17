@@ -220,3 +220,31 @@ func TestSVGIsWellFormed(t *testing.T) {
 func fmtSscan(line string, v *[4]float64) (int, error) {
 	return fmt.Sscanf(strings.TrimPrefix(strings.SplitN(line, "\n", 2)[0], "%%BoundingBox:"), "%g %g %g %g", &v[0], &v[1], &v[2], &v[3])
 }
+
+// Native SVG text must preserve shear/nonuniform scale, not just its angle.
+func TestSVGNativeTextPreservesFullMatrix(t *testing.T) {
+	d := &pdraw.Drawing{Width: 1, Height: 1, Texts: []pdraw.Text{{Font: "Helvetica", Str: "AB", At: pdraw.Point{X: 0.1, Y: 0.2}, Matrix: [4]float64{0.04, 0.01, 0.02, 0.03}}}, Order: []byte{'t'}}
+	var out bytes.Buffer
+	if err := WriteSVG(&out, d, 600, 600, "matrix"); err != nil {
+		t.Fatal(err)
+	}
+	dec := xml.NewDecoder(&out)
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			t.Fatalf("text element missing: %v", err)
+		}
+		e, ok := tok.(xml.StartElement)
+		if !ok || e.Name.Local != "text" {
+			continue
+		}
+		attrs := map[string]string{}
+		for _, a := range e.Attr {
+			attrs[a.Name.Local] = a.Value
+		}
+		if !strings.HasPrefix(attrs["transform"], "matrix(24 -6 -12 18 ") || attrs["font-size"] != "1" || attrs["font-kerning"] != "none" || attrs["font-variant-ligatures"] != "none" {
+			t.Fatalf("lost text matrix or explicit shaping: %v", attrs)
+		}
+		break
+	}
+}

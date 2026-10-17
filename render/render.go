@@ -14,7 +14,6 @@ import (
 	"github.com/fitteia/OneFit-Engine-plot/agr"
 	"github.com/fitteia/OneFit-Engine-plot/draw"
 	"github.com/fitteia/OneFit-Engine-plot/internal/afm"
-	"github.com/fitteia/OneFit-Engine-plot/internal/glyph"
 )
 
 // Units, in viewport units (docs/grace-behaviour.md).
@@ -1641,8 +1640,8 @@ func (r *renderer) justify(ts typeset, just int, deg float64) (dx, dy float64, o
 		return 0, 0, false
 	}
 	if v == 0 {
-		along := map[int]float64{0: 0, 1: -ts.width, 2: -ts.width / 2}[h]
-		dx, dy = rotate(along, 0, deg)
+		factor := map[int]float64{0: 0, 1: -1, 2: -0.5}[h]
+		dx, dy = rotate(ts.width*factor, ts.advanceY*factor, deg)
 		return dx, dy, true
 	}
 	b := r.turnedBox(ts, deg)
@@ -1668,44 +1667,30 @@ func (r *renderer) turnedBox(ts typeset, deg float64) afm.Box {
 		b.LLX, b.LLY, b.URX, b.URY = min(b.LLX, x), min(b.LLY, y), max(b.URX, x), max(b.URY, y)
 	}
 	for _, rn := range ts.runs {
+		glyphBox := r.runGlyphBox(rn, deg)
+		if !glyphBox.Empty() {
+			b = b.Union(glyphBox)
+		}
 		pos, thickness := decorationMetrics(rn.font)
 		for _, line := range []struct {
 			on     bool
 			offset float64
-		}{{rn.under, pos}, {rn.over, -pos}} {
-			if line.on {
-				for _, x := range []float64{rn.x, rn.x + r.metrics(rn.font).Width(rn.str)*rn.size} {
-					add(x, rn.y+(line.offset-thickness/2)*rn.size)
-					add(x, rn.y+(line.offset+thickness/2)*rn.size)
+		}{{rn.under, pos}, {rn.over, r.overlineOffset(rn)}} {
+			if !line.on {
+				continue
+			}
+			// Stroke width is measured along the transformed baseline, as TL does.
+			half := math.Abs(thickness * rn.size * math.Hypot(rn.matrix[0], rn.matrix[1]) / 2)
+			for _, x := range []float64{0, rn.advance(r.metrics(rn.font))} {
+				px, py := rn.point(x, line.offset)
+				for _, d := range [][2]float64{{-half, -half}, {half, half}, {-half, half}, {half, -half}} {
+					add(px+d[0], py+d[1])
 				}
 			}
-		}
-		m := r.metrics(rn.font)
-		px := rn.x
-		for i := 0; i < len(rn.str); i++ {
-			segs, err := glyph.Outline(rn.font, rn.str[i])
-			if err != nil {
-				segs = nil
-			}
-			at := func(p [2]float64) (float64, float64) { return px + p[0]*rn.size, rn.y + p[1]*rn.size }
-			var cur [2]float64
-			for _, sg := range segs {
-				switch sg.Op {
-				case glyph.MoveTo, glyph.LineTo:
-					cur = sg.Pts[0]
-					add(at(cur))
-				default:
-					// sample the curve: its control points may lie outside it
-					ctl := append([][2]float64{cur}, sg.Pts...)
-					for k := 1; k <= 16; k++ {
-						add(at(bezier(ctl, float64(k)/16)))
-					}
-					cur = sg.Pts[len(sg.Pts)-1]
-				}
-			}
-			px += m.Width(rn.str[i:i+1]) * rn.size
 		}
 	}
+
+	b.LLX, b.LLY, b.URX, b.URY = min(b.LLX, 0), min(b.LLY, 0), max(b.URX, 0), max(b.URY, 0)
 	return r.textBoxGrid(ts, b)
 }
 

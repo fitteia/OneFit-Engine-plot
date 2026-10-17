@@ -14,10 +14,10 @@ import (
 	"github.com/fitteia/OneFit-Engine-plot/internal/eps"
 )
 
-// The three style-text corpus files are captured from Grace and compared
+// The style-text corpus files are captured from Grace and compared
 // primitive by primitive and as raster images by the existing suites.
 func TestTextEscapeCorpusHasNoWarnings(t *testing.T) {
-	for _, name := range []string{"controls", "decorations", "decoration-rotation"} {
+	for _, name := range []string{"controls", "decorations", "decoration-rotation", "transforms", "flow", "kerning"} {
 		p, err := agr.ParseFile("../testdata/corpus/style-text-" + name + ".agr")
 		if err != nil {
 			t.Fatal(err)
@@ -35,7 +35,7 @@ func TestTextEscapeCorpusHasNoWarnings(t *testing.T) {
 }
 
 func TestMalformedTextControlsWarnWithoutPrintingArguments(t *testing.T) {
-	for _, text := range []string{`A\z{bad}B`, `A\z{NaN}B`, `A\z{Inf}B`, `A\#{oops}B`, `A\t{1 2 3 4}B`} {
+	for _, text := range []string{`A\z{bad}B`, `A\z{NaN}B`, `A\z{Inf}B`, `A\#{oops}B`, `A\t{1 2 3}B`} {
 		r := &renderer{proj: &agr.Project{}}
 		ts := r.layout(text, 0, 0.028)
 		var got strings.Builder
@@ -62,6 +62,30 @@ func TestTextStyleDoesNotLeakBetweenLabels(t *testing.T) {
 	ts := r.layout("CD", 0, 0.028)
 	if len(ts.runs) != 1 || ts.runs[0].under || ts.runs[0].over || ts.runs[0].size != 0.028 || ts.runs[0].y != 0 {
 		t.Fatalf("label inherits previous style: %+v", ts.runs)
+	}
+}
+
+func TestOverlineClearsGlyphsAndUnderlineStaysBelow(t *testing.T) {
+	for _, font := range []string{"Helvetica", "Helvetica-Bold", "Times-Roman", "Courier"} {
+		t.Run(font, func(t *testing.T) {
+			r := &renderer{proj: &agr.Project{Fonts: map[int]agr.Font{0: {Name: font}}}}
+			for _, text := range []string{"CO2", "hello", "gyp"} {
+				ts := r.layout(`\o`+text+`\O`, 0, 0.028)
+				if len(ts.runs) != 1 || !ts.runs[0].over {
+					t.Fatalf("%q did not produce one overlined run: %+v", text, ts.runs)
+				}
+				run := ts.runs[0]
+				glyphTop := r.metrics(run.font).Ink(run.str).URY*run.size + run.y
+				if ts.ink.URY < glyphTop+0.03*run.size {
+					t.Errorf("%q overline is not clear of glyphs: ink top %.5f, glyph top %.5f", text, ts.ink.URY, glyphTop)
+				}
+			}
+			ts := r.layout(`\uH2O\U`, 0, 0.028)
+			glyphBottom := r.metrics(font).Ink("H2O").LLY * 0.028
+			if ts.ink.LLY >= glyphBottom {
+				t.Errorf("underline is not below glyphs: ink bottom %.5f, glyph bottom %.5f", ts.ink.LLY, glyphBottom)
+			}
+		})
 	}
 }
 
@@ -98,6 +122,7 @@ func TestDecorationsOnDifferentPagesMatchGrace(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			alignTextDecorationPaths(got, want)
 			if diff := drawcmp.Compare(got, want, 10); len(diff) > 0 {
 				t.Fatal(diff)
 			}

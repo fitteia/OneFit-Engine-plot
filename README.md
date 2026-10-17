@@ -81,13 +81,23 @@ written from the format itself and Grace's documentation (the User's
 Guide), never from Grace's source code. `gracebat` is used only as a
 black box: its output is the reference the tests compare against.
 
-Common text controls include underline and overline (`\u…\U`, `\o…\O`),
-relative/absolute size changes (`\z{1.5}`, `\Z{1.5}`), horizontal/vertical
+Common text controls include underline and overline (`\u…\U`, `\o…\O`);
+plot-go places overlines above the glyphs, correcting Grace's baseline-level
+placement. Other controls include relative/absolute size changes
+(`\z{1.5}`, `\Z{1.5}`), horizontal/vertical
 shifts (`\h{}`, `\v{}`), baseline changes (`\V{}`), newlines (`\n`) and
 hexadecimal characters (`\#{b5}`). They work wherever a Grace string is
 drawn, including titles, axis labels, legends and point annotations.
+Inline matrices (`\t{}`, `\T{}`), rotation/slant (`\r{}`, `\l{}`, `\q`,
+`\Q`), colours (`\R{}`), pair kerning (`\Fk`, `\FK`), position marks
+(`\m{}`, `\M{}`), and independent character/advance directions
+(`\dl`, `\dr`, `\dL`, `\dR`) are also supported. Ligature toggles
+(`\Fl`, `\FL`) are accepted; the supported Core-14 Latin-1 fonts do not
+provide encodable ligature substitutions, matching the measured Grace output.
+Fonts outside the standard 14 remain unsupported.
+
 The [capabilities](docs/capabilities.md) list and
-[roadmap](docs/roadmap.md) distinguish these from remaining text controls.
+[roadmap](docs/roadmap.md) describe the supported controls and remaining font limitations.
 
 ## Test data
 

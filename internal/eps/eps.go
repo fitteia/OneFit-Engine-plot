@@ -76,6 +76,7 @@ func Parse(r io.Reader) (*draw.Drawing, error) {
 	st := &state{matrix: [4]float64{1, 0, 0, 1}}
 	var saved []state
 	var stack []value
+	var kerning []float64
 	scale := 1.0
 	pop := func() (value, error) {
 		if len(stack) == 0 {
@@ -272,6 +273,41 @@ func Parse(r io.Reader) (*draw.Drawing, error) {
 					Style:    draw.Style{Color: st.style.Color, Width: math.Abs(a[1]) * math.Hypot(st.matrix[0], st.matrix[1])},
 				})
 				d.Order = append(d.Order, 'p')
+			}
+		case "KINIT":
+			var a value
+			if a, e = pop(); e == nil {
+				if !a.isArr {
+					e = fmt.Errorf("KINIT expects an array")
+				} else {
+					kerning = a.arr
+				}
+			}
+		case "{KPROC}": // known procedure passed to kshow, not executed here
+		case "kshow":
+			var s value
+			if s, e = pop(); e == nil {
+				if !s.isStr || len(kerning) != len(s.str)-1 {
+					e = fmt.Errorf("kshow string and kerning count disagree")
+					break
+				}
+				var f *afm.Font
+				f, e = afm.Get(st.font)
+				if e != nil {
+					break
+				}
+				pen := 0.0
+				for i := 0; i < len(s.str); i++ {
+					c := s.str[i : i+1]
+					if strings.Trim(c, " \t") != "" {
+						d.Texts = append(d.Texts, draw.Text{At: draw.Point{X: st.at.X + pen*st.matrix[0], Y: st.at.Y + pen*st.matrix[1]}, Matrix: st.matrix, Font: st.font, Color: st.style.Color, Str: c})
+						d.Order = append(d.Order, 't')
+					}
+					pen += f.Width(c)
+					if i < len(kerning) {
+						pen += kerning[i]
+					}
+				}
 			}
 		case "show":
 			var s value

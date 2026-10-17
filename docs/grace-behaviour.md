@@ -395,11 +395,12 @@ Measured with `style-axes-reciprocal` and `-reciprocal-zero`.
     position and moves the baseline down one current font size.
   - `\#{...}` inserts hexadecimal bytes; `\c` and `\C` enable and
     disable adding 128 to literal character codes below 128.
-  - `\u`/`\U` and `\o`/`\O` start/stop underline and overline.
-    Grace emits each decoration before its text run, in the text colour.
-    The offset and thickness depend on the font (measured from the EPS
-    `TL` operands, recorded in `decorationMetrics`); the overline offset
-    is the negative of the underline offset. Decorations scale and rotate
+  - `\u`/`\U` and `\o`/`\O` start/stop underline and overline. Underlines
+    keep Grace's measured, font-specific offset and thickness. Grace's EPS
+    puts its `\o` stroke just above the baseline, which crosses many glyphs;
+    plot-go deliberately places the overline above the run's tallest glyph,
+    with a gap of 0.04 em. This is an intentional visual correction to
+    Grace, not exact parity for overlines. Both decorations scale and rotate
     with the run, and their stroked boxes participate in justification.
   - Grace rounds run advances to its 300 dpi text grid. For a 600 pt
     viewport this is 0.0004 per run in each page direction, including
@@ -409,8 +410,34 @@ Measured with `style-axes-reciprocal` and `-reciprocal-zero`.
     placement also includes raster-measured tick boxes; stroke widths and
     styles retain the path tolerances. Existing undecorated strings retain
     their continuous layout within the existing text tolerance.
-- Strings are laid out run by run with the fonts' advance widths (no
-  kerning).
+- Additional text controls measured from independent black-box EPS probes:
+  - Matrix arguments are written `xx xy yx yy`; new transforms multiply on
+    the left. `\t{}` resets the whole font matrix, including zoom; `\T{...}`
+    resets before applying its argument. `\r{}` applies a rotation in degrees,
+    `\l{}` applies a horizontal shear; `\q`/`\Q` add/subtract a shear of 0.25.
+    Pen advances, shifts, glyph bounds and decorations follow the matrix.
+  - Absolute zoom and `\N` normalize the height perpendicular to the
+    transformed baseline. In measured Grace output `\N` retains rotation,
+    shear and aspect ratio; it restores normal height and the current baseline.
+    The guide's abbreviated equivalence to a matrix reset is not the measured
+    behavior. Baseline justification uses both components of the final advance.
+  - `\R{number}` and `\R{name}` change text/decorations colour; `\R{}` restores
+    the label's original colour. This state resets for each label.
+  - `\Fk` enables pair kerning; `\FK` disables it (the default). Grace uses
+    the URW AFM pairs, which can differ from OpenType GPOS pairs. plot-go reads
+    installed URW AFMs beside the font or in its Type-1 sibling directory,
+    falling back to the embedded Adobe AFM pairs. Explicit glyph positions are
+    exported consistently in EPS, PDF and SVG.
+  - `\Fl`/`\FL` delimit ligature-enabled/disabled runs. The supported
+    Core-14/URW Latin-1 fonts provide no encodable ligature substitutions;
+    measured Grace leaves `fi`, `fl`, `ffi` and `ffl` unchanged in these fonts.
+  - `\m{n}` records the current advance position (n=0..31); `\M{n}` returns
+    there and restores the current baseline, without restoring font/colour/
+    transform or replacing the baseline. An unset mark returns to the origin.
+  - `\dr` reverses bytes in subsequent substrings, `\dl` restores their
+    original order. `\dR` advances to the left before drawing each run;
+    `\dL` restores normal advancing. Ordering and advancing are independent.
+- Strings use the fonts' advance widths; kerning is disabled unless requested.
 - Text encoding (gracebat's EPS prolog defines it): Latin-1, except that 39
   is quoteright, 45 the hyphen (not minus) and 96 the grave accent, as in
   Adobe Standard. plot-go's EPS, PDF and SVG use the same.

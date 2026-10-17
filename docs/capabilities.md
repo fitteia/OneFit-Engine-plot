@@ -43,8 +43,17 @@ OneFit's own 704 files use; it is history, not this list.
   underline/overline (`\u \U \o \O`), relative/absolute zoom (`\z{} \Z{}`),
   vertical shifts and baseline changes (`\v{} \V{}`), horizontal shifts
   (`\h{}`), newlines (`\n`), hexadecimal characters (`\#{}`), and the
-  legacy upper-half character controls (`\c \C`). Other escapes warn and
-  are left out; braced arguments are consumed with their control.
+  legacy upper-half character controls (`\c \C`); matrix composition/reset
+  (`\t{} \T{}`), inline rotation/slant (`\r{} \l{} \q \Q`), inline colour
+  by name or number (`\R{}`), pair kerning (`\Fk \FK`), marked pen positions
+  (`\m{n} \M{n}`, n=0..31), character order (`\dl \dr`) and advance
+  direction (`\dL \dR`). `\Fl \FL` are accepted; Core-14 Latin-1 has no
+  encodable ligature substitutions, as in the measured Grace output.
+  Matrices, colours and explicit kerning survive EPS, PDF and SVG export;
+  the SVG preview's outlined text uses the same layout. All documented
+  Grace text control codes are recognized for the supported standard 14
+  fonts. Unknown controls and malformed arguments warn; braced arguments
+  are consumed with their control. Fonts outside those 14 remain unsupported.
 - Legends: position (viewport or world), box, fill, gaps, length,
   inverted order, every set's line and symbol.
 - Sets of type `xy` and those with error bars (`xydx`, `xydy`, `xydxdx`,

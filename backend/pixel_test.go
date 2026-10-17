@@ -172,6 +172,12 @@ var pixelLimits = map[string]float64{
 	// style-legend-symbols with patterned fills: the same 597 pixels
 	// differ, of fewer inked ones
 	"style-patterns-legend": 0.005,
+	// Grace draws overlines across many glyphs. plot-go deliberately puts the
+	// line above the run's tallest glyph; the geometry is checked directly in
+	// render.TestOverlineClearsGlyphsAndUnderlineStaysBelow.
+	"style-text-context":             0.01,
+	"style-text-decoration-rotation": 0.045,
+	"style-text-decorations":         0.075,
 }
 
 func limitFor(name string) float64 {

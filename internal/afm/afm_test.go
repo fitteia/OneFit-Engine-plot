@@ -55,3 +55,15 @@ func TestEveryFontLoads(t *testing.T) {
 		t.Error("a non-standard font loaded")
 	}
 }
+
+func TestCore14PairKerning(t *testing.T) {
+	f, err := Get("Helvetica")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for pair, want := range map[[2]byte]float64{{'A', 'V'}: -0.070, {'T', 'o'}: -0.120, {'0', '0'}: 0} {
+		if got := f.Kern(pair[0], pair[1]); !near(got, want) {
+			t.Errorf("pair %q: %g, want %g", pair, got, want)
+		}
+	}
+}

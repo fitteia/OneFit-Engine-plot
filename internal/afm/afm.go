@@ -8,6 +8,8 @@ import (
 	"bufio"
 	"embed"
 	"fmt"
+	"io"
+	"math"
 	"strconv"
 	"strings"
 	"sync"
@@ -52,6 +54,7 @@ type glyph struct {
 type Font struct {
 	Name   string
 	glyphs map[byte]glyph
+	kern   map[[2]byte]float64
 }
 
 var (
@@ -79,6 +82,15 @@ func Get(name string) (*Font, error) {
 	return f, nil
 }
 
+// Read reads standard AFM metrics, including named kerning pairs.
+func Read(name string, r io.Reader) (*Font, error) {
+	b, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	return parse(name, string(b))
+}
+
 // parse reads the character metrics: lines like
 // "C 48 ; WX 556 ; N zero ; B 37 -19 519 703 ;". Codes are the font's own
 // encoding (Adobe Standard for text fonts), which is ASCII for the
@@ -86,9 +98,21 @@ func Get(name string) (*Font, error) {
 func parse(name, src string) (*Font, error) {
 	f := &Font{Name: name, glyphs: map[byte]glyph{}}
 	byName := map[string]glyph{}
+	names := map[string]byte{}
+	pairs := map[[2]string]float64{}
 	sc := bufio.NewScanner(strings.NewReader(src))
 	for sc.Scan() {
 		line := sc.Text()
+		if strings.HasPrefix(line, "KPX ") {
+			p := strings.Fields(line)
+			if len(p) == 4 {
+				v, err := strconv.ParseFloat(p[3], 64)
+				if err == nil && !math.IsNaN(v) && !math.IsInf(v, 0) {
+					pairs[[2]string{p[1], p[2]}] = v / 1000
+				}
+			}
+			continue
+		}
 		if !strings.HasPrefix(line, "C ") {
 			continue
 		}
@@ -100,11 +124,20 @@ func parse(name, src string) (*Font, error) {
 			}
 			switch w[0] {
 			case "C":
+				if len(w) != 2 {
+					continue
+				}
 				code, _ = strconv.Atoi(w[1])
 			case "WX":
+				if len(w) != 2 {
+					continue
+				}
 				x, _ := strconv.ParseFloat(w[1], 64)
 				g.width = x / 1000
 			case "N":
+				if len(w) != 2 {
+					continue
+				}
 				gname = w[1]
 			case "B":
 				if len(w) == 5 {
@@ -119,6 +152,7 @@ func parse(name, src string) (*Font, error) {
 		byName[gname] = g
 		if code >= 0 && code < 256 {
 			f.glyphs[byte(code)] = g
+			names[gname] = byte(code)
 		}
 	}
 	if len(f.glyphs) == 0 {
@@ -130,6 +164,14 @@ func parse(name, src string) (*Font, error) {
 		// and 45 the hyphen (docs/grace-behaviour.md).
 		if g, ok := byName["grave"]; ok {
 			f.glyphs['`'] = g
+		}
+	}
+	f.kern = make(map[[2]byte]float64)
+	for pair, v := range pairs {
+		a, oka := names[pair[0]]
+		b, okb := names[pair[1]]
+		if oka && okb {
+			f.kern[[2]byte{a, b}] = v
 		}
 	}
 	return f, sc.Err()
@@ -157,3 +199,6 @@ func (f *Font) Ink(s string) Box {
 	}
 	return b
 }
+
+// Kern is the AFM pair adjustment in ems (zero for an unlisted pair).
+func (f *Font) Kern(a, b byte) float64 { return f.kern[[2]byte{a, b}] }

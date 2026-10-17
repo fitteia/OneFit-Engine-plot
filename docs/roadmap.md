@@ -16,9 +16,15 @@ then vendored in the GUI and pinned in the debs.
 
 - **Common text controls**: underline and overline, relative/absolute zoom,
   vertical and horizontal shifts, baseline changes, newlines, hexadecimal
-  characters and legacy upper-half character controls. Measured against
-  Grace across the 14 standard fonts and rotated/justified labels. These
-  changes are not yet included in the GUI or OFE-Go dependency pins.
+  characters and legacy upper-half character controls. The overline is now
+  placed above glyph ink; Grace's baseline-level placement is intentionally
+  corrected.
+- **Remaining documented text controls**: matrix composition/reset, inline
+  rotation/slant/oblique, colours, AFM pair kerning, position marks and text
+  directions. Ligature toggles are recognized; the supported Core-14 Latin-1
+  fonts have no encodable ligature substitutions, matching measured Grace.
+  These updates are on `feature/complete-text-controls`, not yet released or
+  included in the GUI/OFE-Go dependency pins.
 
 ## Done
 
@@ -49,7 +55,6 @@ then vendored in the GUI and pinned in the debs.
 - **Other graph types and stacked graphs**: polar, Smith, pie, chart,
   fixed.
 - **Axis scales** beyond normal, logarithmic and reciprocal.
-- **Remaining text controls**: transformation matrices, rotation/slant and
-  oblique forms, inline colours, kerning, ligatures, marked positions and
-  direction controls; fonts outside the standard 14.
+- **Additional fonts** outside the standard 14, including any font-specific
+  ligature substitutions beyond the current Latin-1 encoding.
 - **Packages**: RPM, SUSE and Arch packages of plot-go.

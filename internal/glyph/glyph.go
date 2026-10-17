@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/fitteia/OneFit-Engine-plot/internal/afm"
@@ -190,11 +191,13 @@ func macFontDirs(home string) []string {
 }
 
 type font struct {
-	f   *sfnt.Font
-	upm float64
-	urw bool // a URW font: Symbol is looked up by its own codes
-	mu  sync.Mutex
-	buf sfnt.Buffer
+	kernOnce sync.Once
+	kernAFM  *afm.Font
+	f        *sfnt.Font
+	upm      float64
+	urw      bool // a URW font: Symbol is looked up by its own codes
+	mu       sync.Mutex
+	buf      sfnt.Buffer
 }
 
 // Source is where a standard font's outlines come from: the URW file's
@@ -388,4 +391,35 @@ func fitSymbol(segs []Seg, c byte) {
 			s.Pts[i][0] = ink.LLX + (s.Pts[i][0]-lx)*k
 		}
 	}
+}
+
+// Kern returns the system URW font's pair adjustment, or the Core-14 AFM
+// value when that font is unavailable. No kerning is applied by default.
+func Kern(name string, m *afm.Font, a, b byte) float64 {
+	f, err := load(name)
+	if err != nil || !f.urw {
+		return m.Kern(a, b)
+	}
+	f.kernOnce.Do(func() {
+		path := urwPath(name)
+		stem := strings.TrimSuffix(filepath.Base(path), ".otf") + ".afm"
+		// AFM and OpenType GPOS kerning are not interchangeable: Grace uses AFM.
+		dirs := []string{filepath.Dir(path), filepath.Join(filepath.Dir(path), "..", "..", "type1", "urw-base35"), "/usr/share/fonts/type1/urw-base35"}
+		for _, dir := range dirs {
+			in, err := os.Open(filepath.Join(dir, stem))
+			if err != nil {
+				continue
+			}
+			metrics, err := afm.Read(name, in)
+			in.Close()
+			if err == nil {
+				f.kernAFM = metrics
+				return
+			}
+		}
+	})
+	if f.kernAFM != nil {
+		return f.kernAFM.Kern(a, b)
+	}
+	return m.Kern(a, b)
 }

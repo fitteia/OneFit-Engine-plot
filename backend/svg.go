@@ -110,13 +110,18 @@ func WriteSVGWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 					continue
 				}
 			}
+			// Native SVG text must preserve shear and independent axis scales too.
+			if math.Abs(t.Matrix[2]+t.Matrix[1]) > 1e-12 || math.Abs(t.Matrix[3]-t.Matrix[0]) > 1e-12 {
+				p(`<text x="0" y="0" font-family="%s" font-size="1" fill="%s" xml:space="preserve" font-kerning="none" font-variant-ligatures="none" transform="matrix(%s %s %s %s %s %s)"%s>%s</text>`+"\n", html.EscapeString(family(t.Font)), rgb(t.Color), num(t.Matrix[0]*unit), num(-t.Matrix[1]*unit), num(-t.Matrix[2]*unit), num(t.Matrix[3]*unit), X(t.At.X), Y(t.At.Y), style(t.Font), html.EscapeString(Unicode(t.Font, t.Str)))
+				continue
+			}
 			size := math.Hypot(t.Matrix[0], t.Matrix[1])
 			angle := math.Atan2(t.Matrix[1], t.Matrix[0]) * 180 / math.Pi
 			tr := ""
 			if math.Abs(angle) > 1e-9 {
 				tr = fmt.Sprintf(` transform="rotate(%s %s %s)"`, num(-angle), X(t.At.X), Y(t.At.Y))
 			}
-			p(`<text x="%s" y="%s" font-family="%s" font-size="%s" fill="%s" xml:space="preserve"%s>%s</text>`+"\n",
+			p(`<text x="%s" y="%s" font-family="%s" font-size="%s" fill="%s" xml:space="preserve" font-kerning="none" font-variant-ligatures="none"%s>%s</text>`+"\n",
 				X(t.At.X), Y(t.At.Y), html.EscapeString(family(t.Font)), num(size*unit), rgb(t.Color), tr+style(t.Font),
 				html.EscapeString(Unicode(t.Font, t.Str)))
 			continue

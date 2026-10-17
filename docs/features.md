@@ -89,3 +89,14 @@ Parameter files (`.agr-par`) write their directives without the leading
 Grace's interactive editor, autoscaling, other graph types (bar, polar,
 pie, ...), several graphs per page, fits/transforms/scripting, regions,
 fills, and fonts beyond the three above.
+
+## Text controls added beyond the original inventory
+
+The renderer recognizes the documented Grace text controls in all label
+contexts: scripts, fonts, size, decorations, shifts, matrices, rotation/slant,
+inline colours, pair kerning, position marks and both direction controls.
+Ligature toggles are accepted with the supported Core-14 Latin-1 fonts, which
+have no encodable ligature substitutions. The overline intentionally clears
+glyph ink instead of following Grace's baseline-level stroke. See
+[capabilities.md](capabilities.md) for syntax and font limits, and
+[grace-behaviour.md](grace-behaviour.md) for the measured layout rules.
