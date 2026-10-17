@@ -61,6 +61,12 @@ and Windows are attached to each [release](https://github.com/fitteia/OneFit-Eng
 (`plot-go_OS_ARCH`, with `SHA256SUMS`; `releases/latest/download/plot-go_linux_amd64`
 is always the newest); put one on the PATH as `plot-go`. Or, with Go: `go install github.com/fitteia/OneFit-Engine-plot/cmd/plot-go@latest`.
 
+Building from source requires Go 1.25 or newer; use the latest security patch
+of your Go release. Release builds use the current stable Go toolchain.
+The image/font and text libraries are pinned to `golang.org/x/image v0.45.0`
+and `golang.org/x/text v0.41.0`, including fixes for malformed TIFF and SFNT
+font inputs.
+
 OneFit's C core (OneFit-Engine-C) uses plot-go for its plots when it finds
 it on the PATH, and Grace otherwise; `OFE_PLOTTER=grace` forces Grace.
 
