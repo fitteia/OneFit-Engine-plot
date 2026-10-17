@@ -93,12 +93,12 @@ func Read(name string, r io.Reader) (*Font, error) {
 
 // parse reads the character metrics: lines like
 // "C 48 ; WX 556 ; N zero ; B 37 -19 519 703 ;". Codes are the font's own
-// encoding (Adobe Standard for text fonts), which is ASCII for the
-// printable characters except the quotes.
+// encoding (Adobe Standard for text fonts). Latin fonts are reencoded by
+// glyph name to the Latin-1 bytes used by the renderer and output backends.
 func parse(name, src string) (*Font, error) {
 	f := &Font{Name: name, glyphs: map[byte]glyph{}}
 	byName := map[string]glyph{}
-	names := map[string]byte{}
+	encoding := map[byte]string{}
 	pairs := map[[2]string]float64{}
 	sc := bufio.NewScanner(strings.NewReader(src))
 	for sc.Scan() {
@@ -151,31 +151,65 @@ func parse(name, src string) (*Font, error) {
 		}
 		byName[gname] = g
 		if code >= 0 && code < 256 {
-			f.glyphs[byte(code)] = g
-			names[gname] = byte(code)
+			encoding[byte(code)] = gname
 		}
 	}
-	if len(f.glyphs) == 0 {
+	if len(encoding) == 0 {
 		return nil, fmt.Errorf("no character metrics")
 	}
 	if name != "Symbol" && name != "ZapfDingbats" {
 		// gracebat's encoding is Adobe Standard in the ASCII range except
 		// that 96 is the grave accent, not quoteleft; 39 stays quoteright
 		// and 45 the hyphen (docs/grace-behaviour.md).
-		if g, ok := byName["grave"]; ok {
-			f.glyphs['`'] = g
+		if _, ok := byName["grave"]; ok {
+			encoding['`'] = "grave"
+		}
+		// AFM C codes above ASCII use Adobe Standard, not Latin-1.
+		// Degree, for example, has C -1 and must be found by name.
+		for code := range encoding {
+			if code >= 128 {
+				delete(encoding, code)
+			}
+		}
+		for i, glyphName := range strings.Fields(latin1Names) {
+			encoding[byte(0xa0+i)] = glyphName
+		}
+	}
+	names := map[string][]byte{}
+	for code, glyphName := range encoding {
+		if g, ok := byName[glyphName]; ok {
+			f.glyphs[code] = g
+			names[glyphName] = append(names[glyphName], code)
 		}
 	}
 	f.kern = make(map[[2]byte]float64)
 	for pair, v := range pairs {
-		a, oka := names[pair[0]]
-		b, okb := names[pair[1]]
-		if oka && okb {
-			f.kern[[2]byte{a, b}] = v
+		// Space and hyphen each have two Latin-1 codes. Preserve the
+		// pair for every alias, including unencoded accented AFM glyphs.
+		for _, a := range names[pair[0]] {
+			for _, b := range names[pair[1]] {
+				f.kern[[2]byte{a, b}] = v
+			}
 		}
 	}
 	return f, sc.Err()
 }
+
+// ISO-8859-1 0xa0..0xff, in Adobe glyph names. Symbol and ZapfDingbats
+// retain their own encodings; the Latin ASCII quote exceptions are above.
+const latin1Names = `
+space exclamdown cent sterling currency yen brokenbar section
+dieresis copyright ordfeminine guillemotleft logicalnot hyphen registered macron
+degree plusminus twosuperior threesuperior acute mu paragraph periodcentered
+cedilla onesuperior ordmasculine guillemotright onequarter onehalf threequarters questiondown
+Agrave Aacute Acircumflex Atilde Adieresis Aring AE Ccedilla
+Egrave Eacute Ecircumflex Edieresis Igrave Iacute Icircumflex Idieresis
+Eth Ntilde Ograve Oacute Ocircumflex Otilde Odieresis multiply
+Oslash Ugrave Uacute Ucircumflex Udieresis Yacute Thorn germandbls
+agrave aacute acircumflex atilde adieresis aring ae ccedilla
+egrave eacute ecircumflex edieresis igrave iacute icircumflex idieresis
+eth ntilde ograve oacute ocircumflex otilde odieresis divide
+oslash ugrave uacute ucircumflex udieresis yacute thorn ydieresis`
 
 // Width is the advance width of s, in ems.
 func (f *Font) Width(s string) float64 {

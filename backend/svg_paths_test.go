@@ -10,7 +10,26 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	pdraw "github.com/fitteia/OneFit-Engine-plot/draw"
 )
+
+// The PDF text operator advances degree by 400/1000 em in Helvetica.
+// Outlined SVG must place the following C at the same position.
+func TestSVGOutlinedDegreeSpacing(t *testing.T) {
+	coord := func(x float64) string { return num(x) }
+	text := pdraw.Text{Font: "Helvetica", Str: "\xb0C", Matrix: [4]float64{1, 0, 0, 1}}
+	got, ok := textPath(text, coord, coord)
+	if !ok {
+		t.Fatal("degree+C has no outlines")
+	}
+	text.Str = "C"
+	text.At.X = .400
+	c, ok := textPath(text, coord, coord)
+	if !ok || !strings.HasSuffix(got, c) {
+		t.Fatal("outlined C is not positioned 0.400 em after degree")
+	}
+}
 
 // glyphLimit: with text as Liberation outlines, rasterized by rsvg, the
 // share of inked pixels allowed to differ from gracebat's page (URW fonts
