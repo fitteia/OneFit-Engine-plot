@@ -187,6 +187,9 @@ func TestSVGIsWellFormed(t *testing.T) {
 		// render's element IDs, as groups an editor selects by (not every
 		// file draws symbols: test1-13's one point is outside its window)
 		ids := []string{`<g data-id="page">`, `<g data-id="g0.frame">`, `<g data-id="g0.x.ticklabel">`, `<g data-id="g0.y.label">`}
+		if strings.Contains(f, "style-avalue-") {
+			ids = append(ids[:2], `<g data-id="g0.s0.avalue">`) // axes off, point annotations on
+		}
 		if strings.Contains(f, "style-formats-") {
 			ids = ids[:3] // tick labels only, no axis labels
 		}

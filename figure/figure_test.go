@@ -405,6 +405,7 @@ func TestAddKeepsTheSourceColors(t *testing.T) {
 	in := src.Graphs[0].Sets[0]
 	in.Line.Color, in.Symbol.Color, in.ErrorBar.Color, in.Symbol.FillColor, in.Fill.Color = 2, 2, 1, 2, 0
 	in.Symbol.CharFont = 4
+	in.AValue.Font, in.AValue.Color = 4, 2
 	added, err := AddSets(fig, 0, src, "b/fit-curves-1.agr", []int{0})
 	if err != nil {
 		t.Fatal(err)
@@ -417,6 +418,9 @@ func TestAddKeepsTheSourceColors(t *testing.T) {
 	}
 	if c := got.Line.Color; c == 2 || fig.Colors[c] != green || got.Symbol.Color != c || got.Symbol.FillColor != c {
 		t.Errorf("imported green is color %d (%+v), symbol %d, fill %d", c, fig.Colors[c], got.Symbol.Color, got.Symbol.FillColor)
+	}
+	if got.AValue.Font != got.Symbol.CharFont || got.AValue.Color != got.Line.Color {
+		t.Errorf("annotation font/color not imported: %+v", got.AValue)
 	}
 	if got.ErrorBar.Color != 1 || got.Fill.Color != 0 {
 		t.Errorf("colors both map alike were renumbered: error bars %d, fill %d", got.ErrorBar.Color, got.Fill.Color)
@@ -442,5 +446,32 @@ func TestAddKeepsTheSourceColors(t *testing.T) {
 	last := fig.Strings[len(fig.Strings)-1]
 	if fig.Colors[last.Color] != green || fig.Fonts[last.Font].Name != "Courier" {
 		t.Errorf("the added text: color %d %+v, font %d %+v", last.Color, fig.Colors[last.Color], last.Font, fig.Fonts[last.Font])
+	}
+}
+
+func TestPointLabelsCopyAndRefresh(t *testing.T) {
+	src := load(t, "style-avalue-4.agr")
+	fig := FromPlot(load(t, "style-avalue-4.agr"), "source.agr")
+	fig.Graphs[0].Sets = nil
+	if _, err := AddSets(fig, 0, src, "source.agr", []int{0}); err != nil {
+		t.Fatal(err)
+	}
+	s := fig.Graphs[0].Sets[0]
+	if len(s.Labels) != 2 || s.AValue.Type != 4 {
+		t.Fatalf("labels not imported: %+v", s)
+	}
+	s.Labels[0] = "edited"
+	if src.Graphs[0].Sets[0].Labels[0] == "edited" {
+		t.Fatal("labels share source storage")
+	}
+	s.AValue.Color = 2
+	src.Graphs[0].Sets[0].Labels = []string{"new", "labels"}
+	n, w := Update(fig, func(string) (*agr.Project, error) { return src, nil })
+	if n != 1 || len(w) != 0 || s.Labels[0] != "new" || s.AValue.Color != 2 {
+		t.Fatalf("refresh %d %v: %+v", n, w, s)
+	}
+	s.Labels[0] = "again"
+	if src.Graphs[0].Sets[0].Labels[0] != "new" {
+		t.Fatal("refreshed labels share storage")
 	}
 }

@@ -44,7 +44,8 @@ every directive appears in all 704 files.
   0.5, no line (type 0). Error bars are off in every file (`errorbar
   off`), so dy is read but not drawn.
 - Legend strings per set (empty in every file of the corpus); avalues,
-  fill, baseline and droplines are all off.
+  fill, baseline and droplines are all off. Point annotations are now
+  supported beyond this inventory; see [capabilities.md](capabilities.md).
 
 ## Legend and strings
 

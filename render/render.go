@@ -542,7 +542,7 @@ func (r *renderer) legend(t xform) {
 }
 
 // set draws a set (docs/grace-behaviour.md): its fill, line, droplines,
-// baseline, error bars and symbols, in that order.
+// baseline, error bars, symbols and point annotations, in that order.
 func (r *renderer) set(t xform, s *agr.Set) {
 	pts, breaks := r.linePoints(t, s)
 	if s.Line.Type != 0 && (s.Fill.Type == 1 || s.Fill.Type == 2) {
@@ -571,6 +571,9 @@ func (r *renderer) set(t xform, s *agr.Set) {
 	}
 	if s.Symbol.Type != 0 {
 		r.symbols(t, s)
+	}
+	if s.AValue.On {
+		r.annotatedValues(t, s)
 	}
 }
 

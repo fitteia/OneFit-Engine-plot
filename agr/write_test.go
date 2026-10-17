@@ -30,7 +30,7 @@ func withoutKept(p *agr.Project) *agr.Project {
 }
 
 // TestWriteKeepsWhatItDoesNotModel: directives plot-go neither models nor
-// draws - here annotated values, a region, a stacked graph, an axis bar
+// draws - here a region, a stacked graph, an axis bar
 // and an unknown one - are written back as read, the last of each kind
 // winning as in Grace, and stay with their set when it is renumbered
 // (a figure's sets are).
@@ -69,7 +69,7 @@ func TestWriteKeepsWhatItDoesNotModel(t *testing.T) {
 			t.Errorf("not written: %q", want)
 		}
 	}
-	for _, gone := range []string{"avalue off", "@g0 stacked false", "xaxis  bar off", "@r0 off"} {
+	for _, gone := range []string{"avalue off\n", "@g0 stacked false", "xaxis  bar off", "@r0 off"} {
 		if strings.Contains(out, gone) {
 			t.Errorf("written although replaced: %q", gone)
 		}
@@ -79,7 +79,7 @@ func TestWriteKeepsWhatItDoesNotModel(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := strings.Join(q.Graphs[0].Sets[0].Kept, "\n") + "\n"
-	for _, want := range []string{"avalue on\n", "avalue prec 3\n", "frobnicate 7\n"} {
+	for _, want := range []string{"frobnicate 7\n"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("read back: set keeps %q, not %q", got, want)
 		}

@@ -50,6 +50,12 @@ OneFit's own 704 files use; it is history, not this list.
   skip; error bars in x and y (place, size, widths and styles, riser clip
   with arrowheads); fills of types 1 and 2 with their rule, color and pattern;
   baselines (types 0 to 5) and droplines.
+- Point annotations (`avalue`): X, Y, X/Y pairs, optional quoted text
+  after each numeric data row, or the third numeric column (including
+  an error column). Format, precision, prepend/append, font, size, color,
+  rotation and viewport offsets are saved and rendered. Annotations
+  follow symbol skip; points outside the world are skipped, while labels
+  at visible points may extend past the frame.
 - Drawing objects, on the page or in a graph's world: lines with arrow
   heads (at either end or both; line, filled or opaque; length and
   layout), boxes and ellipses (outline style, width and color, fill color
@@ -67,7 +73,6 @@ A warning names each when it is on. `agr.Write` (the Figures editor's
 save, and `-saveall`) writes them back as read, so a project opened and
 saved loses none of them.
 
-- Annotated values (`avalue`).
 - Regions (`r0` ...).
 - Stacked graphs, fixed points, graph types other than XY.
 - Other set types (bar, xyhilo, xyr, ...; their data rows are read as far

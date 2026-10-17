@@ -349,15 +349,31 @@ type Set struct {
 	Dropline bool // a line from the baseline to each point
 	Fill     Fill
 	ErrorBar ErrorBar
+	AValue   AnnotatedValues
 	Comment  string
 	Legend   string
 	// Data holds one row per point: x, y and the errors its type has
 	// (see Columns).
 	Data [][]float64
-	// Kept are the set's directives the model has no place for (annotated
-	// values, ...), as read but without "sN", so they stay with the set
-	// when it is renumbered. See Project.Kept.
+	// Labels holds optional per-point quoted text, indexed like Data.
+	Labels []string
+	// Kept are directives the model has no place for, as read but without
+	// "sN", so they stay with the set when renumbered. See Project.Kept.
 	Kept []string
+}
+
+// AnnotatedValues controls labels next to a set's points. Type is 0 (none),
+// 1 (x), 2 (y), 3 (x, y), 4 (point text), or 5 (third numeric column).
+type AnnotatedValues struct {
+	On              bool
+	Type            int
+	CharSize        float64
+	Font, Color     int
+	Rot             float64
+	Format          string
+	Prec            int
+	Prepend, Append string
+	Offset          [2]float64
 }
 
 // Symbol is how a set's points are marked; Type 0 is none, 1 a circle.
@@ -431,6 +447,7 @@ func NewSet(id int, d Defaults, colors int) *Set {
 	c := id%(colors-1) + 1
 	return &Set{
 		ID:     id,
+		AValue: AnnotatedValues{Type: 2, CharSize: d.CharSize, Font: d.Font, Color: d.Color, Format: "general", Prec: 3},
 		Type:   "xy",
 		Line:   Line{Type: 1, LineStyle: d.LineStyle, LineWidth: d.LineWidth, Color: c, Pattern: 1},
 		Symbol: Symbol{Size: d.SymbolSize, Color: c, Pattern: 1, FillColor: c, LineWidth: d.LineWidth, LineStyle: d.LineStyle, Char: 'A', CharFont: d.Font},

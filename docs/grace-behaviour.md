@@ -630,3 +630,48 @@ of inked pixels, allowing for text up to 0.7 pt apart). Two cases found
 this way are now tests: a window edge just past a tick (no tick at 0 for
 a window starting at 1e-06), and the numeric tick label format above
 (testdata/gracebat-call-format60).
+
+## Point annotations
+
+Measured on 2026-10-17 using gracebat 5.1.25 as a black box. The
+`style-avalue-*.agr` corpus fixtures and their EPS/PNG references were
+created for these measurements; existing reference files were unchanged.
+The fixtures were saved by Grace to spell out its defaults. Inactive
+axis placement fields are explicit so the parser/writer round-trip is
+stable even though Grace omits these fields when an axis is off.
+
+- `avalue on` labels the set after its symbols and error bars. Hidden
+  sets have no labels. The default type is 2 (Y), format general,
+  precision 3, size 1, default font/color, rotation 0 and offset 0, 0.
+- Types: 0 has no value; 1 is X; 2 is Y; 3 is X followed by comma-space
+  and Y; 4 is the optional quoted string after a data row's numbers;
+  5 uses the third numeric column, including an error-bar column. When
+  the requested value is absent, only prepend/append remain. Type 0
+  also draws prepend/append if nonempty. Types beyond 5 draw nothing
+  (Grace reports an invalid annotation type); plot-go warns too.
+- Prepend and append surround the whole label, including an X/Y pair.
+  Formatting uses the same formats as tick labels; Grace text escapes
+  are processed after formatting. A quoted label is not another numeric
+  column and remains attached to its row when a set is imported or refreshed.
+- Placement is horizontally centred and bottom aligned by the page's
+  bounding box of the rotated text, including the pen origin, like string
+  justification 6. With the point at 0.32, 0.38, Times-Roman size 1 and
+  text `[3]`, Grace places the pen at 0.3050, 0.3844; at 90 degrees it
+  places it at 0.3272, 0.3800. The existing text tolerance applies.
+- Offsets add viewport X/Y distances after justification. They neither
+  scale with the graph's world nor rotate with the text. Offset 0.1, -0.2
+  moves that pen to 0.4050, 0.1844.
+- Symbol skip applies even with no symbol. Rows outside the world still
+  count for skip. Visible boundary points keep their labels, which may
+  extend outside the frame; outside points have no label. Logarithmic
+  and inverted axes move the anchor; they do not change the printed values.
+- Symbol size does not move the annotation. Character size, font, color
+  and arbitrary rotation are independent of the symbols.
+
+The automated suite compares every new fixture's drawing against its
+Grace EPS, checks that Grace draws plot-go's saved copy the same way,
+and checks model/save/reopen and imported-label independence. Fixtures
+cover types 0 through 5, missing third columns, superscripts, color/font/
+size/exponential precision, 37/90-degree rotation, offsets, skip, symbols,
+world edges and inverted logarithmic axes. This does not establish
+compliance for the other set or graph types listed as unsupported.

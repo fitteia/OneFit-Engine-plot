@@ -103,3 +103,13 @@ go run ./cmd/agr-inventory -o docs/inventory.md DIR...
 PLOT_GO_CORPUS=DIR:DIR go test ./agr/   # also parse a whole local corpus
 scripts/make-references.sh               # needs gracebat and gs
 ```
+
+### Point annotations
+
+The renderer supports Grace's `avalue` point labels: X, Y, X/Y, quoted
+per-point text or the third numeric column. For example, `s0 avalue on`
+and `s0 avalue type 2` label each point with Y; type 4 uses a trailing
+quoted label in its data row (`1 2 "peak"`). Font, color, size, rotation,
+format, precision, prefix/suffix and viewport offsets round-trip through
+saving. See [the measured behaviour](docs/grace-behaviour.md#point-annotations)
+and [roadmap](docs/roadmap.md) for release and Figures integration status.

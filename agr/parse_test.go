@@ -212,7 +212,7 @@ func TestWarnings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"annotated values is not drawn", "axis scale Logit", "unknown directive", "row has 1 numbers"}
+	want := []string{"axis scale Logit", "unknown directive", "row has 1 numbers"}
 	if len(p.Warnings) != len(want) {
 		t.Fatalf("warnings = %+v", p.Warnings)
 	}

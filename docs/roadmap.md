@@ -12,6 +12,15 @@ Each step is measured from gracebat like the rest
 ([grace-behaviour.md](grace-behaviour.md)), released as its own tag, and
 then vendored in the GUI and pinned in the debs.
 
+## Implemented, awaiting release and GUI integration
+
+- **Annotated values** (`avalue`): the renderer reads, draws and saves
+  point values and labels. Grace reference fixtures cover all six type
+  codes, text escapes, style, rotation, offsets, symbol skip, clipping,
+  logarithmic and inverted axes. Next: release plot-go, update the GUI
+  dependency and add per-set annotation controls. Numeric data editing
+  must retain point labels or explicitly edit them with their rows.
+
 ## Done
 
 - PNG output (`-format png`, gracebat's `-hdevice PNG`) through an
@@ -27,7 +36,6 @@ then vendored in the GUI and pinned in the debs.
 
 ## Later
 
-- **Annotated values** (`avalue`): numbers or labels next to the points.
 - **Regions and fixed points**: measure first whether gracebat draws them
   at all; if it does not, only the warning goes.
 - **Other set types**: bar, bardy, bardydy, xyhilo, xyr, xysize, xycolor,

@@ -107,6 +107,7 @@ func addSets(fig *agr.Project, g int, src *agr.Project, path string, sets []int,
 		}
 		c := *s
 		c.Kept = append([]string(nil), s.Kept...)
+		c.Labels = append([]string(nil), s.Labels...)
 		c.Data = make([][]float64, len(s.Data))
 		for i, row := range s.Data {
 			c.Data[i] = append([]float64(nil), row...)
@@ -297,6 +298,7 @@ func Update(fig *agr.Project, load func(path string) (*agr.Project, error)) (int
 				warnings = append(warnings, fmt.Sprintf("set %d: its source's type changed from %s to %s; the set follows it", s.ID, s.Type, from.Type))
 				s.Type = from.Type
 			}
+			s.Labels = append([]string(nil), from.Labels...)
 			s.Data = make([][]float64, len(from.Data))
 			for i, row := range from.Data {
 				s.Data[i] = append([]float64(nil), row...)

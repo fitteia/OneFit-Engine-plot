@@ -12,7 +12,7 @@ import (
 
 // Write writes the project as a Grace project file, in gracebat's order
 // and forms, so Grace reads it too and Parse reads it back to the same
-// Project. What the model has no place for (regions, annotated values,
+// Project. What the model has no place for (regions,
 // fixed points, ...) is written as Parse kept it (Project.Kept, Objects and
 // the graphs' and sets'), so nothing is lost; what it has not kept, as
 // gracebat writes it when off.
@@ -117,12 +117,16 @@ func Write(w io.Writer, p *Project) error {
 			}
 			pf("@target G%d.S%d", g.ID, s.ID)
 			pf("@type %s", s.Type)
-			for _, row := range s.Data {
+			for point, row := range s.Data {
 				parts := make([]string, len(row))
 				for i, v := range row {
 					parts[i] = fmt.Sprintf("%16.8g", v)
 				}
-				pf("%s", strings.Join(parts, " "))
+				line := strings.Join(parts, " ")
+				if point < len(s.Labels) {
+					line += " " + quote(s.Labels[point])
+				}
+				pf("%s", line)
 			}
 			pf("&")
 		}
@@ -448,7 +452,18 @@ func writeSet(out func(string, ...any), s *Set) {
 	pf("%s fill rule %d", n, s.Fill.Rule)
 	pf("%s fill color %d", n, s.Fill.Color)
 	pf("%s fill pattern %d", n, s.Fill.Pattern)
-	pf("%s avalue off", n)
+	a := s.AValue
+	pf("%s avalue %s", n, onOff(a.On))
+	pf("%s avalue type %d", n, a.Type)
+	pf("%s avalue char size %s", n, size(a.CharSize))
+	pf("%s avalue font %d", n, a.Font)
+	pf("%s avalue color %d", n, a.Color)
+	pf("%s avalue rot %s", n, num(a.Rot))
+	pf("%s avalue format %s", n, or(a.Format, "general"))
+	pf("%s avalue prec %d", n, a.Prec)
+	pf("%s avalue prepend %s", n, quote(a.Prepend))
+	pf("%s avalue append %s", n, quote(a.Append))
+	pf("%s avalue offset %s, %s", n, num(a.Offset[0]), num(a.Offset[1]))
 	e := s.ErrorBar
 	pf("%s errorbar %s", n, onOff(e.On))
 	pf("%s errorbar place %s", n, or(e.Place, "both"))

@@ -831,17 +831,17 @@ func init() {
 		}),
 		r("S# fill color N", func(p *parser, a []string) { p.set(a).Fill.Color = p.nonNeg(p.set(a).Fill.Color, a[1]) }),
 		r("S# fill pattern N", func(p *parser, a []string) { p.set(a).Fill.Pattern = p.nonNeg(p.set(a).Fill.Pattern, a[1]) }),
-		r("S# avalue W", unsupportedWhenOn("annotated values", 1)),
-		r("S# avalue type N", ignore),
-		r("S# avalue char size N", ignore),
-		r("S# avalue font N", ignore),
-		r("S# avalue color N", ignore),
-		r("S# avalue rot N", ignore),
-		r("S# avalue format W", ignore),
-		r("S# avalue prec N", ignore),
-		r("S# avalue prepend S", ignore),
-		r("S# avalue append S", ignore),
-		r("S# avalue offset N N", ignore),
+		r("S# avalue W", func(p *parser, a []string) { p.set(a).AValue.On = p.bool(a[1]) }),
+		r("S# avalue type N", func(p *parser, a []string) { p.set(a).AValue.Type = p.nonNeg(p.set(a).AValue.Type, a[1]) }),
+		r("S# avalue char size N", func(p *parser, a []string) { p.set(a).AValue.CharSize = p.num(a[1]) }),
+		r("S# avalue font N", func(p *parser, a []string) { p.set(a).AValue.Font = p.nonNeg(p.set(a).AValue.Font, a[1]) }),
+		r("S# avalue color N", func(p *parser, a []string) { p.set(a).AValue.Color = p.nonNeg(p.set(a).AValue.Color, a[1]) }),
+		r("S# avalue rot N", func(p *parser, a []string) { p.set(a).AValue.Rot = p.num(a[1]) }),
+		r("S# avalue format W", func(p *parser, a []string) { p.set(a).AValue.Format = a[1] }),
+		r("S# avalue prec N", func(p *parser, a []string) { p.set(a).AValue.Prec = p.nonNeg(p.set(a).AValue.Prec, a[1]) }),
+		r("S# avalue prepend S", func(p *parser, a []string) { p.set(a).AValue.Prepend = a[1] }),
+		r("S# avalue append S", func(p *parser, a []string) { p.set(a).AValue.Append = a[1] }),
+		r("S# avalue offset N N", func(p *parser, a []string) { p.set(a).AValue.Offset = [2]float64{p.num(a[1]), p.num(a[2])} }),
 		r("S# errorbar W", func(p *parser, a []string) { p.set(a).ErrorBar.On = p.bool(a[1]) }),
 		r("S# errorbar place W", func(p *parser, a []string) { p.set(a).ErrorBar.Place = a[1] }),
 		r("S# errorbar color N", func(p *parser, a []string) { p.set(a).ErrorBar.Color = p.nonNeg(p.set(a).ErrorBar.Color, a[1]) }),
@@ -879,6 +879,7 @@ func init() {
 			}
 			p.setType(p.target, a[0])
 			p.target.Data = nil
+			p.target.Labels = nil
 			p.inData = true
 		}),
 	}
@@ -913,6 +914,20 @@ func parseTarget(s string) (graph, set int, ok bool) {
 }
 
 func (p *parser) dataRow(line string) {
+	// Numeric data may end with one quoted point label. Keep existing numeric
+	// tokenization strict; the directive tokenizer also accepts commas.
+	label := ""
+	hasLabel := false
+	if i := strings.IndexByte(line, '"'); i >= 0 {
+		tail := strings.TrimSpace(line[i:])
+		if len(tail) < 2 || tail[len(tail)-1] != '"' || strings.Contains(tail[1:len(tail)-1], "\"") {
+			p.warn("malformed point label")
+			return
+		}
+		label = tail[1 : len(tail)-1]
+		hasLabel = true
+		line = line[:i]
+	}
 	fields := strings.Fields(line)
 	row := make([]float64, 0, len(fields))
 	for _, f := range fields {
@@ -928,6 +943,12 @@ func (p *parser) dataRow(line string) {
 		return
 	}
 	p.target.Data = append(p.target.Data, row)
+	if hasLabel || p.target.Labels != nil {
+		for len(p.target.Labels) < len(p.target.Data)-1 {
+			p.target.Labels = append(p.target.Labels, "")
+		}
+		p.target.Labels = append(p.target.Labels, label)
+	}
 }
 
 func (p *parser) directive(line string) {
