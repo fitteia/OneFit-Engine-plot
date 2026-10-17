@@ -12,21 +12,19 @@ Each step is measured from gracebat like the rest
 ([grace-behaviour.md](grace-behaviour.md)), released as its own tag, and
 then vendored in the GUI and pinned in the debs.
 
-## Implemented, awaiting release
+## Done
 
-- **Common text controls**: underline and overline, relative/absolute zoom,
+- **Common text controls**: v0.2.17. Underline and overline, relative/absolute zoom,
   vertical and horizontal shifts, baseline changes, newlines, hexadecimal
-  characters and legacy upper-half character controls. The overline is now
-  placed above glyph ink; Grace's baseline-level placement is intentionally
-  corrected.
-- **Remaining documented text controls**: matrix composition/reset, inline
+  characters and legacy upper-half character controls. v0.2.18 moved the
+  overline above glyph ink, intentionally correcting Grace's baseline-level
+  placement.
+- **Remaining documented text controls**: v0.2.18. Matrix composition/reset, inline
   rotation/slant/oblique, colours, AFM pair kerning, position marks and text
   directions. Ligature toggles are recognized; the supported Core-14 Latin-1
   fonts have no encodable ligature substitutions, matching measured Grace.
-  These updates are on `feature/complete-text-controls`, not yet released or
-  included in the GUI/OFE-Go dependency pins.
-
-## Done
+  These controls, including the corrected overline placement, are included in
+  v0.2.19, which the GUI and OFE-Go pin and vendor.
 
 - **Annotated values** (`avalue`): v0.2.16. Point values and quoted labels,
   including style, rotation, offsets, symbol skip and clipping. The GUI
