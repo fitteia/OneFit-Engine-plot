@@ -190,6 +190,9 @@ func TestSVGIsWellFormed(t *testing.T) {
 		if strings.Contains(f, "style-avalue-") {
 			ids = append(ids[:2], `<g data-id="g0.s0.avalue">`) // axes off, point annotations on
 		}
+		if strings.Contains(f, "style-text-") && p.Graphs[0].Hidden {
+			ids = []string{`<g data-id="page">`, `<g data-id="string.0">`} // hidden graph; text controls only
+		}
 		if strings.Contains(f, "style-formats-") {
 			ids = ids[:3] // tick labels only, no axis labels
 		}

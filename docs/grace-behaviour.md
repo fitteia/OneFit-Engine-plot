@@ -382,6 +382,33 @@ Measured with `style-axes-reciprocal` and `-reciprocal-zero`.
   `\-` scales by 2^(-1/4); `\s` shifts the baseline by -0.4 and `\S` by
   +0.6 of the current size, then scale by 2^(-1/2); `\N` restores size and
   baseline; `\0`..`\9` switch to that font number.
+- Common text controls (measured with `style-text-controls`,
+  `style-text-decorations`, `style-text-decoration-rotation` and
+  `style-text-context`):
+  - `\z{x}` multiplies the current size; `\Z{x}` sets a size relative to
+    the original; empty braces restore the original size. `\N` also
+    restores the original size and the current baseline.
+  - `\v{x}` shifts by x times the current size; empty braces return to
+    the current baseline. `\V{x}` moves that baseline and the pen;
+    empty braces undo the baseline change. `\h{x}` shifts horizontally
+    by x times the current size. `\n` returns to the original horizontal
+    position and moves the baseline down one current font size.
+  - `\#{...}` inserts hexadecimal bytes; `\c` and `\C` enable and
+    disable adding 128 to literal character codes below 128.
+  - `\u`/`\U` and `\o`/`\O` start/stop underline and overline.
+    Grace emits each decoration before its text run, in the text colour.
+    The offset and thickness depend on the font (measured from the EPS
+    `TL` operands, recorded in `decorationMetrics`); the overline offset
+    is the negative of the underline offset. Decorations scale and rotate
+    with the run, and their stroked boxes participate in justification.
+  - Grace rounds run advances to its 300 dpi text grid. For a 600 pt
+    viewport this is 0.0004 per run in each page direction, including
+    rotated strings. Decoration paths expose this rounding; their run
+    origins and decorated bounds therefore follow it. Paths decorating
+    axis labels use the existing text-position tolerance, since their
+    placement also includes raster-measured tick boxes; stroke widths and
+    styles retain the path tolerances. Existing undecorated strings retain
+    their continuous layout within the existing text tolerance.
 - Strings are laid out run by run with the fonts' advance widths (no
   kerning).
 - Text encoding (gracebat's EPS prolog defines it): Latin-1, except that 39

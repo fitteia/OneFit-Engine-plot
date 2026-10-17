@@ -81,6 +81,14 @@ written from the format itself and Grace's documentation (the User's
 Guide), never from Grace's source code. `gracebat` is used only as a
 black box: its output is the reference the tests compare against.
 
+Common text controls include underline and overline (`\u…\U`, `\o…\O`),
+relative/absolute size changes (`\z{1.5}`, `\Z{1.5}`), horizontal/vertical
+shifts (`\h{}`, `\v{}`), baseline changes (`\V{}`), newlines (`\n`) and
+hexadecimal characters (`\#{b5}`). They work wherever a Grace string is
+drawn, including titles, axis labels, legends and point annotations.
+The [capabilities](docs/capabilities.md) list and
+[roadmap](docs/roadmap.md) distinguish these from remaining text controls.
+
 ## Test data
 
 - `testdata/corpus/`: nine real OneFit plots chosen to cover the format's

@@ -92,6 +92,13 @@ func Compare(got, want *draw.Drawing, limit int) []string {
 		if strings.HasSuffix(g.ID, ".legend") {
 			tp = tolLegend // placed by text boxes
 		}
+		if strings.HasSuffix(g.ID, ".label") || strings.HasSuffix(g.ID, ".title") || strings.HasSuffix(g.ID, ".subtitle") || strings.HasSuffix(g.ID, ".ticklabel") || strings.HasSuffix(g.ID, ".avalue") {
+			// Underline/overline paths share the position of their label.
+			// Axis label placement includes raster-measured tick boxes,
+			// just as the text compared above does; stroke widths and
+			// styles still use the normal path tolerances.
+			tp = tolText
+		}
 		for k := range g.Segments {
 			gs, ws := g.Segments[k], w.Segments[k]
 			if (gs.Arc == nil) != (ws.Arc == nil) {

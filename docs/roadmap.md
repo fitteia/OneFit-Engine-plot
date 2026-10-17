@@ -12,16 +12,22 @@ Each step is measured from gracebat like the rest
 ([grace-behaviour.md](grace-behaviour.md)), released as its own tag, and
 then vendored in the GUI and pinned in the debs.
 
-## Implemented, awaiting release and GUI integration
+## Implemented, awaiting release
 
-- **Annotated values** (`avalue`): the renderer reads, draws and saves
-  point values and labels. Grace reference fixtures cover all six type
-  codes, text escapes, style, rotation, offsets, symbol skip, clipping,
-  logarithmic and inverted axes. Next: release plot-go, update the GUI
-  dependency and add per-set annotation controls. Numeric data editing
-  must retain point labels or explicitly edit them with their rows.
+- **Common text controls**: underline and overline, relative/absolute zoom,
+  vertical and horizontal shifts, baseline changes, newlines, hexadecimal
+  characters and legacy upper-half character controls. Measured against
+  Grace across the 14 standard fonts and rotated/justified labels. These
+  changes are not yet included in the GUI or OFE-Go dependency pins.
 
 ## Done
+
+- **Annotated values** (`avalue`): v0.2.16. Point values and quoted labels,
+  including style, rotation, offsets, symbol skip and clipping. The GUI
+  Figures editor has per-set Point labels controls and preserves labels
+  during data editing and calculator operations.
+- **Editable drawing objects**: v0.2.15. Changed and newly added arrows,
+  boxes and ellipses are saved from their current settings.
 
 - PNG output (`-format png`, gracebat's `-hdevice PNG`) through an
   installed converter, and drawing objects (lines with arrows, boxes,
@@ -42,6 +48,8 @@ then vendored in the GUI and pinned in the debs.
   xycolpat, xyvmap, xyboxplot, xyz.
 - **Other graph types and stacked graphs**: polar, Smith, pie, chart,
   fixed.
-- **Text**: Grace's escapes plot-go leaves out (underline, overline, zoom,
-  the other font forms) and fonts outside the standard 14.
+- **Axis scales** beyond normal, logarithmic and reciprocal.
+- **Remaining text controls**: transformation matrices, rotation/slant and
+  oblique forms, inline colours, kerning, ligatures, marked positions and
+  direction controls; fonts outside the standard 14.
 - **Packages**: RPM, SUSE and Arch packages of plot-go.

@@ -10,11 +10,13 @@ package eps
 import (
 	"fmt"
 	"io"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/fitteia/OneFit-Engine-plot/draw"
+	"github.com/fitteia/OneFit-Engine-plot/internal/afm"
 )
 
 var (
@@ -247,6 +249,30 @@ func Parse(r io.Reader) (*draw.Drawing, error) {
 				}
 				st.font = fonts[name]
 			}
+		case "TL":
+			// Grace's EPS emits a text decoration before show: the string
+			// stays on the stack, followed by offset, thickness, extra width.
+			var a []float64
+			if a, e = nums(3); e == nil {
+				if len(stack) == 0 || !stack[len(stack)-1].isStr {
+					e = fmt.Errorf("TL expects a string and three numbers")
+					break
+				}
+				var font *afm.Font
+				font, e = afm.Get(st.font)
+				if e != nil {
+					break
+				}
+				advance := font.Width(stack[len(stack)-1].str) + a[2]
+				point := func(x, y float64) draw.Point {
+					return draw.Point{X: st.at.X + x*st.matrix[0] + y*st.matrix[2], Y: st.at.Y + x*st.matrix[1] + y*st.matrix[3]}
+				}
+				d.Paths = append(d.Paths, draw.Path{
+					Segments: []draw.Segment{{Points: []draw.Point{point(0, a[0]), point(advance, a[0])}}},
+					Style:    draw.Style{Color: st.style.Color, Width: math.Abs(a[1]) * math.Hypot(st.matrix[0], st.matrix[1])},
+				})
+				d.Order = append(d.Order, 'p')
+			}
 		case "show":
 			var s value
 			if s, e = pop(); e == nil {
@@ -275,7 +301,7 @@ func Parse(r io.Reader) (*draw.Drawing, error) {
 			return nil, fmt.Errorf("%s: %w", t.name, e)
 		}
 	}
-	if scale != 1 && scale != 600 {
+	if scale <= 0 || math.IsNaN(scale) || math.IsInf(scale, 0) {
 		return nil, fmt.Errorf("unexpected page scale %g", scale)
 	}
 	return d, nil

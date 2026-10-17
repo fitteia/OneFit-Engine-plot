@@ -39,8 +39,12 @@ OneFit's own 704 files use; it is history, not this list.
 - Frames: types 0 to 5, background color and pattern.
 - Titles, subtitles, the timestamp, and strings in viewport or world
   coordinates, with justification, rotation, size, color, font and Grace's
-  text escapes `\s \S \N \+ \- \x \f{}`, `\0` to `\9` and `\\`; others warn
-  and are left out.
+  text escapes `\s \S \N \+ \- \x \f{}`, `\0` to `\9` and `\\`;
+  underline/overline (`\u \U \o \O`), relative/absolute zoom (`\z{} \Z{}`),
+  vertical shifts and baseline changes (`\v{} \V{}`), horizontal shifts
+  (`\h{}`), newlines (`\n`), hexadecimal characters (`\#{}`), and the
+  legacy upper-half character controls (`\c \C`). Other escapes warn and
+  are left out; braced arguments are consumed with their control.
 - Legends: position (viewport or world), box, fill, gaps, length,
   inverted order, every set's line and symbol.
 - Sets of type `xy` and those with error bars (`xydx`, `xydy`, `xydxdx`,

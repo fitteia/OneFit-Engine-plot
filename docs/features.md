@@ -66,6 +66,12 @@ every directive appears in all 704 files.
   standard PDF fonts, so a PDF can name them without embedding.
 - Colors: Grace's standard 16-color map, written in every file.
 
+The current renderer also supports underline/overline, zoom, baseline and
+position shifts, newlines, hexadecimal characters and legacy upper-half
+character controls. These are additions for imported Grace projects, not
+features found in the original OneFit inventory; see
+[capabilities.md](capabilities.md) and the `style-text-*` reference fixtures.
+
 ## Oddities to tolerate
 
 A few files have values Grace itself would reject or ignore:

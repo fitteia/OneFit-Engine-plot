@@ -1661,13 +1661,25 @@ func (r *renderer) turnedBox(ts typeset, deg float64) afm.Box {
 		if !ts.ink.Empty() {
 			b = afm.Box{LLX: min(ts.ink.LLX, 0), LLY: min(ts.ink.LLY, 0), URX: max(ts.ink.URX, 0), URY: max(ts.ink.URY, 0)}
 		}
-		return b
+		return r.textBoxGrid(ts, b)
 	}
 	add := func(x, y float64) {
 		x, y = rotate(x, y, deg)
 		b.LLX, b.LLY, b.URX, b.URY = min(b.LLX, x), min(b.LLY, y), max(b.URX, x), max(b.URY, y)
 	}
 	for _, rn := range ts.runs {
+		pos, thickness := decorationMetrics(rn.font)
+		for _, line := range []struct {
+			on     bool
+			offset float64
+		}{{rn.under, pos}, {rn.over, -pos}} {
+			if line.on {
+				for _, x := range []float64{rn.x, rn.x + r.metrics(rn.font).Width(rn.str)*rn.size} {
+					add(x, rn.y+(line.offset-thickness/2)*rn.size)
+					add(x, rn.y+(line.offset+thickness/2)*rn.size)
+				}
+			}
+		}
 		m := r.metrics(rn.font)
 		px := rn.x
 		for i := 0; i < len(rn.str); i++ {
@@ -1692,6 +1704,21 @@ func (r *renderer) turnedBox(ts typeset, deg float64) afm.Box {
 				}
 			}
 			px += m.Width(rn.str[i:i+1]) * rn.size
+		}
+	}
+	return r.textBoxGrid(ts, b)
+}
+
+// A decorated string's bounds are measured on the same raster grid as
+// its run advances. In particular, rotated underline strokes participate
+// in centring, even where no glyph reaches them (Grace EPS measurements).
+func (r *renderer) textBoxGrid(ts typeset, b afm.Box) afm.Box {
+	for _, rn := range ts.runs {
+		if rn.under || rn.over {
+			w, h := draw.PageSize(r.proj.PageWidth, r.proj.PageHeight)
+			grid := 72.0 / 300 / math.Min(w, h)
+			snap := func(v float64) float64 { return math.Round(v/grid) * grid }
+			return afm.Box{LLX: snap(b.LLX), LLY: snap(b.LLY), URX: snap(b.URX), URY: snap(b.URY)}
 		}
 	}
 	return b
