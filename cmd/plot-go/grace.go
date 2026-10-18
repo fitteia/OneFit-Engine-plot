@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -412,12 +414,34 @@ func (g *graceRun) finish() int {
 	return status
 }
 
-// writeFile writes through a temporary file, so a reader never sees half a
-// file.
+// writeFile writes through a temporary file beside name, renamed onto it,
+// so a reader never sees half a file; the temporary name is this run's own
+// (two runs writing one output do not share it), its permissions those
+// os.Create gives. A name that is not a regular file - /dev/null,
+// /dev/stdout, a pipe - is written directly, as is an existing file in a
+// folder where no temporary file can be made.
 func writeFile(name string, write func(io.Writer) error) error {
-	tmp := name + ".tmp"
-	f, err := os.Create(tmp)
+	direct := func() error {
+		f, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o666)
+		if err != nil {
+			return err
+		}
+		if err := write(f); err != nil {
+			f.Close()
+			return err
+		}
+		return f.Close()
+	}
+	st, statErr := os.Stat(name)
+	if statErr == nil && !st.Mode().IsRegular() {
+		return direct()
+	}
+	tmp := fmt.Sprintf("%s.%d.tmp", name, os.Getpid())
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o666)
 	if err != nil {
+		if statErr == nil && errors.Is(err, fs.ErrPermission) {
+			return direct()
+		}
 		return err
 	}
 	if err := write(f); err != nil {
@@ -429,7 +453,15 @@ func writeFile(name string, write func(io.Writer) error) error {
 		os.Remove(tmp)
 		return err
 	}
-	return os.Rename(tmp, name)
+	if statErr == nil {
+		// an existing output keeps its own permissions
+		os.Chmod(tmp, st.Mode().Perm())
+	}
+	if err := os.Rename(tmp, name); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	return nil
 }
 
 // canonical rewrites the per-edge forms a parameter file may use
