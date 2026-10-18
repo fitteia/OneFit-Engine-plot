@@ -169,6 +169,7 @@ func Render(p *agr.Project) (*draw.Drawing, []string) {
 			Closed: true,
 		})
 	}
+	r.shapes(nil, 0, false, true)
 	for _, g := range p.Graphs {
 		if g.On && !g.Hidden {
 			r.graph(g)
@@ -285,6 +286,7 @@ func (r *renderer) graph(g *agr.Graph) {
 	r.frameBackground(g)
 	r.grid(t, true)
 	r.grid(t, false)
+	r.shapes(&t, g.ID, false, true)
 	for _, s := range g.Sets {
 		if !s.Hidden {
 			r.set(t, s)
@@ -309,60 +311,59 @@ func (r *renderer) graph(g *agr.Graph) {
 
 // shapes draws the drawing objects (docs/grace-behaviour.md, "Drawing
 // objects") of graph gid's world, or with t nil those on the page: the
-// boxes, then the ellipses, then the lines, each kind in file order, not
-// clipped.
-func (r *renderer) shapes(t *xform, gid int, onTop bool) {
-	for _, kind := range []string{"box", "ellipse", "line"} {
-		for i, s := range r.proj.Shapes {
-			// graph -1 (an object read without one) is graph 0's
-			// (measured)
-			graph := max(s.Graph, 0)
-			if s.Kind != kind || !s.On || s.OnTop != onTop || (s.LocType == "world") != (t != nil) || (t != nil && graph != gid) {
-				continue
+// boxes, ellipses, then lines by default, or their explicit plot-go order.
+// Objects are not clipped.
+func (r *renderer) shapes(t *xform, gid int, onTop bool, behindData ...bool) {
+	behind := len(behindData) > 0 && behindData[0]
+	for _, i := range r.proj.ShapeOrder(gid, t != nil, onTop, behind) {
+		s := r.proj.Shapes[i]
+		kind := s.Kind
+		if !s.On {
+			continue
+		}
+
+		a, b := draw.Point{X: s.X1, Y: s.Y1}, draw.Point{X: s.X2, Y: s.Y2}
+		if t != nil {
+			// a value the axis cannot place is at the page's left or
+			// bottom edge (measured)
+			x := func(v float64) float64 {
+				if !t.ok(v, 1) {
+					return 0
+				}
+				return t.x(v)
 			}
-			a, b := draw.Point{X: s.X1, Y: s.Y1}, draw.Point{X: s.X2, Y: s.Y2}
-			if t != nil {
-				// a value the axis cannot place is at the page's left or
-				// bottom edge (measured)
-				x := func(v float64) float64 {
-					if !t.ok(v, 1) {
-						return 0
-					}
-					return t.x(v)
+			y := func(v float64) float64 {
+				if !t.ok(1, v) {
+					return 0
 				}
-				y := func(v float64) float64 {
-					if !t.ok(1, v) {
-						return 0
-					}
-					return t.y(v)
-				}
-				if !t.ok(a.X, a.Y) || !t.ok(b.X, b.Y) {
-					r.warn("a %s is at a point its graph's axes cannot place; drawn from the page's edge, as gracebat does", kind)
-				}
-				a, b = draw.Point{X: x(a.X), Y: y(a.Y)}, draw.Point{X: x(b.X), Y: y(b.Y)}
+				return t.y(v)
 			}
-			r.id = fmt.Sprintf("object.%d", i)
-			st, stroke := r.style(s.Color, s.LineWidth, s.LineStyle)
-			switch kind {
-			case "box":
-				corners := []draw.Point{a, {X: a.X, Y: b.Y}, b, {X: b.X, Y: a.Y}}
-				r.fill(s.FillColor, s.FillPattern, draw.Segment{Points: corners, Closed: true})
-				if stroke {
-					r.path(st, false, draw.Segment{Points: append(corners, corners[0]), Closed: true})
-				}
-			case "ellipse":
-				arc := draw.Segment{Arc: &draw.Arc{X: (a.X + b.X) / 2, Y: (a.Y + b.Y) / 2,
-					RX: math.Abs(b.X-a.X) / 2, RY: math.Abs(b.Y-a.Y) / 2, A1: 0, A2: 360}}
-				r.fill(s.FillColor, s.FillPattern, arc)
-				if stroke {
-					r.path(st, false, arc)
-				}
-			case "line":
-				if stroke {
-					r.path(st, false, line(a, b))
-				}
-				r.arrows(s, a, b)
+			if !t.ok(a.X, a.Y) || !t.ok(b.X, b.Y) {
+				r.warn("a %s is at a point its graph's axes cannot place; drawn from the page's edge, as gracebat does", kind)
 			}
+			a, b = draw.Point{X: x(a.X), Y: y(a.Y)}, draw.Point{X: x(b.X), Y: y(b.Y)}
+		}
+		r.id = fmt.Sprintf("object.%d", i)
+		st, stroke := r.style(s.Color, s.LineWidth, s.LineStyle)
+		switch kind {
+		case "box":
+			corners := []draw.Point{a, {X: a.X, Y: b.Y}, b, {X: b.X, Y: a.Y}}
+			r.fill(s.FillColor, s.FillPattern, draw.Segment{Points: corners, Closed: true})
+			if stroke {
+				r.path(st, false, draw.Segment{Points: append(corners, corners[0]), Closed: true})
+			}
+		case "ellipse":
+			arc := draw.Segment{Arc: &draw.Arc{X: (a.X + b.X) / 2, Y: (a.Y + b.Y) / 2,
+				RX: math.Abs(b.X-a.X) / 2, RY: math.Abs(b.Y-a.Y) / 2, A1: 0, A2: 360}}
+			r.fill(s.FillColor, s.FillPattern, arc)
+			if stroke {
+				r.path(st, false, arc)
+			}
+		case "line":
+			if stroke {
+				r.path(st, false, line(a, b))
+			}
+			r.arrows(s, a, b)
 		}
 	}
 }

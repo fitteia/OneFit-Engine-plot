@@ -115,11 +115,31 @@ PDF/EPS embed the glyphs used, and SVG uses paths. This extends the original
 inventory without changing its standard-font output. See [fonts.md](fonts.md)
 for examples, embedding restrictions and the remaining Latin-1 limitation.
 
-### Foreground drawing objects
+### Drawing object layers
 
-Plot-go extends the default Grace drawing order with a per-object `OnTop`
-setting. It draws a marked line, arrow, box or ellipse after all graphs,
-legends and text, retaining its data/page attachment. The setting is stored
-as `# plot-go: next object on-top` immediately before the object block.
-Unmarked objects keep Grace ordering. Grace ignores this comment and may drop
-it on save; its renderer does not implement the foreground extension.
+Plot-go adds three drawing-object layers. The default layer follows Grace: an
+object draws over the data curves and axes, then under text and legends.
+**Behind data** draws the object after the graph background/grid but before its
+curves and axes; page-attached objects draw before all graphs. This lets curves
+remain visible through an opaque shape fill while later text remains visible
+over it. **On top** draws the object after all graphs, legends and text. All
+layers retain the object’s data/page attachment. Behind-data and On-top choices
+are saved as `# plot-go: next object behind-data` and
+`# plot-go: next object on-top` immediately before the object block. Unmarked
+objects keep Grace ordering. Grace ignores these comments and may drop them on
+save; its renderer does not implement these extensions.
+
+
+### Ordering drawing objects
+
+`Project.MoveShapeAcrossLayers` moves a line, arrow, box or ellipse one place
+forward or backward among shapes with the same attachment (page, or one graph's
+data). At each layer edge it crosses between behind-data, Grace's normal layer,
+and foreground. Shapes of different kinds can overlap in the chosen order.
+Hidden shapes keep their place. Object indices and coordinates stay unchanged.
+Until reordered, shapes retain Grace's box/ellipse/line order. Optional positive
+ranks are saved as `# plot-go: next object order N` before each object block;
+new or copied shapes enter after ranked shapes, in the default kind order.
+Grace ignores these comments and may discard them on save. Ordering does not
+cross graph/page or layer boundaries. Use `OnTop` to cover a legend, or
+`BehindData` to put an annotation under curves.

@@ -122,8 +122,10 @@ type parser struct {
 	inString bool
 	// object: the kind of the drawing object being read ("line", "box",
 	// "ellipse"), "" outside one
-	object          string
-	nextObjectOnTop bool
+	object               string
+	nextObjectOnTop      bool
+	nextObjectBehindData bool
+	nextObjectOrder      int
 }
 
 func (p *parser) warn(format string, a ...any) {
@@ -364,8 +366,12 @@ func (p *parser) drawingObject(toks []token, line string) bool {
 				break
 			}
 		}
+		s.DrawOrder = p.nextObjectOrder
+		p.nextObjectOrder = 0
 		s.OnTop = p.nextObjectOnTop
 		p.nextObjectOnTop = false
+		s.BehindData = p.nextObjectBehindData
+		p.nextObjectBehindData = false
 		p.proj.Shapes = append(p.proj.Shapes, s)
 		return true
 	}
@@ -1003,6 +1009,20 @@ func Parse(rd io.Reader) (*Project, error) {
 				p.dataRow(line)
 				continue
 			}
+		}
+		if value, ok := strings.CutPrefix(line, "# plot-go: next object order "); ok {
+			rank, err := strconv.Atoi(value)
+			if err == nil && rank > 0 {
+				p.nextObjectOrder = rank
+			} else {
+				p.nextObjectOrder = 0
+				p.warn("invalid plot-go object order")
+			}
+			continue
+		}
+		if line == "# plot-go: next object behind-data" {
+			p.nextObjectBehindData = true
+			continue
 		}
 		if line == "# plot-go: next object on-top" {
 			p.nextObjectOnTop = true

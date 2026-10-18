@@ -5,7 +5,10 @@
 // Grace source code (see AGENTS.md).
 package agr
 
-import "math"
+import (
+	"math"
+	"sort"
+)
 
 // Project is one Grace project: a page, its graphs, and the free text
 // strings on it.
@@ -46,6 +49,101 @@ func (p *Project) AddShape(s *Shape) {
 	p.originalShapes = append(p.originalShapes, nil)
 }
 
+// ShapeOrder returns stable object indices from back to front within an
+// attachment (one graph's world, or the page) and OnTop layer. Hidden objects
+// participate so showing them again preserves their place.
+func (p *Project) ShapeOrder(gid int, world, onTop bool, behindData ...bool) []int {
+	behind := len(behindData) > 0 && behindData[0]
+	var ids []int
+	for _, kind := range []string{"box", "ellipse", "line"} {
+		for i, s := range p.Shapes {
+			if s.Kind == kind && s.OnTop == onTop && s.BehindData == behind && (s.LocType == "world") == world && (!world || max(s.Graph, 0) == gid) {
+				ids = append(ids, i)
+			}
+		}
+	}
+	sort.SliceStable(ids, func(i, j int) bool {
+		a, b := p.Shapes[ids[i]].DrawOrder, p.Shapes[ids[j]].DrawOrder
+		if a == 0 {
+			return false
+		}
+		if b == 0 {
+			return true
+		}
+		return a < b
+	})
+	return ids
+}
+
+// MoveShape moves one object a single position within its attachment/layer.
+// Indices and raw directives stay unchanged, keeping GUI selections stable.
+func (p *Project) MoveShape(i, delta int) bool {
+	if i < 0 || i >= len(p.Shapes) || (delta != -1 && delta != 1) {
+		return false
+	}
+	s := p.Shapes[i]
+	ids := p.ShapeOrder(max(s.Graph, 0), s.LocType == "world", s.OnTop, s.BehindData)
+	for n, id := range ids {
+		if id != i {
+			continue
+		}
+		next := n + delta
+		if next < 0 || next >= len(ids) {
+			return false
+		}
+		ids[n], ids[next] = ids[next], ids[n]
+		for rank, idx := range ids {
+			p.Shapes[idx].DrawOrder = rank + 1
+		}
+		return true
+	}
+	return false
+}
+
+// MoveShapeAcrossLayers moves an object one drawing level forward or backward.
+// It reorders within the current layer first, then crosses between BehindData,
+// Grace's normal layer and OnTop at that layer's edge.
+func (p *Project) MoveShapeAcrossLayers(i, delta int) bool {
+	if i < 0 || i >= len(p.Shapes) || (delta != -1 && delta != 1) {
+		return false
+	}
+	s := p.Shapes[i]
+	if p.MoveShape(i, delta) {
+		return true
+	}
+	from := 0
+	if !s.BehindData {
+		from = 1
+	}
+	if s.OnTop {
+		from = 2
+	}
+	to := from + delta
+	if to < 0 || to > 2 {
+		return false
+	}
+	ids := p.ShapeOrder(max(s.Graph, 0), s.LocType == "world", to == 2, to == 0)
+	if to == 0 {
+		s.BehindData = true
+		s.OnTop = false
+	} else if to == 2 {
+		s.BehindData = false
+		s.OnTop = true
+	} else {
+		s.BehindData = false
+		s.OnTop = false
+	}
+	if delta < 0 {
+		ids = append([]int{i}, ids...)
+	} else {
+		ids = append(ids, i)
+	}
+	for rank, id := range ids {
+		p.Shapes[id].DrawOrder = rank + 1
+	}
+	return true
+}
+
 // CopyShapeFrom adds a copy of one source object's model and original
 // directives. The caller may then change the returned shape (for example,
 // to attach it to a different graph); Write keeps any unknown directives.
@@ -54,6 +152,7 @@ func (p *Project) CopyShapeFrom(src *Project, i int) *Shape {
 		return nil
 	}
 	copy := *src.Shapes[i]
+	copy.DrawOrder = 0
 	p.AddShape(&copy)
 	if i < len(src.Objects) {
 		p.Objects[len(p.Objects)-1] = append([]string(nil), src.Objects[i]...)
@@ -86,7 +185,13 @@ func (p *Project) DeleteShape(i int) bool {
 type Shape struct {
 	// OnTop is a plot-go extension stored as a comment before the object.
 	// It draws the object after all graphs, legends and text.
-	OnTop          bool
+	OnTop bool
+	// BehindData draws the object below graph data and above the page background.
+	// OnTop and BehindData are mutually exclusive.
+	BehindData bool
+	// DrawOrder is an optional plot-go ordering rank within one attachment/layer.
+	// Zero retains Grace ordering; ranked objects precede newly added objects.
+	DrawOrder      int
 	Kind           string // "line", "box" or "ellipse"
 	On             bool
 	LocType        string

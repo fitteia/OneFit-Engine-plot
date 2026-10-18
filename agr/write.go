@@ -78,6 +78,12 @@ func Write(w io.Writer, p *Project) error {
 		if i < len(p.Shapes) {
 			shape = p.Shapes[i]
 		}
+		if shape != nil && shape.DrawOrder > 0 {
+			pf("# plot-go: next object order %d", shape.DrawOrder)
+		}
+		if shape != nil && shape.BehindData {
+			pf("# plot-go: next object behind-data")
+		}
 		if shape != nil && shape.OnTop {
 			pf("# plot-go: next object on-top")
 		}
