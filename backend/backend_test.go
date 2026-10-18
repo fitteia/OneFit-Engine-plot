@@ -248,3 +248,28 @@ func TestSVGNativeTextPreservesFullMatrix(t *testing.T) {
 		break
 	}
 }
+
+// TestPDFEllipseForms: circles of one shape and painting are one form
+// XObject, drawn where each goes (a big set's PDF stays small); a pattern
+// fill is drawn in place, so its tiles start where the page's do.
+func TestPDFEllipseForms(t *testing.T) {
+	d := &pdraw.Drawing{Width: 1.2884, Height: 1}
+	add := func(p pdraw.Path) {
+		d.Paths = append(d.Paths, p)
+		d.Order = append(d.Order, 'p')
+	}
+	for i := 0; i < 1000; i++ {
+		add(pdraw.Path{Style: pdraw.Style{Width: 0.0015}, Segments: []pdraw.Segment{{Arc: &pdraw.Arc{X: 0.2 + float64(i)*0.0008, Y: 0.5, RX: 0.01, RY: 0.01, A2: 360}}}})
+	}
+	add(pdraw.Path{Fill: true, Style: pdraw.Style{Pattern: 5}, Segments: []pdraw.Segment{{Arc: &pdraw.Arc{X: 0.5, Y: 0.5, RX: 0.01, RY: 0.01, A2: 360}}}})
+	var b bytes.Buffer
+	if err := WritePDF(&b, d, 773, 600, "forms"); err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(b.String(), "/Subtype /Form"); n != 1 {
+		t.Errorf("%d forms, want 1 (one shape, stroked)", n)
+	}
+	if b.Len() > 20000 {
+		t.Errorf("%d bytes for 1000 circles", b.Len())
+	}
+}

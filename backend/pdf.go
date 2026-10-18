@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"strconv"
 	"strings"
 
 	"github.com/fitteia/OneFit-Engine-plot/draw"
@@ -61,6 +62,12 @@ func WritePDFWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 	first := true
 	patterns := map[int]int{}
 	var patternOrder []int
+	// each ellipse shape (radii and how it is painted) is written once, as
+	// a form XObject, and drawn where it goes: a set of 200000 circle
+	// symbols is 40 bytes a symbol, not 220 - the content gracebat's EPS
+	// gets from its own symbol procedures
+	forms := map[ellipseForm]int{}
+	var formOrder []ellipseForm
 	pi, ti := 0, 0
 	for _, kind := range d.Order {
 		if kind == 't' {
@@ -119,6 +126,26 @@ func WritePDFWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 			}
 			cur, first = st, false
 		}
+		paint := "S"
+		switch {
+		case path.Fill && (path.EvenOdd || opt.EvenOdd):
+			paint = "f*"
+		case path.Fill:
+			paint = "f"
+		}
+		// a pattern inside a form would tile from the form's origin
+		if len(path.Segments) == 1 && path.Segments[0].Arc != nil && st.Pattern == 0 {
+			a := path.Segments[0].Arc
+			k := ellipseForm{rx: num(a.RX), ry: num(a.RY), paint: paint}
+			n, ok := forms[k]
+			if !ok {
+				n = len(formOrder)
+				forms[k] = n
+				formOrder = append(formOrder, k)
+			}
+			p("q 1 0 0 1 %s %s cm /E%d Do Q\n", num(a.X), num(a.Y), n)
+			continue
+		}
 		for _, s := range path.Segments {
 			if a := s.Arc; a != nil {
 				ellipse(p, a)
@@ -135,9 +162,9 @@ func WritePDFWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 				p("h\n")
 			}
 		}
-		if path.Fill && (path.EvenOdd || opt.EvenOdd) {
+		if paint == "f*" {
 			p("f*\n")
-		} else if path.Fill {
+		} else if paint == "f" {
 			p("f\n")
 		} else {
 			p("S\n")
@@ -169,6 +196,14 @@ func WritePDFWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 		}
 		res.WriteString(" >>")
 	}
+	if len(formOrder) > 0 {
+		// after the fonts' and the patterns' objects
+		res.WriteString(" /XObject <<")
+		for i := range formOrder {
+			fmt.Fprintf(&res, " /E%d %d 0 R", i, 6+len(fontOrder)+len(patternOrder)+i)
+		}
+		res.WriteString(" >>")
+	}
 	res.WriteString(" >>")
 	objs = append(objs, fmt.Sprintf("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %s %s] /Resources %s /Contents 4 0 R >>",
 		num(bb.URX-bb.LLX), num(bb.URY-bb.LLY), res.String()))
@@ -194,6 +229,14 @@ func WritePDFWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 		s := unit * draw.PatternUnit
 		objs = append(objs, fmt.Sprintf("<< /Type /Pattern /PatternType 1 /PaintType 2 /TilingType 1 /BBox [0 0 16 16] /XStep 16 /YStep 16 /Resources << >> /Matrix [%s 0 0 %s %s %s] /Length %d >>\nstream\n%sendstream",
 			num(s), num(s), num(-bb.LLX), num(-bb.LLY), len(body), body))
+	}
+	for _, k := range formOrder {
+		var b bytes.Buffer
+		ellipse(func(format string, a ...any) { fmt.Fprintf(&b, format, a...) }, &draw.Arc{RX: parseNum(k.rx), RY: parseNum(k.ry)})
+		b.WriteString(k.paint + "\n")
+		// the box only clips: a whole page around the shape is room for
+		// any stroke
+		objs = append(objs, fmt.Sprintf("<< /Type /XObject /Subtype /Form /BBox [-2 -2 2 2] /Length %d >>\nstream\n%sendstream", b.Len(), b.String()))
 	}
 	for i, f := range fontOrder {
 		if afm.Standard(f) {
@@ -225,6 +268,15 @@ func WritePDFWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 	fmt.Fprintf(&out, "trailer\n<< /Size %d /Root 1 0 R /Info 5 0 R >>\nstartxref\n%d\n%%%%EOF\n", len(objs)+1, xref)
 	_, err := w.Write(out.Bytes())
 	return err
+}
+
+// ellipseForm is an ellipse's shape as a form draws it: its radii (as
+// written, so equal shapes share a form) and its painting operator.
+type ellipseForm struct{ rx, ry, paint string }
+
+func parseNum(s string) float64 {
+	v, _ := strconv.ParseFloat(s, 64)
+	return v
 }
 
 // ellipse draws a full ellipse as four Bezier quarters (OneFit's symbols
