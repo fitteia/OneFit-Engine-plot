@@ -226,6 +226,44 @@ func TestWarnings(t *testing.T) {
 	}
 }
 
+func TestHardcopyDoesNotWarnForRegionsOrLocatorFixedPoint(t *testing.T) {
+	p, err := Parse(strings.NewReader(`@r0 on
+@link r0 to g0
+@r0 type above
+@r0 line 2, 4, 8, 6
+@g0 fixedpoint on
+@g0 fixedpoint type 0
+@g0 fixedpoint xy 5, 5
+@g0 fixedpoint format general general
+@g0 fixedpoint prec 6, 6
+@with g0
+@    world 0, 0, 10, 10
+@target G0.S0
+@type xy
+0 0
+10 10
+&
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Warnings) != 0 {
+		t.Errorf("non-rendered Grace controls should not warn: %+v", p.Warnings)
+	}
+	var out strings.Builder
+	if err := Write(&out, p); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"@r0 on\n", "@link r0 to g0\n", "@r0 type above\n", "@r0 line 2, 4, 8, 6\n",
+		"@g0 fixedpoint on\n", "@g0 fixedpoint xy 5, 5\n", "@g0 fixedpoint format general general\n",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("saved project lost %q", want)
+		}
+	}
+}
+
 // TestBadTargetSelectsNoSet: after a malformed "@target" the next "@type"
 // and its rows must not land in the previously selected set (Codex).
 func TestBadTargetSelectsNoSet(t *testing.T) {
@@ -351,8 +389,14 @@ func TestSetTypeTakesColumns(t *testing.T) {
 		{"xydy", "xydxdxdydy", [][]float64{{1, 2, 0.3, 0, 0, 0}}},
 		{"xydxdy", "xy", [][]float64{{1, 2}}},
 		{"xydxdy", "xydydy", [][]float64{{1, 2, 0.3, 0.4}}},
+		{"bar", "bardy", [][]float64{{1, 2, 0}}},
+		{"bardydy", "bar", [][]float64{{1, 2}}},
+		{"bardy", "bardy", [][]float64{{1, 2, 0.3}}},
 	} {
-		row := map[string]string{"xydy": "1 2 0.3", "xydxdx": "1 2 0.3 0.4", "xydxdy": "1 2 0.3 0.4"}[c.data]
+		row := map[string]string{
+			"xydy": "1 2 0.3", "xydxdx": "1 2 0.3 0.4", "xydxdy": "1 2 0.3 0.4",
+			"bar": "1 2", "bardy": "1 2 0.3", "bardydy": "1 2 0.3 0.4",
+		}[c.data]
 		p, err := Parse(strings.NewReader("@target G0.S0\n@type " + c.data + "\n" + row + "\n&\nwith g0\n    s0 type " + c.typ + "\n"))
 		if err != nil {
 			t.Fatal(err)
@@ -360,6 +404,28 @@ func TestSetTypeTakesColumns(t *testing.T) {
 		s := p.Graphs[0].Sets[0]
 		if s.Type != c.typ || !reflect.DeepEqual(s.Data, c.want) {
 			t.Errorf("%s data as %s: %s %v, want %v", c.data, c.typ, s.Type, s.Data, c.want)
+		}
+	}
+}
+
+func TestBarSetErrors(t *testing.T) {
+	for _, c := range []struct {
+		typ  string
+		row  []float64
+		want Errors
+	}{
+		{"bardy", []float64{1, 2, 0.3}, Errors{Up: 0.3, Down: 0.3}},
+		{"bardy", []float64{1, 2, 0.3}, Errors{Down: 0.3}},
+		{"bardydy", []float64{1, 2, 0.2, 0.4}, Errors{Up: 0.2, Down: 0.4}},
+		{"bardydy", []float64{1, 2, 0.2, 0.4}, Errors{Up: 0.4, Down: 0.2}},
+	} {
+		place := "both"
+		if c.want == (Errors{Down: 0.3}) || c.want == (Errors{Up: 0.4, Down: 0.2}) {
+			place = "opposite"
+		}
+		got := (&Set{Type: c.typ, ErrorBar: ErrorBar{Place: place}}).Errors(c.row)
+		if got != c.want {
+			t.Errorf("%s place %s: errors %+v, want %+v", c.typ, place, got, c.want)
 		}
 	}
 }

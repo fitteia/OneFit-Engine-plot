@@ -555,8 +555,9 @@ func init() {
 		r("string char size N", func(p *parser, a []string) { p.currentString().CharSize = p.num(a[0]) }),
 		r("string def S", func(p *parser, a []string) { p.currentString().Text = a[0] }),
 
-		// regions: accepted while off
-		r("R# W", unsupportedWhenOn("a region", 1)),
+		// Regions select data for interactive analyses and transformations;
+		// Grace does not include their boundaries in hardcopy output.
+		r("R# W", ignore),
 		r("link R# to G#", ignore),
 		r("R# type W", ignore),
 		r("R# linestyle N", ignore),
@@ -575,7 +576,8 @@ func init() {
 		}),
 		r("G# stacked W", unsupportedWhenOn("a stacked graph", 1)),
 		r("G# bar hgap N", ignore),
-		r("G# fixedpoint W", unsupportedWhenOn("a fixed point", 1)),
+		// A fixed point is the interactive locator's origin, not plot content.
+		r("G# fixedpoint W", ignore),
 		r("G# fixedpoint type N", ignore),
 		r("G# fixedpoint xy N N", ignore),
 		r("G# fixedpoint format W W", ignore),
@@ -901,7 +903,7 @@ func (p *parser) setType(s *Set, t string) {
 	t = strings.ToLower(t)
 	n := Columns[t]
 	if n == 0 {
-		p.warn("set type %s is not drawn by plot-go (only xy and those with error bars)", t)
+		p.warn("set type %s is not drawn by plot-go", t)
 	}
 	s.Type = t
 	for i, row := range s.Data {

@@ -474,6 +474,7 @@ func (r *renderer) legend(t xform) {
 		ts      typeset
 		base, y float64 // the text's baseline, the sample's line
 		line    bool
+		bars    bool
 		lst     draw.Style
 		pen     symbolPen
 	}
@@ -502,7 +503,24 @@ func (r *renderer) legend(t xform) {
 			w := e.lst.Width / 2
 			add(afm.Box{LLX: -w, LLY: e.y - w, URX: length + w, URY: e.y + w})
 		}
-		e.pen = r.pen(s)
+		e.bars = barSet(s.Type) && (s.Line.Type != 0 || s.Symbol.Type != 0)
+		if e.bars {
+			h := max(0, s.Symbol.Size) * symbolUnit
+			if e.line {
+				h += e.lst.Width / 2
+			} else if pen := r.pen(s); pen.stroke {
+				h += pen.st.Width / 2
+			}
+			xs := []float64{length / 2}
+			if e.line {
+				xs = []float64{0, length}
+			}
+			for _, x := range xs {
+				add(afm.Box{LLX: x - h, LLY: e.y - h, URX: x + h, URY: e.y + h})
+			}
+		} else {
+			e.pen = r.pen(s)
+		}
 		if e.pen.ok {
 			ext := e.pen.extent()
 			xs := []float64{length / 2}
@@ -539,7 +557,22 @@ func (r *renderer) legend(t xform) {
 		if e.line {
 			r.path(e.lst, false, line(draw.Point{X: dx, Y: y}, draw.Point{X: length + dx, Y: y}))
 		}
-		if e.pen.ok {
+		if e.bars {
+			st, ok := e.lst, e.line
+			if !e.line && e.s.Symbol.Type != 0 {
+				pen := r.pen(e.s)
+				st, ok = pen.st, pen.stroke
+			}
+			if ok || e.s.Symbol.FillPattern != 0 {
+				xs := []float64{length / 2}
+				if e.line {
+					xs = []float64{0, length}
+				}
+				for _, x := range xs {
+					r.barRectangle(fmt.Sprintf("g%d.legend.bars", g.ID), st, ok, e.s, dx+x, y, max(0, e.s.Symbol.Size)*symbolUnit)
+				}
+			}
+		} else if e.pen.ok {
 			if e.line {
 				e.pen.draw(r, dx, y)
 				e.pen.draw(r, length+dx, y)
@@ -575,14 +608,91 @@ func (r *renderer) set(t xform, s *agr.Set) {
 	if ok && (s.Dropline || s.Baseline.On) {
 		r.droplines(t, s, st)
 	}
+	if barSet(s.Type) && (s.Line.Type != 0 || s.Symbol.Type != 0) {
+		barStyle, barStroke := st, s.Line.Type != 0 && ok
+		if s.Line.Type == 0 && s.Symbol.Type != 0 {
+			pen := r.pen(s)
+			barStyle, barStroke = pen.st, pen.stroke
+		}
+		r.bars(t, s, barStyle, barStroke)
+	}
 	if s.ErrorBar.On {
 		r.errorBars(t, s)
 	}
-	if s.Symbol.Type != 0 {
+	if s.Symbol.Type != 0 && !barSet(s.Type) {
 		r.symbols(t, s)
 	}
 	if s.AValue.On {
 		r.annotatedValues(t, s)
+	}
+}
+
+func barSet(typ string) bool {
+	return typ == "bar" || typ == "bardy" || typ == "bardydy"
+}
+
+// bars draws each bar as a rectangle from its point to its set baseline.
+// Grace uses symbol size for the half-width and symbol skip for the rows,
+// symbol fill for its interior, and line style for its outline.
+func (r *renderer) bars(t xform, s *agr.Set, st draw.Style, stroke bool) {
+	base, _, _, ok := r.baseline(t, s)
+	if !ok {
+		return
+	}
+	half := max(0, s.Symbol.Size) * symbolUnit
+	if half == 0 {
+		return
+	}
+	step := s.Symbol.Skip + 1
+	var rectangles [][]draw.Point
+	for i, row := range s.Data {
+		if i%step != 0 {
+			continue
+		}
+		x, y := row[0], row[1]
+		if !t.ok(x, y) {
+			continue
+		}
+		bx, top, bottom := t.x(x), t.y(y), baseY(t, base)
+		if !finite(bx, top, bottom) {
+			continue
+		}
+		pts := clipPolygon(barRect(bx, top, bottom, half), t.g.View)
+		if len(pts) < 3 {
+			continue
+		}
+		rectangles = append(rectangles, pts)
+	}
+	for _, pts := range rectangles {
+		seg := draw.Segment{Points: pts, Closed: true}
+		if s.Symbol.FillPattern != 0 {
+			r.id = fmt.Sprintf("g%d.s%d.bars.fill", t.g.ID, s.ID)
+			r.fill(s.Symbol.FillColor, s.Symbol.FillPattern, seg)
+		}
+	}
+	for _, pts := range rectangles {
+		if stroke {
+			r.id = fmt.Sprintf("g%d.s%d.bars", t.g.ID, s.ID)
+			outline := draw.Segment{Points: append(append([]draw.Point(nil), pts...), pts[0]), Closed: true}
+			r.path(st, false, outline)
+		}
+	}
+}
+
+func barRect(x, y, base, half float64) []draw.Point {
+	return []draw.Point{{X: x - half, Y: base}, {X: x - half, Y: y}, {X: x + half, Y: y}, {X: x + half, Y: base}}
+}
+
+func (r *renderer) barRectangle(id string, st draw.Style, stroke bool, s *agr.Set, x, y, half float64) {
+	seg := draw.Segment{Points: barRect(x, y+half, y-half, half), Closed: true}
+	if s.Symbol.FillPattern != 0 {
+		r.id = id + ".fill"
+		r.fill(s.Symbol.FillColor, s.Symbol.FillPattern, seg)
+	}
+	if stroke {
+		r.id = id
+		seg.Points = append(seg.Points, seg.Points[0])
+		r.path(st, false, seg)
 	}
 }
 

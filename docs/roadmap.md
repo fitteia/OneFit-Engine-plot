@@ -14,6 +14,12 @@ then vendored in the GUI and pinned in the debs.
 
 ## Done
 
+- **XY bar family**: v0.2.24. `bar`, `bardy` and `bardydy` render with
+  baseline selection, width, row skipping, fills, outlines, legends and
+  symmetric/asymmetric y errors. Figures exposes width, baseline and fill
+  controls alongside its existing data editor and column calculator.
+  The fitting Plots pane is unchanged.
+
 - **Foreground annotations**: v0.2.22. Optional per-object On top setting
   draws shapes above legends and text while retaining coordinate attachment.
   Saved as a plot-go comment extension; unmarked Grace projects are unchanged.
@@ -38,6 +44,17 @@ then vendored in the GUI and pinned in the debs.
 - **Editable drawing objects**: v0.2.15. Changed and newly added arrows,
   boxes and ellipses are saved from their current settings.
 
+- **Regions and fixed points**: measured against `gracebat` and the Grace
+  User's Guide. Enabled regions select data for analyses and transformations;
+  fixed points set the interactive locator origin. Neither changes hardcopy
+  output, so plot-go preserves these directives without warning rather than
+  implementing them as drawing features.
+
+- **Remaining set types surveyed**: Grace draws `xyhilo`, `xysize`, `xycolor`,
+  `xyvmap`, `xyboxplot`, and `xyz` in XY graphs.
+  `xycolpat` draws in pie graphs and `xyr` in fixed graphs; Grace rejects both
+  in XY graphs. plot-go does not yet render any of these types.
+
 - PNG output (`-format png`, gracebat's `-hdevice PNG`) through an
   installed converter, and drawing objects (lines with arrows, boxes,
   ellipses): v0.2.13. The Figures editor can now be given annotations.
@@ -51,9 +68,7 @@ then vendored in the GUI and pinned in the debs.
 
 ## Later
 
-- **Regions and fixed points**: measure first whether gracebat draws them
-  at all; if it does not, only the warning goes.
-- **Other set types**: bar, bardy, bardydy, xyhilo, xyr, xysize, xycolor,
+- **Other set types**: xyhilo, xyr, xysize, xycolor,
   xycolpat, xyvmap, xyboxplot, xyz.
 - **Other graph types and stacked graphs**: polar, Smith, pie, chart,
   fixed.

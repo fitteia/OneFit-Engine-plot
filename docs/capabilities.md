@@ -71,6 +71,9 @@ OneFit's own 704 files use; it is history, not this list.
   skip; error bars in x and y (place, size, widths and styles, riser clip
   with arrowheads); fills of types 1 and 2 with their rule, color and pattern;
   baselines (types 0 to 5) and droplines.
+- XY sets `bar`, `bardy` and `bardydy`: vertical bars from their selected
+  baseline, with symbol-sized widths and the set's line and fill styles;
+  optional symmetric or separate upper/lower y errors.
 - Point annotations (`avalue`): X, Y, X/Y pairs, optional quoted text
   after each numeric data row, or the third numeric column (including
   an error column). Format, precision, prepend/append, font, size, color,
@@ -90,13 +93,24 @@ OneFit's own 704 files use; it is history, not this list.
 
 ## Read and kept, but not drawn
 
-A warning names each when it is on. `agr.Write` (the Figures editor's
-save, and `-saveall`) writes them back as read, so a project opened and
-saved loses none of them.
+Where an enabled item would affect hardcopy, a warning names it.
+`agr.Write` (the Figures editor's save, and `-saveall`) writes unsupported
+directives back as read, so a project opened and saved loses none of them.
 
-- Regions (`r0` ...).
-- Stacked graphs, fixed points, graph types other than XY.
-- Other set types (bar, xyhilo, xyr, ...; their data rows are read as far
-  as they go); axis scales other than normal, logarithmic and reciprocal.
+- Stacked graphs and graph types other than XY.
+- Other set types (`xyhilo`, `xysize`, `xycolor`,
+  `xyvmap`, `xyboxplot`, `xyz`, and the graph-specific `xycolpat` and `xyr`);
+  their data rows are read as far as they go. Axis scales other than normal,
+  logarithmic and reciprocal.
 - Anything else plot-go does not know: an unknown directive warns and is
   kept like these.
+
+Regions (`r0` ...) and graph fixed points are kept without a warning. The
+Grace User's Guide describes regions as selectors for data operations and a
+fixed point as the origin for the interactive locator. A black-box comparison
+of enabled settings against `gracebat` confirms neither changes hardcopy output.
+
+Grace hardcopy accepts the listed set types in XY graphs except `xycolpat`
+and `xyr`: the User's Guide restricts those to pie and fixed graphs,
+respectively, where black-box EPS renders them. All remain unsupported by
+plot-go until a renderer update covers their graph and data semantics.
