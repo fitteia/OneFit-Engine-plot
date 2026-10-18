@@ -33,8 +33,9 @@ OneFit's own 704 files use; it is history, not this list.
 ## Drawn
 
 - Page: size, background color and fill.
-- Graphs: any number, `type XY`, each with its world and viewport;
-  hidden graphs skipped.
+- Graphs: any number, `type XY` and `type Fixed`, each with its world and
+  viewport; hidden graphs skipped. Fixed graphs keep equal x/y data scales
+  centered within the saved viewport.
 - Axes: normal, logarithmic and reciprocal scales, inverted axes,
   alternate axes (`altxaxis`, `altyaxis`), axis sides and offsets, an axis
   at zero (`type zero true`), axis bars, axis labels (placement, layout, side), major and minor ticks
@@ -74,6 +75,9 @@ OneFit's own 704 files use; it is history, not this list.
 - `xyz` sets: the same XY lines, symbols and clipping as `xy`, with a third
   numeric column available as the point label value when **Point labels →
   Value → third numeric column** is selected.
+- `xyr` sets in Fixed graphs: `(x, y, radius)` circles. The radius uses the
+  shared x/y world scale; set line controls style the radius outline, while
+  symbol controls style the center marker. Symbol skip applies to both.
 - `xysize` sets: x, y and per-point symbol size. The third column controls
   size directly (its magnitude, matching Grace); symbol shape, fill, outline,
   row skipping and coordinate clipping still apply. The set's symbol size is
@@ -121,9 +125,9 @@ Where an enabled item would affect hardcopy, a warning names it.
 `agr.Write` (the Figures editor's save, and `-saveall`) writes unsupported
 directives back as read, so a project opened and saved loses none of them.
 
-- Stacked graphs and graph types other than XY.
-- Other set types (the graph-specific `xycolpat` and `xyr`);
-  their data rows are read as far as they go. Axis scales other than normal,
+- Stacked graphs and graph types other than XY and Fixed.
+- The Pie-only set type `xycolpat`; its data rows are read as far as they go.
+  Axis scales other than normal,
   logarithmic and reciprocal.
 - Anything else plot-go does not know: an unknown directive warns and is
   kept like these.
@@ -134,9 +138,9 @@ fixed point as the origin for the interactive locator. A black-box comparison
 of enabled settings against `gracebat` confirms neither changes hardcopy output.
 
 Grace hardcopy accepts the listed set types in XY graphs except `xycolpat`
-and `xyr`: the User's Guide restricts those to pie and fixed graphs,
-respectively, where black-box EPS renders them. All remain unsupported by
-plot-go until a renderer update covers their graph and data semantics.
+and `xyr`: the User's Guide restricts those to Pie and Fixed graphs,
+respectively. plot-go draws Fixed graphs and `xyr`; Pie/`xycolpat` remain
+unsupported.
 
 Set-type changes preserve every stored numeric column. Extra columns remain
 in AGR exports; rows missing required display columns are retained but not

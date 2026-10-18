@@ -240,6 +240,15 @@ func scale(v, lo, hi, vlo, vhi float64, log, rec bool) float64 {
 // labels).
 func (t xform) x(v float64) float64 {
 	w, vw := t.g.World, t.g.View
+	if strings.EqualFold(t.g.Type, "Fixed") {
+		// Fixed graphs keep equal x and y units by scaling both axes from
+		// the y world window; Grace centers the data window in the viewport.
+		scale := math.Abs((vw.YMax - vw.YMin) / (w.YMax - w.YMin))
+		if t.g.X.Invert {
+			scale = -scale
+		}
+		return (vw.XMin+vw.XMax)/2 + (v-(w.XMin+w.XMax)/2)*scale
+	}
 	if t.g.X.Invert {
 		return scale(v, w.XMin, w.XMax, vw.XMax, vw.XMin, t.logX, t.recX)
 	}
@@ -261,6 +270,10 @@ func (t xform) ok(x, y float64) bool {
 }
 
 func (r *renderer) graph(g *agr.Graph) {
+	if g.Type != "" && !strings.EqualFold(g.Type, "XY") && !strings.EqualFold(g.Type, "Fixed") {
+		r.warn("graph %d: graph type %s is not drawn by plot-go (XY and Fixed)", g.ID, g.Type)
+		return
+	}
 	w, v := g.World, g.View
 	if !finite(w.XMin, w.XMax, w.YMin, w.YMax, v.XMin, v.XMax, v.YMin, v.YMax) {
 		r.warn("graph %d has a world or view value that is not a finite number; not drawn", g.ID)
@@ -645,6 +658,17 @@ func (r *renderer) set(t xform, s *agr.Set) {
 	if complete != nil {
 		r.warn("set %d: rows missing %s display columns are retained but not drawn; edit data to supply them", s.ID, s.Type)
 		s = complete
+	}
+	if s.Type == "xyr" {
+		if !strings.EqualFold(t.g.Type, "Fixed") {
+			r.warn("set %d: xyr is only drawn in Fixed graphs; not drawn", s.ID)
+			return
+		}
+		r.xyr(t, s)
+		if s.AValue.On {
+			r.annotatedValues(t, s)
+		}
+		return
 	}
 	if s.Type == "xyhilo" {
 		r.hilo(t, s)
@@ -1260,6 +1284,46 @@ func (r *renderer) symbols(t xform, s *agr.Set) {
 	}
 }
 
+// xyr draws each Fixed-graph point as a circle whose radius is the third
+// data value in world units. Grace scales the radius independently through
+// the graph's x and y windows, so the circle follows the graph's aspect ratio.
+func (r *renderer) xyr(t xform, s *agr.Set) {
+	p := r.pen(s)
+	w := t.g.World
+	step := s.Symbol.Skip + 1
+	// In a Fixed graph the xform uses the shared y scale, so these radius
+	// circles remain round even when the graph viewport is rectangular.
+	line, stroke := r.style(s.Line.Color, s.Line.LineWidth, s.Line.LineStyle)
+	line, stroke = r.patterned(line, stroke, s.Line.Pattern)
+	r.id = fmt.Sprintf("g%d.s%d.xyr.radius", t.g.ID, s.ID)
+	for i, row := range s.Data {
+		if i%step != 0 {
+			continue
+		}
+		xv, y, radius := row[0], row[1], math.Abs(row[2])
+		if !t.ok(xv, y) || xv < min(w.XMin, w.XMax) || xv > max(w.XMin, w.XMax) || y < min(w.YMin, w.YMax) || y > max(w.YMin, w.YMax) {
+			continue
+		}
+		px, py := t.x(xv), t.y(y)
+		rad := math.Abs(t.y(y+radius) - py)
+		if !finite(px, py, rad) || rad == 0 {
+			continue
+		}
+		arc := draw.Segment{Arc: &draw.Arc{X: px, Y: py, RX: rad, RY: rad, A1: 0, A2: 360}}
+		if stroke {
+			r.path(line, false, arc)
+		}
+	}
+	if p.ok {
+		r.id = fmt.Sprintf("g%d.s%d.xyr.symbol", t.g.ID, s.ID)
+		for i, row := range s.Data {
+			if i%step == 0 && t.ok(row[0], row[1]) && row[0] >= min(w.XMin, w.XMax) && row[0] <= max(w.XMin, w.XMax) && row[1] >= min(w.YMin, w.YMax) && row[1] <= max(w.YMin, w.YMax) {
+				p.draw(r, t.x(row[0]), t.y(row[1]))
+			}
+		}
+	}
+}
+
 // clipPolyline cuts a polyline to the viewport rectangle: one segment per
 // visible stretch, ending exactly where it crosses the frame.
 func clipPolyline(pts []draw.Point, breaks []bool, v agr.Rect) []draw.Segment {
@@ -1547,6 +1611,13 @@ func (r *renderer) axis(t xform, isX, alt bool) {
 	// offset
 	dir := func(sd int) float64 { return float64(2*sd - 1) }
 	frameAt := func(sd int) float64 {
+		if !isX && strings.EqualFold(g.Type, "Fixed") {
+			worldSide := sd
+			if g.X.Invert {
+				worldSide = 1 - worldSide
+			}
+			return t.x([]float64{g.World.XMin, g.World.XMax}[worldSide])
+		}
 		return map[bool][2]float64{true: {v.YMin, v.YMax}, false: {v.XMin, v.XMax}}[isX][sd]
 	}
 	base := func(sd int) float64 {
@@ -1564,7 +1635,11 @@ func (r *renderer) axis(t xform, isX, alt bool) {
 			for _, sd := range r.tickSides(ax.Tick.Place) {
 				b := base(sd)
 				if isX {
-					r.path(st, false, line(draw.Point{X: v.XMin, Y: b}, draw.Point{X: v.XMax, Y: b}))
+					x0, x1 := v.XMin, v.XMax
+					if strings.EqualFold(g.Type, "Fixed") {
+						x0, x1 = t.x(lo), t.x(hi)
+					}
+					r.path(st, false, line(draw.Point{X: x0, Y: b}, draw.Point{X: x1, Y: b}))
 				} else {
 					r.path(st, false, line(draw.Point{X: b, Y: v.YMin}, draw.Point{X: b, Y: v.YMax}))
 				}

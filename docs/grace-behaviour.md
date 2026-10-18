@@ -8,6 +8,20 @@ of it comes from Grace's source code.
 Units: viewport units - the page's shorter side is 1, origin bottom left
 (the guide; the EPS is scaled by 600 for a 773x600 page).
 
+## Fixed graphs and xyr
+
+- A Fixed graph keeps equal x and y data scales. The world window's center
+  maps to the viewport's center, with the y-world scale used for both axes;
+  the saved frame still spans the full viewport. Axis bars and the y-axis
+  follow the centered data window.
+- An `xyr` row is `(x, y, radius)`. The radius is measured in the shared
+  world units and draws an unfilled circle using the set line's color,
+  pattern, width and style. The ordinary symbol is drawn at the center using
+  its symbol settings. `symbol skip` skips both together. A black-box EPS
+  comparison against Grace covers unequal viewport dimensions, visible axes,
+  radius variation, center symbols and their separate styles
+  (`xyr_test.go`).
+
 ## Lines and symbols
 
 - Line width: 0.0015 per unit of `linewidth` (2.0 -> 0.003), but never

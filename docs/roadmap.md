@@ -49,6 +49,12 @@ then vendored in the GUI and pinned in the debs.
   `xy`. Figures exposes all three columns and its existing third-column label
   control. The fitting Plots pane is unchanged.
 
+- **Fixed graphs and radius sets** (`xyr`): v0.2.31. Fixed graphs preserve
+  equal x/y data scale; `xyr` uses three columns `(x, y, radius)`, with the
+  set line style drawing each radius and the symbol style drawing its center
+  marker. Figures offers the type only for data sets in Fixed graphs and
+  explains the radius column. The fitting Plots pane is unchanged.
+
 - **Foreground annotations**: v0.2.22. Optional per-object On top setting
   draws shapes above legends and text while retaining coordinate attachment.
   Saved as a plot-go comment extension; unmarked Grace projects are unchanged.
@@ -79,9 +85,9 @@ then vendored in the GUI and pinned in the debs.
   output, so plot-go preserves these directives without warning rather than
   implementing them as drawing features.
 
-- **Remaining set types surveyed**: `xycolpat` draws in pie graphs and `xyr`
-  in fixed graphs; Grace rejects both in XY graphs. plot-go does not yet
-  render these graph-specific types.
+- **Remaining graph-specific set type surveyed**: `xycolpat` draws in Pie
+  graphs; Grace rejects it in XY graphs. plot-go does not yet render Pie
+  graphs or `xycolpat`.
 
 - PNG output (`-format png`, gracebat's `-hdevice PNG`) through an
   installed converter, and drawing objects (lines with arrows, boxes,
@@ -96,9 +102,8 @@ then vendored in the GUI and pinned in the debs.
 
 ## Later
 
-- **Other set types**: xyr, xycolpat.
-- **Other graph types and stacked graphs**: polar, Smith, pie, chart,
-  fixed.
+- **Other set types**: xycolpat.
+- **Other graph types and stacked graphs**: polar, Smith, Pie, XY Chart.
 - **Axis scales** beyond normal, logarithmic and reciprocal.
 - **Further font support**: font collections, variable/colour fonts, Unicode
   text beyond the current Latin-1 encoding and font-specific shaping/ligatures.

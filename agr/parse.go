@@ -570,8 +570,8 @@ func init() {
 		r("G# hidden W", func(p *parser, a []string) { p.graphByID(p.index(a[0])).Hidden = p.bool(a[1]) }),
 		r("G# type W", func(p *parser, a []string) {
 			p.graphByID(p.index(a[0])).Type = a[1]
-			if !strings.EqualFold(a[1], "XY") {
-				p.warn("graph type %s is not drawn by plot-go (only XY)", a[1])
+			if !strings.EqualFold(a[1], "XY") && !strings.EqualFold(a[1], "Fixed") {
+				p.warn("graph type %s is not drawn by plot-go (XY and Fixed)", a[1])
 			}
 		}),
 		r("G# stacked W", unsupportedWhenOn("a stacked graph", 1)),
