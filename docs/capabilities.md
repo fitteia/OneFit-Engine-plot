@@ -90,6 +90,11 @@ OneFit's own 704 files use; it is history, not this list.
   frame; its color, pattern, width and line style use the error-bar riser
   settings. Unclipped vectors have open arrowheads sized by the error-bar
   size; symbol skip controls which rows draw.
+- `xyboxplot` sets: six columns `(x, median, upper box limit, lower box
+  limit, upper whisker, lower whisker)`. Symbol size sets half the box and
+  whisker-cap width; symbol fill styles the box, symbol stroke styles its
+  outline and median, and error-bar riser/cap settings style the whiskers.
+  Error-bar on/off controls whiskers; symbol skip selects rows.
 - Point annotations (`avalue`): X, Y, X/Y pairs, optional quoted text
   after each numeric data row, or the third numeric column (including
   an error column). Format, precision, prepend/append, font, size, color,
@@ -114,7 +119,7 @@ Where an enabled item would affect hardcopy, a warning names it.
 directives back as read, so a project opened and saved loses none of them.
 
 - Stacked graphs and graph types other than XY.
-- Other set types (`xyboxplot`, `xyz`, and the graph-specific
+- Other set types (`xyz`, and the graph-specific
   `xycolpat` and `xyr`);
   their data rows are read as far as they go. Axis scales other than normal,
   logarithmic and reciprocal.

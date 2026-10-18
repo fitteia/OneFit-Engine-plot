@@ -449,6 +449,7 @@ func (r *renderer) legend(t xform) {
 	}
 	var sets []*agr.Set
 	maxSym := 0.0
+	hasBoxplot := false
 	for _, s := range g.Sets {
 		if s.Hidden {
 			continue
@@ -456,6 +457,7 @@ func (r *renderer) legend(t xform) {
 		maxSym = max(maxSym, s.Symbol.Size) // every visible set's, whether drawn or not
 		if s.Legend != "" {
 			sets = append(sets, s)
+			hasBoxplot = hasBoxplot || s.Type == "xyboxplot"
 		}
 	}
 	if len(sets) == 0 {
@@ -469,12 +471,16 @@ func (r *renderer) legend(t xform) {
 	h, v := L.HGap*legendUnit, L.VGap*legendUnit
 	length := L.Length * legendUnit
 	textX := length + h + maxSym*symbolUnit
+	if hasBoxplot {
+		textX += symbolUnit
+	}
 	type entry struct {
 		s       *agr.Set
 		ts      typeset
 		base, y float64 // the text's baseline, the sample's line
 		line    bool
 		bars    bool
+		boxplot bool
 		lst     draw.Style
 		pen     symbolPen
 	}
@@ -499,6 +505,16 @@ func (r *renderer) legend(t xform) {
 			st, ok := r.style(s.Line.Color, s.Line.LineWidth, s.Line.LineStyle)
 			e.lst, e.line = r.patterned(st, ok, s.Line.Pattern)
 		}
+		e.boxplot = s.Type == "xyboxplot"
+		if e.boxplot {
+			e.line = false
+			hx, hy := max(0, s.Symbol.Size)*symbolUnit, symbolUnit
+			x, y := length*0.75, e.y
+			// Grace reserves the ordinary legend's inner left margin even
+			// though its box-plot sample sits three quarters along the line.
+			add(afm.Box{LLX: symbolUnit, LLY: y - .0001, URX: symbolUnit + .0001, URY: y + .0001})
+			add(afm.Box{LLX: x - hx, LLY: y - hy, URX: x + hx, URY: y + hy})
+		}
 		if e.line {
 			w := e.lst.Width / 2
 			add(afm.Box{LLX: -w, LLY: e.y - w, URX: length + w, URY: e.y + w})
@@ -518,7 +534,7 @@ func (r *renderer) legend(t xform) {
 			for _, x := range xs {
 				add(afm.Box{LLX: x - h, LLY: e.y - h, URX: x + h, URY: e.y + h})
 			}
-		} else {
+		} else if !e.boxplot {
 			e.pen = r.pen(s)
 		}
 		if e.pen.ok {
@@ -572,6 +588,22 @@ func (r *renderer) legend(t xform) {
 					r.barRectangle(fmt.Sprintf("g%d.legend.bars", g.ID), st, ok, e.s, dx+x, y, max(0, e.s.Symbol.Size)*symbolUnit)
 				}
 			}
+		} else if e.boxplot {
+			hx, hy := max(0, e.s.Symbol.Size)*symbolUnit, symbolUnit
+			cx, cy := dx+length*0.75, y
+			corners := []draw.Point{{X: cx - hx, Y: cy - hy}, {X: cx - hx, Y: cy + hy}, {X: cx + hx, Y: cy + hy}, {X: cx + hx, Y: cy - hy}}
+			box := draw.Segment{Points: corners, Closed: true}
+			if e.s.Symbol.FillPattern != 0 {
+				r.id = fmt.Sprintf("g%d.legend.boxplot.fill", g.ID)
+				r.fill(e.s.Symbol.FillColor, e.s.Symbol.FillPattern, box)
+			}
+			if st, ok := r.style(e.s.Symbol.Color, e.s.Symbol.LineWidth, e.s.Symbol.LineStyle); ok {
+				st, ok = r.patterned(st, ok, e.s.Symbol.Pattern)
+				if ok {
+					r.id = fmt.Sprintf("g%d.legend.boxplot", g.ID)
+					r.path(st, false, draw.Segment{Points: append(append([]draw.Point(nil), corners...), corners[0]), Closed: true})
+				}
+			}
 		} else if e.pen.ok {
 			if e.line {
 				e.pen.draw(r, dx, y)
@@ -616,6 +648,13 @@ func (r *renderer) set(t xform, s *agr.Set) {
 	}
 	if s.Type == "xyhilo" {
 		r.hilo(t, s)
+		if s.AValue.On {
+			r.annotatedValues(t, s)
+		}
+		return
+	}
+	if s.Type == "xyboxplot" {
+		r.boxplot(t, s)
 		if s.AValue.On {
 			r.annotatedValues(t, s)
 		}

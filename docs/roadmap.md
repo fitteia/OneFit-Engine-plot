@@ -12,7 +12,7 @@ then vendored in the GUI and pinned in the debs.
 
 ## Done
 
-- **Variable-size symbols** (`xysize`): implemented, pending release. Per-point
+- **Variable-size symbols** (`xysize`): v0.2.25. Per-point
   size column with standard symbol styles, character symbols and legend sample
   sizing measured against Grace. Figures pairs this with a plot-type choice and
   the data editor/calculator. Plot-type changes preserve all stored columns;
@@ -34,10 +34,15 @@ then vendored in the GUI and pinned in the debs.
   color map; Figures exposes the type and explains fill/outline behavior.
   The fitting Plots pane is unchanged.
 
-- **Vector maps** (`xyvmap`): implemented, pending release. The four columns
+- **Vector maps** (`xyvmap`): v0.2.28. The four columns
   are `(x, y, dx, dy)`; vector offsets are in normalized graph-view
   coordinates. Figures exposes the type, arrowhead size and Grace vector
   stroke controls. The fitting Plots pane is unchanged.
+
+- **Box plots** (`xyboxplot`): v0.2.29. Six columns hold
+  `(x, median, upper/lower box limits, upper/lower whiskers)`; symbol and
+  error-bar settings style the box, median, whiskers and caps. Figures exposes
+  the type and its data/style controls. The fitting Plots pane is unchanged.
 
 - **Foreground annotations**: v0.2.22. Optional per-object On top setting
   draws shapes above legends and text while retaining coordinate attachment.
@@ -87,7 +92,7 @@ then vendored in the GUI and pinned in the debs.
 
 ## Later
 
-- **Other set types**: xyr, xycolpat, xyboxplot, xyz.
+- **Other set types**: xyr, xycolpat, xyz.
 - **Other graph types and stacked graphs**: polar, Smith, pie, chart,
   fixed.
 - **Axis scales** beyond normal, logarithmic and reciprocal.

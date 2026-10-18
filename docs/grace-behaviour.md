@@ -773,6 +773,17 @@ error-bar size; Grace omits the head when clipping the vector at the frame.
 `gracebat` comparisons cover short and clipped vectors, skipping, and the
 riser stroke settings.
 
+## Box plots (`xyboxplot`)
+
+The Grace User's Guide gives six columns: x, median, upper and lower box
+limits, then upper and lower whisker endpoints. A `gracebat` EPS comparison
+confirms the box uses the symbol fill color/pattern; its outline and median
+use symbol color, pattern, width and style. Symbol size is the half-width of
+the box and whisker caps, and symbol skip selects rows. Whisker stems use the
+error-bar riser color, pattern, width and style; caps use the error-bar line
+width and style. Turning error bars off hides both whiskers and caps while
+leaving the box and median. The set is supported only in XY graphs.
+
 ### Non-destructive display types (intentional difference)
 Plot-go retains all numeric columns when a set type changes, including columns
 unused by the selected display type. Unlike Grace's resizing, it never drops
