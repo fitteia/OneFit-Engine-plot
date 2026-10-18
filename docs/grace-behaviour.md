@@ -742,6 +742,14 @@ including character symbols. The legend sample still uses the set's ordinary
 `symbol size`. Circles, filled squares, character symbols, zero/negative sizes,
 row skipping and legend placement are covered by the renderer comparisons.
 
+## XY points with Z annotations (`xyz`)
+
+The Grace User's Guide defines `xyz` as the same XY plot with a third numeric
+value available for point annotation. A black-box EPS comparison confirms the
+third column is shown when annotated values are enabled with type 5 (the third
+numeric column), and does not change the point geometry. plot-go uses the same
+line, symbol, clipping, skip and annotation behavior as `xy`.
+
 ## Hi/Lo/Open/Close candles (`xyhilo`)
 
 Grace reads five values per row: x, high, low, open and close. Black-box

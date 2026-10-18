@@ -71,6 +71,9 @@ OneFit's own 704 files use; it is history, not this list.
   skip; error bars in x and y (place, size, widths and styles, riser clip
   with arrowheads); fills of types 1 and 2 with their rule, color and pattern;
   baselines (types 0 to 5) and droplines.
+- `xyz` sets: the same XY lines, symbols and clipping as `xy`, with a third
+  numeric column available as the point label value when **Point labels →
+  Value → third numeric column** is selected.
 - `xysize` sets: x, y and per-point symbol size. The third column controls
   size directly (its magnitude, matching Grace); symbol shape, fill, outline,
   row skipping and coordinate clipping still apply. The set's symbol size is
@@ -119,8 +122,7 @@ Where an enabled item would affect hardcopy, a warning names it.
 directives back as read, so a project opened and saved loses none of them.
 
 - Stacked graphs and graph types other than XY.
-- Other set types (`xyz`, and the graph-specific
-  `xycolpat` and `xyr`);
+- Other set types (the graph-specific `xycolpat` and `xyr`);
   their data rows are read as far as they go. Axis scales other than normal,
   logarithmic and reciprocal.
 - Anything else plot-go does not know: an unknown directive warns and is
