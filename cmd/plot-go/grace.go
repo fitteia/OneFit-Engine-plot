@@ -81,7 +81,15 @@ func runGrace(args []string, stdout, stderr io.Writer) int {
 		case "-version":
 			fmt.Fprintf(stdout, "plot-go %s: draws Grace projects without Grace; gracebat-compatible (Grace-5.1.25 file format)\n", version)
 			return 0
-		case "-hardcopy", "-batch", "-noask", "-nosafe", "-safe", "-free":
+		case "-hardcopy", "-noask", "-nosafe", "-safe", "-free":
+		case "-batch":
+			// a file of Grace commands: plot-go does not run them, but the
+			// file is the option's, not a data file to load
+			v, ok := next(&i, a)
+			if !ok {
+				return 2
+			}
+			g.warn("-batch " + v + ": Grace's batch commands are not supported; the file is not read")
 		case "-settype":
 			v, ok := next(&i, a)
 			if !ok {

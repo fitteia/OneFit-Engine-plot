@@ -145,3 +145,28 @@ func TestGracebatCallSaveall(t *testing.T) {
 		})
 	}
 }
+
+// TestGracebatCallBatch: -batch takes a file of Grace commands; plot-go
+// warns that they are not run and goes on - the file is not loaded as data.
+func TestGracebatCallBatch(t *testing.T) {
+	dir := t.TempDir()
+	batch := filepath.Join(dir, "cmds.bat")
+	if err := os.WriteFile(batch, []byte("autoscale\nprint\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	agrFile, err := filepath.Abs("../../testdata/corpus/p96-10-1.agr")
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(dir, "x.eps")
+	var stdout, stderr bytes.Buffer
+	if code := runGrace([]string{"-batch", batch, agrFile, "-hdevice", "EPS", "-hardcopy", "-printfile", out}, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "batch commands are not supported") {
+		t.Errorf("no warning: %q", stderr.String())
+	}
+	if _, err := os.Stat(out); err != nil {
+		t.Errorf("no output: %v", err)
+	}
+}
