@@ -250,8 +250,22 @@ var (
 func load(name string) (*font, error) {
 	mu.Lock()
 	defer mu.Unlock()
-	if f := cache[name]; f != nil {
-		return f, nil
+	if f := cache[name]; f != nil && f.path == "" {
+		return f, nil // embedded standard-font metrics/outlines are unchanged
+	}
+	if !afm.Standard(name) {
+		// Resolve installed fonts before using derived outlines: a refreshed
+		// index may now select a replacement file or collection face.
+		face, err := fontfile.Get(name)
+		if err != nil {
+			return nil, err
+		}
+		if f := cache[name]; f != nil && f.f == face.Font {
+			return f, nil
+		}
+		ft := &font{f: face.Font, upm: float64(face.Font.UnitsPerEm()), path: face.Path}
+		cache[name] = ft
+		return ft, nil
 	}
 	if p := urwPath(name); p != "" {
 		if b, err := os.ReadFile(p); err == nil {
@@ -264,15 +278,6 @@ func load(name string) (*font, error) {
 	}
 	ttf, ok := standIns[name]
 	if !ok {
-		if !afm.Standard(name) {
-			face, err := fontfile.Get(name)
-			if err != nil {
-				return nil, err
-			}
-			ft := &font{f: face.Font, upm: float64(face.Font.UnitsPerEm()), path: face.Path}
-			cache[name] = ft
-			return ft, nil
-		}
 		return nil, fmt.Errorf("no outlines for font %q", name)
 	}
 	f, err := sfnt.Parse(ttf)

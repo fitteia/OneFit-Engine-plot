@@ -55,8 +55,10 @@ A run lists the font folders and reads only the files that are new or
 changed since, so only the first run (and the first after installing
 fonts) reads them all. Deleting the file is harmless: it is made again. A
 long-running GUI looks at the folders again after 30 seconds, so a font
-installed meanwhile shows up without a restart; a font file replaced in
-place is used from its next start. In remote mode, fonts and
+installed meanwhile shows up without a restart. Replaced additional font files
+refresh their parsed faces, metrics and outlines on the same discovery cycle.
+Reopen the Figures font chooser to refresh its list and samples. Changes are
+detected by file size and modification time. In remote mode, fonts and
 `OFE_FONT_PATH` belong on the server that renders the figure.
 
 ## Consistent output
@@ -79,12 +81,12 @@ Grace text remains byte-oriented Latin-1; `\#{b0}C` produces degrees Celsius,
 and `\x` still selects Symbol for Greek. This does not introduce UTF-8 text,
 complex-script shaping or automatic ligatures. Missing characters in an
 additional font produce a warning and its visible missing-character glyph.
-Font collections (`.ttc`/`.otc`), variable-font instance selection, colour fonts
+OpenType collections (`.otc`), variable-font instance selection, colour fonts
 and Type-1/PFB input are not supported in this first stage. A missing font is
 not fetched from the internet.
 
 This support starts in plot-go v0.2.21. Install a Go port and GUI release
-that pins/vendors it before using it in Figures previews. Existing Figures controls
-can select fonts already present in a project's font map, and text can use
-inline font switches; discovering and adding installed fonts from a GUI menu
-is a separate integration step.
+that pins/vendors it before using it in Figures previews. Figures Font buttons
+provide a searchable chooser for installed fonts, including named TTC faces,
+with samples drawn on the rendering server. Imported font maps and inline
+font switches continue to work.

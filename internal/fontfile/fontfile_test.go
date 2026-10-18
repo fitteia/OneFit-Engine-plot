@@ -164,3 +164,50 @@ func TestIndexCache(t *testing.T) {
 		t.Errorf("no cache file: %v", err)
 	}
 }
+
+func TestReplacedFontRefreshes(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	path := filepath.Join(t.TempDir(), "replace.ttf")
+	t.Setenv("OFE_FONT_PATH", path)
+	write := func(data []byte) {
+		t.Helper()
+		if err := os.WriteFile(path, data, 0600); err != nil {
+			t.Fatal(err)
+		}
+		// Simulate the next 30-second index refresh without sleeping.
+		mu.Lock()
+		for _, ix := range indexes {
+			ix.built = time.Now().Add(-fresh - time.Second)
+		}
+		mu.Unlock()
+	}
+	write(liberationsansregular.TTF)
+	old, err := Get("LiberationSans")
+	if err != nil {
+		t.Fatal(err)
+	}
+	write(liberationsansbold.TTF)
+	current, err := Get("LiberationSans-Bold")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf sfnt.Buffer
+	name, err := current.Font.Name(&buf, sfnt.NameIDPostScript)
+	if err != nil || name != "LiberationSans-Bold" || current == old {
+		t.Fatalf("replaced font: name=%q err=%v old face=%v", name, err, current == old)
+	}
+	if cached, err := Get("LiberationSans-Bold"); err != nil || cached != current {
+		t.Fatal("unchanged face was not reused")
+	}
+	restricted := append([]byte{}, liberationsansbold.TTF...)
+	binary.BigEndian.PutUint16(table(restricted, restricted, "OS/2")[8:10], 2)
+	write(restricted)
+	// Ensure a changed timestamp even on filesystems with coarse clocks.
+	later := time.Now().Add(time.Minute)
+	if err := os.Chtimes(path, later, later); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Get("LiberationSans-Bold"); err == nil || !strings.Contains(err.Error(), "disallows") {
+		t.Fatalf("replacement embedding restriction bypassed: %v", err)
+	}
+}

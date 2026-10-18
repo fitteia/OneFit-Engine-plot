@@ -105,11 +105,16 @@ then vendored in the GUI and pinned in the debs.
 - **Other set types**: xycolpat.
 - **Other graph types and stacked graphs**: polar, Smith, Pie, XY Chart.
 - **Axis scales** beyond normal, logarithmic and reciprocal.
-- **Further font support**: font collections, variable/colour fonts, Unicode
+- **Further font support**: OpenType collections (`.otc`), variable/colour fonts, Unicode
   text beyond the current Latin-1 encoding and font-specific shaping/ligatures.
 - **Packages**: RPM, SUSE and Arch packages of plot-go.
 
 ## Additional fonts: v0.2.21
+
+TrueType collections (`.ttc`) and disk-cached discovery were added in v0.2.32.
+Each collection face is resolved by its own name. The font index refreshes
+after 30 seconds in a long-running process; changed files also refresh parsed
+faces, outlines and measured text metrics.
 
 - Additional installed TTF/OpenType fonts by PostScript/full name, with their
   own glyph advances, ink bounds, kerning and underline metrics.
@@ -117,6 +122,6 @@ then vendored in the GUI and pinned in the debs.
   (`OFE_FONT_PATH`). Standard font output remains unchanged.
 - Self-contained PDF/EPS vector glyph subsets and outlined SVG, including
   selectable PDF text. Embedding-restricted fonts use a warned fallback.
-- The GUI and OFE-Go pin and vendor this release; OFE-Raku pins its installer.
-  Figures font discovery controls are a separate step; the GUI can select fonts
-  present in an imported project's font map, or use `\f{font-name}` in text.
+- The GUI and OFE-Go pin and vendor plot-go; OFE-Raku pins its installer.
+  Figures provides a searchable font chooser with server-rendered samples.
+  Imported font maps and `\f{font-name}` switches remain supported.

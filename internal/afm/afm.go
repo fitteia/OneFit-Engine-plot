@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/fitteia/OneFit-Engine-plot/internal/fontfile"
 )
 
 //go:embed adobe-core14/*.afm adobe-core14/MustRead.html
@@ -57,6 +59,7 @@ type Font struct {
 	glyphs  map[byte]glyph
 	kern    map[[2]byte]float64
 	missing map[byte]bool
+	source  *fontfile.Face // nil for immutable embedded standard metrics
 }
 
 var (
@@ -70,7 +73,16 @@ func Get(name string) (*Font, error) {
 	mu.Lock()
 	defer mu.Unlock()
 	if f := cache[name]; f != nil {
-		return f, nil
+		if f.source == nil {
+			return f, nil
+		}
+		face, err := fontfile.Get(name)
+		if err != nil {
+			return nil, err
+		}
+		if face == f.source {
+			return f, nil
+		}
 	}
 	b, err := files.ReadFile("adobe-core14/" + name + ".afm")
 	if err != nil {

@@ -27,6 +27,8 @@ type Face struct {
 type loc struct {
 	path string
 	face int
+	size int64
+	mod  int64
 }
 
 // fresh is how long a process trusts the index it built before listing the
@@ -133,7 +135,7 @@ func indexLocked() map[string]loc {
 			for i, fn := range e.Faces {
 				for _, n := range fn {
 					if _, taken := names[n]; !taken && n != "" {
-						names[n] = loc{path, i}
+						names[n] = loc{path: path, face: i, size: e.Size, mod: e.Mod}
 					}
 				}
 			}
@@ -142,6 +144,15 @@ func indexLocked() map[string]loc {
 	}
 	if !sameFiles(old.Files, files) {
 		saveCache(files)
+	}
+	// Parsed faces belong to a specific file revision, just like the name
+	// index. Drop replaced/removed revisions rather than retaining stale
+	// outlines (or accumulating old revisions in a long-running GUI).
+	for l := range faces {
+		e, ok := files[l.path]
+		if !ok || l.size != e.Size || l.mod != e.Mod {
+			delete(faces, l)
+		}
 	}
 	indexes[key] = &index{names: names, built: time.Now()}
 	return names

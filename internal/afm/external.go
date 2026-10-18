@@ -24,7 +24,7 @@ func external(name string) (*Font, error) {
 	upm := float64(f.UnitsPerEm())
 	ppem := fixed.Int26_6(upm * 64)
 	u := upm * 64
-	m := &Font{Name: name, glyphs: map[byte]glyph{}, kern: map[[2]byte]float64{}, missing: map[byte]bool{}}
+	m := &Font{Name: name, glyphs: map[byte]glyph{}, kern: map[[2]byte]float64{}, missing: map[byte]bool{}, source: face}
 	var ids [256]sfnt.GlyphIndex
 	for code := 0; code < 256; code++ {
 		c := byte(code)
