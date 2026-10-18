@@ -84,6 +84,9 @@ func (p *Project) DeleteShape(i int) bool {
 // first Grace's default: off, the "@default" line settings, fill color 1,
 // fill pattern 0, no arrow.
 type Shape struct {
+	// OnTop is a plot-go extension stored as a comment before the object.
+	// It draws the object after all graphs, legends and text.
+	OnTop          bool
 	Kind           string // "line", "box" or "ellipse"
 	On             bool
 	LocType        string

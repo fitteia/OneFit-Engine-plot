@@ -14,6 +14,10 @@ then vendored in the GUI and pinned in the debs.
 
 ## Done
 
+- **Foreground annotations**: v0.2.22. Optional per-object On top setting
+  draws shapes above legends and text while retaining coordinate attachment.
+  Saved as a plot-go comment extension; unmarked Grace projects are unchanged.
+
 - **Common text controls**: v0.2.17. Underline and overline, relative/absolute zoom,
   vertical and horizontal shifts, baseline changes, newlines, hexadecimal
   characters and legacy upper-half character controls. v0.2.18 moved the

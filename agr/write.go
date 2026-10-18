@@ -78,6 +78,9 @@ func Write(w io.Writer, p *Project) error {
 		if i < len(p.Shapes) {
 			shape = p.Shapes[i]
 		}
+		if shape != nil && shape.OnTop {
+			pf("# plot-go: next object on-top")
+		}
 		unchanged := !forceExplicit && (shape == nil || i < len(p.originalShapes) && p.originalShapes[i] != nil && *shape == *p.originalShapes[i])
 		if unchanged {
 			writeRawObject(pf, raw)

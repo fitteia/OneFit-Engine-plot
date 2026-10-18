@@ -114,3 +114,12 @@ resolved by PostScript or full name. They use their own metrics and outlines;
 PDF/EPS embed the glyphs used, and SVG uses paths. This extends the original
 inventory without changing its standard-font output. See [fonts.md](fonts.md)
 for examples, embedding restrictions and the remaining Latin-1 limitation.
+
+### Foreground drawing objects
+
+Plot-go extends the default Grace drawing order with a per-object `OnTop`
+setting. It draws a marked line, arrow, box or ellipse after all graphs,
+legends and text, retaining its data/page attachment. The setting is stored
+as `# plot-go: next object on-top` immediately before the object block.
+Unmarked objects keep Grace ordering. Grace ignores this comment and may drop
+it on save; its renderer does not implement the foreground extension.

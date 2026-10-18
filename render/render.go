@@ -176,7 +176,7 @@ func Render(p *agr.Project) (*draw.Drawing, []string) {
 	}
 	// objects and strings in world coordinates were drawn with their
 	// graph; the ones placed on the page come last (gracebat's order)
-	r.shapes(nil, 0)
+	r.shapes(nil, 0, false)
 	for i, s := range p.Strings {
 		if s.LocType != "world" {
 			r.id = fmt.Sprintf("string.%d", i)
@@ -189,6 +189,15 @@ func Render(p *agr.Project) (*draw.Drawing, []string) {
 		t := r.layout(Now().Format("Mon Jan _2 15:04:05 2006"), ts.Font, ts.CharSize*charUnit)
 		r.emit(t, ts.X, ts.Y, ts.Rot, ts.Color)
 	}
+	// Explicit foreground annotations retain their coordinate transform, but
+	// draw after every graph, legend, page string and timestamp.
+	for _, g := range p.Graphs {
+		if g.On && !g.Hidden {
+			t := newXform(g)
+			r.shapes(&t, g.ID, true)
+		}
+	}
+	r.shapes(nil, 0, true)
 	return r.d, r.warnings
 }
 
@@ -287,7 +296,7 @@ func (r *renderer) graph(g *agr.Graph) {
 	r.axis(t, true, true)
 	r.axis(t, false, true)
 	r.frame(g)
-	r.shapes(&t, g.ID)
+	r.shapes(&t, g.ID, false)
 	for i, s := range r.proj.Strings {
 		if s.LocType == "world" && s.Graph == g.ID {
 			r.id = fmt.Sprintf("string.%d", i)
@@ -302,13 +311,13 @@ func (r *renderer) graph(g *agr.Graph) {
 // objects") of graph gid's world, or with t nil those on the page: the
 // boxes, then the ellipses, then the lines, each kind in file order, not
 // clipped.
-func (r *renderer) shapes(t *xform, gid int) {
+func (r *renderer) shapes(t *xform, gid int, onTop bool) {
 	for _, kind := range []string{"box", "ellipse", "line"} {
 		for i, s := range r.proj.Shapes {
 			// graph -1 (an object read without one) is graph 0's
 			// (measured)
 			graph := max(s.Graph, 0)
-			if s.Kind != kind || !s.On || (s.LocType == "world") != (t != nil) || (t != nil && graph != gid) {
+			if s.Kind != kind || !s.On || s.OnTop != onTop || (s.LocType == "world") != (t != nil) || (t != nil && graph != gid) {
 				continue
 			}
 			a, b := draw.Point{X: s.X1, Y: s.Y1}, draw.Point{X: s.X2, Y: s.Y2}

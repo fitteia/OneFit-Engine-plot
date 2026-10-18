@@ -122,7 +122,8 @@ type parser struct {
 	inString bool
 	// object: the kind of the drawing object being read ("line", "box",
 	// "ellipse"), "" outside one
-	object string
+	object          string
+	nextObjectOnTop bool
 }
 
 func (p *parser) warn(format string, a ...any) {
@@ -363,6 +364,8 @@ func (p *parser) drawingObject(toks []token, line string) bool {
 				break
 			}
 		}
+		s.OnTop = p.nextObjectOnTop
+		p.nextObjectOnTop = false
 		p.proj.Shapes = append(p.proj.Shapes, s)
 		return true
 	}
@@ -1000,6 +1003,10 @@ func Parse(rd io.Reader) (*Project, error) {
 				p.dataRow(line)
 				continue
 			}
+		}
+		if line == "# plot-go: next object on-top" {
+			p.nextObjectOnTop = true
+			continue
 		}
 		// Outside data every line is a directive; parameter files (.agr-par)
 		// write them without the "@".
