@@ -255,6 +255,14 @@ patterns cell by cell at 10 pixels a cell instead
   major/(m+1).
 - Log minor ticks: at 2x, 3x, ... (m+1)x each decade's start, whatever m
   is (m=9 puts the last on the next decade).
+- On a log axis `tick major` is the factor between majors. One from 0 to 1
+  - a linear spacing such as 0.2 left on an axis made logarithmic - makes
+  gracebat say "Invalid major tick spacing, autoticking" and tick every
+  n decades: the decades the window spans over `tick default` - 1, rounded
+  up, at least 1, majors at the powers of 10^n (0.1 to 10: every decade;
+  1e-5 to 1e5: 1e-4, 1e-2, 1, 1e2, 1e4; 1e-5 to 1e6: every third; 1e-30
+  to 1e30: every twelfth), minors from `minor ticks` as for that factor.
+  The file keeps its value. A negative one draws no ticks.
 - Minor ticks come only from intervals (decades) that reach into the
   window, not from one merely touching its edge: a log window starting at
   1e4 gets no 10x minor from 1e3..1e4, one starting at 2e4 gets 1e4's

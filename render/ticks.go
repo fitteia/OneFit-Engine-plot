@@ -52,8 +52,15 @@ func makeTicks(ax agr.Axis, lo, hi float64) ticks {
 		return ticks{}
 	}
 	if ax.Scale == "Logarithmic" {
-		if major <= 1 || lo <= 0 {
+		if major < 0 || lo <= 0 {
 			return ticks{}
+		}
+		if major <= 1 {
+			// not a factor between ticks (a linear axis's spacing left on
+			// a log one): gracebat says "Invalid major tick spacing,
+			// autoticking" and draws what logAutoFactor gives, with the
+			// file's minor ticks; the file keeps its value (measured)
+			major = logAutoFactor(lo, hi, ax.Tick.Default)
 		}
 		return logTicks(lo, hi, major, minor)
 	}
@@ -102,6 +109,20 @@ func autoStep(span float64, def int) float64 {
 		p *= 10
 	}
 	return 0
+}
+
+// logAutoFactor is gracebat's major tick factor for a log axis it
+// autoticks: a whole number of decades, the decades the window spans over
+// def-1 ("tick default", 6 in OneFit's files) rounded up, at least one -
+// 0.1 to 10: every decade; 1e-5 to 1e5: every second; 1e-5 to 1e6: every
+// third; 1e-30 to 1e30: every twelfth (measured).
+func logAutoFactor(lo, hi float64, def int) float64 {
+	if def <= 1 {
+		def = 6
+	}
+	span := math.Log10(hi) - math.Log10(lo)
+	step := math.Max(1, math.Ceil(span/float64(def-1)-1e-9))
+	return math.Pow(10, step)
 }
 
 func linTicks(lo, hi, major float64, minor int) ticks {
