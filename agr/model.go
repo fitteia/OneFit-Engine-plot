@@ -577,10 +577,11 @@ type Warning struct {
 // x, y, then the errors - one per axis for both sides (dx, dy), or one
 // per side, right then left (dxdx) and up then down (dydy). For xysize,
 // the third column is symbol size, not an error; xycolor uses it as the
-// symbol fill color. xyhilo uses high, low, open and close after x.
+// symbol fill color. xyhilo uses high, low, open and close after x. xyvmap
+// uses the last two columns as viewport-space vector offsets.
 var Columns = map[string]int{
 	"xy": 2, "xydx": 3, "xydy": 3, "xydxdx": 4, "xydydy": 4, "xydxdy": 4, "xydxdxdydy": 6,
-	"bar": 2, "bardy": 3, "bardydy": 4, "xysize": 3, "xyhilo": 5, "xycolor": 3,
+	"bar": 2, "bardy": 3, "bardydy": 4, "xysize": 3, "xyhilo": 5, "xycolor": 3, "xyvmap": 4,
 }
 
 // Errors are a point's error bars, by side, as drawn: world lengths, 0

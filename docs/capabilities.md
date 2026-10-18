@@ -85,6 +85,11 @@ OneFit's own 704 files use; it is history, not this list.
   project's color map (fractional indices round to the nearest integer).
   Symbol shape, fill pattern, outline, line, and skip settings remain the
   ordinary set styles.
+- `xyvmap` sets: x and y positions with horizontal and vertical offsets in
+  normalized graph-view coordinates. Each vector is clipped to the graph
+  frame; its color, pattern, width and line style use the error-bar riser
+  settings. Unclipped vectors have open arrowheads sized by the error-bar
+  size; symbol skip controls which rows draw.
 - Point annotations (`avalue`): X, Y, X/Y pairs, optional quoted text
   after each numeric data row, or the third numeric column (including
   an error column). Format, precision, prepend/append, font, size, color,
@@ -109,7 +114,7 @@ Where an enabled item would affect hardcopy, a warning names it.
 directives back as read, so a project opened and saved loses none of them.
 
 - Stacked graphs and graph types other than XY.
-- Other set types (`xyvmap`, `xyboxplot`, `xyz`, and the graph-specific
+- Other set types (`xyboxplot`, `xyz`, and the graph-specific
   `xycolpat` and `xyr`);
   their data rows are read as far as they go. Axis scales other than normal,
   logarithmic and reciprocal.

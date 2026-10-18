@@ -1,8 +1,6 @@
 # Roadmap
 
-What plot-go does not draw yet, and in which order it is to be done
-(the two items that mattered for OneFit are done; the rest below is for
-later).
+What plot-go does not draw yet, and in which order it is to be done.
 [capabilities.md](capabilities.md) is what it draws now. Every gap below is
 read, warned about and kept when a project is saved; none of them is on in
 the files OneFit itself writes ([inventory.md](inventory.md)), so they
@@ -31,10 +29,15 @@ then vendored in the GUI and pinned in the debs.
   symbol-based stroke styling, size and row skipping. The fitting Plots pane
   is unchanged.
 
-- **Per-point fill colors** (`xycolor`): implemented, pending release.
+- **Per-point fill colors** (`xycolor`): v0.2.27.
   The third data column selects each symbol's fill color from the project
   color map; Figures exposes the type and explains fill/outline behavior.
   The fitting Plots pane is unchanged.
+
+- **Vector maps** (`xyvmap`): implemented, pending release. The four columns
+  are `(x, y, dx, dy)`; vector offsets are in normalized graph-view
+  coordinates. Figures exposes the type, arrowhead size and Grace vector
+  stroke controls. The fitting Plots pane is unchanged.
 
 - **Foreground annotations**: v0.2.22. Optional per-object On top setting
   draws shapes above legends and text while retaining coordinate attachment.
@@ -66,7 +69,7 @@ then vendored in the GUI and pinned in the debs.
   output, so plot-go preserves these directives without warning rather than
   implementing them as drawing features.
 
-- **Remaining set types surveyed**: Grace draws `xyvmap`, `xyboxplot`, and
+- **Remaining set types surveyed**: Grace draws `xyboxplot` and
   `xyz` in XY graphs.
   `xycolpat` draws in pie graphs and `xyr` in fixed graphs; Grace rejects both
   in XY graphs. plot-go does not yet render any of these types.
@@ -84,7 +87,7 @@ then vendored in the GUI and pinned in the debs.
 
 ## Later
 
-- **Other set types**: xyr, xycolpat, xyvmap, xyboxplot, xyz.
+- **Other set types**: xyr, xycolpat, xyboxplot, xyz.
 - **Other graph types and stacked graphs**: polar, Smith, pie, chart,
   fixed.
 - **Axis scales** beyond normal, logarithmic and reciprocal.

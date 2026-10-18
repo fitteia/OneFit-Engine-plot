@@ -641,6 +641,13 @@ func (r *renderer) set(t xform, s *agr.Set) {
 			}
 		}
 	}
+	if s.Type == "xyvmap" {
+		r.vmap(t, s)
+		if s.AValue.On {
+			r.annotatedValues(t, s)
+		}
+		return
+	}
 	if ok && (s.Dropline || s.Baseline.On) {
 		r.droplines(t, s, st)
 	}
@@ -660,6 +667,43 @@ func (r *renderer) set(t xform, s *agr.Set) {
 	}
 	if s.AValue.On {
 		r.annotatedValues(t, s)
+	}
+}
+
+// vmap draws each row's vector from its world-coordinate (x,y) origin. The
+// third and fourth columns are offsets in normalized graph-view coordinates;
+// Grace clips each stroke at the graph frame and uses the error-bar riser
+// color, pattern, width and line style. Symbol skip selects vector rows;
+// error-bar size controls each un-clipped vector's open arrowhead.
+func (r *renderer) vmap(t xform, s *agr.Set) {
+	st, ok := r.style(s.ErrorBar.Color, s.ErrorBar.RiserWidth, s.ErrorBar.RiserStyle)
+	st, ok = r.patterned(st, ok, s.ErrorBar.Pattern)
+	if !ok {
+		return
+	}
+	step := s.Symbol.Skip + 1
+	for i, row := range s.Data {
+		if i%step != 0 || !t.ok(row[0], row[1]) {
+			continue
+		}
+		a := draw.Point{X: t.x(row[0]), Y: t.y(row[1])}
+		b := draw.Point{X: a.X + row[2], Y: a.Y + row[3]}
+		r.id = fmt.Sprintf("g%d.s%d.vmap", t.g.ID, s.ID)
+		r.clipped(st, t.g.View, a, b)
+		if s.ErrorBar.Size > 0 && b.X >= t.g.View.XMin && b.X <= t.g.View.XMax && b.Y >= t.g.View.YMin && b.Y <= t.g.View.YMax {
+			dx, dy := b.X-a.X, b.Y-a.Y
+			length := math.Hypot(dx, dy)
+			if length > 0 {
+				headLength, halfWidth := 0.02*s.ErrorBar.Size, 0.01*s.ErrorBar.Size
+				ux, uy := dx/length, dy/length
+				back := draw.Point{X: b.X - headLength*ux, Y: b.Y - headLength*uy}
+				off := draw.Point{X: halfWidth * uy, Y: -halfWidth * ux}
+				r.clipped(st, t.g.View,
+					draw.Point{X: back.X + off.X, Y: back.Y + off.Y},
+					b,
+					draw.Point{X: back.X - off.X, Y: back.Y - off.Y})
+			}
+		}
 	}
 }
 

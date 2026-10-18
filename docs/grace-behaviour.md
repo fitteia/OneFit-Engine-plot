@@ -761,6 +761,18 @@ interior is painted; a pattern of zero leaves the symbol unfilled. Black-box
 EPS comparisons cover fractional indices, two distinct fill colors and the
 ordinary outline style.
 
+## Vector maps (`xyvmap`)
+
+Each row gives an origin in data coordinates `(x, y)` and a vector offset in
+normalized graph-view coordinates `(dx, dy)`. The segment runs from the
+transformed origin to that point plus the offsets, clipped to the graph frame.
+Vector strokes remain visible when the ordinary set line and error bars are
+off. They use the error-bar color, pattern and riser width/style; symbol skip
+selects source rows. Fully visible vectors have open arrowheads sized by the
+error-bar size; Grace omits the head when clipping the vector at the frame.
+`gracebat` comparisons cover short and clipped vectors, skipping, and the
+riser stroke settings.
+
 ### Non-destructive display types (intentional difference)
 Plot-go retains all numeric columns when a set type changes, including columns
 unused by the selected display type. Unlike Grace's resizing, it never drops
