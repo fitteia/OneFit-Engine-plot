@@ -896,9 +896,7 @@ func init() {
 	}
 }
 
-// setType sets a set's type. Data it already has (a parameter file's
-// "type" after the data) takes the new type's columns as gracebat does:
-// the same ones in order, those past the type's dropped, missing ones 0.
+// setType changes interpretation without altering user data columns.
 func (p *parser) setType(s *Set, t string) {
 	t = strings.ToLower(t)
 	n := Columns[t]
@@ -906,11 +904,7 @@ func (p *parser) setType(s *Set, t string) {
 		p.warn("set type %s is not drawn by plot-go", t)
 	}
 	s.Type = t
-	for i, row := range s.Data {
-		if n > 0 && len(row) != n {
-			s.Data[i] = append(row[:min(len(row), n):min(len(row), n)], make([]float64, max(n-len(row), 0))...)
-		}
-	}
+
 }
 
 // parseTarget reads "G0.S1".
@@ -949,7 +943,7 @@ func (p *parser) dataRow(line string) {
 		}
 		row = append(row, v)
 	}
-	if want := Columns[p.target.Type]; want != 0 && len(row) != want {
+	if want := 2; len(row) < want {
 		p.warn("%s row has %d numbers, not %d", p.target.Type, len(row), want)
 		return
 	}

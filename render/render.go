@@ -586,6 +586,35 @@ func (r *renderer) legend(t xform) {
 // set draws a set (docs/grace-behaviour.md): its fill, line, droplines,
 // baseline, error bars, symbols and point annotations, in that order.
 func (r *renderer) set(t xform, s *agr.Set) {
+	// Missing display columns are never manufactured. Render only complete
+	// rows through a local view; retain the stored table and aligned labels.
+	var complete *agr.Set
+	for i, row := range s.Data {
+		if len(row) < agr.Columns[s.Type] {
+			if complete == nil {
+				copySet := *s
+				copySet.Data = append([][]float64(nil), s.Data[:i]...)
+				copySet.Labels = append([]string(nil), s.Labels[:min(i, len(s.Labels))]...)
+				complete = &copySet
+			}
+			continue
+		}
+		if complete != nil {
+			complete.Data = append(complete.Data, row)
+			if len(s.Labels) > 0 {
+				label := ""
+				if i < len(s.Labels) {
+					label = s.Labels[i]
+				}
+				complete.Labels = append(complete.Labels, label)
+			}
+		}
+	}
+	if complete != nil {
+		r.warn("set %d: rows missing %s display columns are retained but not drawn; edit data to supply them", s.ID, s.Type)
+		s = complete
+	}
+
 	pts, breaks := r.linePoints(t, s)
 	if s.Line.Type != 0 && (s.Fill.Type == 1 || s.Fill.Type == 2) {
 		r.setFill(t, s, pts)
@@ -1089,7 +1118,15 @@ func (r *renderer) symbols(t xform, s *agr.Set) {
 		if !t.ok(x, y) || x < min(w.XMin, w.XMax) || x > max(w.XMin, w.XMax) || y < min(w.YMin, w.YMax) || y > max(w.YMin, w.YMax) {
 			continue
 		}
-		p.draw(r, t.x(x), t.y(y))
+		pointPen := p
+		if s.Type == "xysize" {
+			// Grace's size column replaces the set size, including for
+			// character symbols; its sign does not change the symbol.
+			copySet := *s
+			copySet.Symbol.Size = math.Abs(row[2])
+			pointPen = r.pen(&copySet)
+		}
+		pointPen.draw(r, t.x(x), t.y(y))
 	}
 }
 

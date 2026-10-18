@@ -377,33 +377,30 @@ func TestSetFill(t *testing.T) {
 	}
 }
 
-// TestSetTypeTakesColumns: a type given after the data (a parameter file's)
-// keeps the columns in order, drops those past the type's and adds 0s, as
-// gracebat does.
-func TestSetTypeTakesColumns(t *testing.T) {
-	for _, c := range []struct {
-		data, typ string
-		want      [][]float64
-	}{
-		{"xydxdx", "xydy", [][]float64{{1, 2, 0.3}}},
-		{"xydy", "xydxdxdydy", [][]float64{{1, 2, 0.3, 0, 0, 0}}},
-		{"xydxdy", "xy", [][]float64{{1, 2}}},
-		{"xydxdy", "xydydy", [][]float64{{1, 2, 0.3, 0.4}}},
-		{"bar", "bardy", [][]float64{{1, 2, 0}}},
-		{"bardydy", "bar", [][]float64{{1, 2}}},
-		{"bardy", "bardy", [][]float64{{1, 2, 0.3}}},
-	} {
-		row := map[string]string{
-			"xydy": "1 2 0.3", "xydxdx": "1 2 0.3 0.4", "xydxdy": "1 2 0.3 0.4",
-			"bar": "1 2", "bardy": "1 2 0.3", "bardydy": "1 2 0.3 0.4",
-		}[c.data]
-		p, err := Parse(strings.NewReader("@target G0.S0\n@type " + c.data + "\n" + row + "\n&\nwith g0\n    s0 type " + c.typ + "\n"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		s := p.Graphs[0].Sets[0]
-		if s.Type != c.typ || !reflect.DeepEqual(s.Data, c.want) {
-			t.Errorf("%s data as %s: %s %v, want %v", c.data, c.typ, s.Type, s.Data, c.want)
+// Display type changes deliberately preserve data, unlike Grace's resizing.
+func TestSetTypePreservesColumns(t *testing.T) {
+	for from := range Columns {
+		for to := range Columns {
+			src := "@target G0.S0\n@type " + from + "\n1.1234567890123457 2.9876543210987654 0.12345678912345678 4\n&\nwith g0\ns0 type " + to + "\n"
+			p, err := Parse(strings.NewReader(src))
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := [][]float64{{1.1234567890123457, 2.9876543210987654, 0.12345678912345678, 4}}
+			for pass := 0; pass < 2; pass++ {
+				s := p.Graphs[0].Sets[0]
+				if s.Type != to || !reflect.DeepEqual(s.Data, want) {
+					t.Fatalf("%s -> %s: %+v", from, to, s.Data)
+				}
+				var out strings.Builder
+				if err := Write(&out, p); err != nil {
+					t.Fatal(err)
+				}
+				p, err = Parse(strings.NewReader(out.String()))
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
 		}
 	}
 }

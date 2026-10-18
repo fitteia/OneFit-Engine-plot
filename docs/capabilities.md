@@ -71,6 +71,10 @@ OneFit's own 704 files use; it is history, not this list.
   skip; error bars in x and y (place, size, widths and styles, riser clip
   with arrowheads); fills of types 1 and 2 with their rule, color and pattern;
   baselines (types 0 to 5) and droplines.
+- `xysize` sets: x, y and per-point symbol size. The third column controls
+  size directly (its magnitude, matching Grace); symbol shape, fill, outline,
+  row skipping and coordinate clipping still apply. The set's symbol size is
+  used for its legend sample, independently of the point sizes.
 - XY sets `bar`, `bardy` and `bardydy`: vertical bars from their selected
   baseline, with symbol-sized widths and the set's line and fill styles;
   optional symmetric or separate upper/lower y errors.
@@ -98,7 +102,7 @@ Where an enabled item would affect hardcopy, a warning names it.
 directives back as read, so a project opened and saved loses none of them.
 
 - Stacked graphs and graph types other than XY.
-- Other set types (`xyhilo`, `xysize`, `xycolor`,
+- Other set types (`xyhilo`, `xycolor`,
   `xyvmap`, `xyboxplot`, `xyz`, and the graph-specific `xycolpat` and `xyr`);
   their data rows are read as far as they go. Axis scales other than normal,
   logarithmic and reciprocal.
@@ -114,3 +118,8 @@ Grace hardcopy accepts the listed set types in XY graphs except `xycolpat`
 and `xyr`: the User's Guide restricts those to pie and fixed graphs,
 respectively, where black-box EPS renders them. All remain unsupported by
 plot-go until a renderer update covers their graph and data semantics.
+
+Set-type changes preserve every stored numeric column. Extra columns remain
+in AGR exports; rows missing required display columns are retained but not
+drawn. Numeric rows save without loss of float64 precision. Figures' data
+editor/calculator provides explicit user control over adding/removing columns.

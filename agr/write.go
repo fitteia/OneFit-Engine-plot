@@ -129,7 +129,7 @@ func Write(w io.Writer, p *Project) error {
 			for point, row := range s.Data {
 				parts := make([]string, len(row))
 				for i, v := range row {
-					parts[i] = fmt.Sprintf("%16.8g", v)
+					parts[i] = strconv.FormatFloat(v, 'g', -1, 64)
 				}
 				line := strings.Join(parts, " ")
 				if point < len(s.Labels) {

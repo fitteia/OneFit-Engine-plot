@@ -575,10 +575,11 @@ type Warning struct {
 
 // Columns is how many numbers a row of each set type plot-go draws holds:
 // x, y, then the errors - one per axis for both sides (dx, dy), or one
-// per side, right then left (dxdx) and up then down (dydy).
+// per side, right then left (dxdx) and up then down (dydy). For xysize,
+// the third column is symbol size, not an error.
 var Columns = map[string]int{
 	"xy": 2, "xydx": 3, "xydy": 3, "xydxdx": 4, "xydydy": 4, "xydxdy": 4, "xydxdxdydy": 6,
-	"bar": 2, "bardy": 3, "bardydy": 4,
+	"bar": 2, "bardy": 3, "bardydy": 4, "xysize": 3,
 }
 
 // Errors are a point's error bars, by side, as drawn: world lengths, 0

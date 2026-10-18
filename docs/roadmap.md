@@ -14,6 +14,12 @@ then vendored in the GUI and pinned in the debs.
 
 ## Done
 
+- **Variable-size symbols** (`xysize`): implemented, pending release. Per-point
+  size column with standard symbol styles, character symbols and legend sample
+  sizing measured against Grace. Figures pairs this with a plot-type choice and
+  the data editor/calculator. Plot-type changes preserve all stored columns;
+  users explicitly add or edit the size column in the data editor.
+
 - **XY bar family**: v0.2.24. `bar`, `bardy` and `bardydy` render with
   baseline selection, width, row skipping, fills, outlines, legends and
   symmetric/asymmetric y errors. Figures exposes width, baseline and fill
@@ -50,7 +56,7 @@ then vendored in the GUI and pinned in the debs.
   output, so plot-go preserves these directives without warning rather than
   implementing them as drawing features.
 
-- **Remaining set types surveyed**: Grace draws `xyhilo`, `xysize`, `xycolor`,
+- **Remaining set types surveyed**: Grace draws `xyhilo`, `xycolor`,
   `xyvmap`, `xyboxplot`, and `xyz` in XY graphs.
   `xycolpat` draws in pie graphs and `xyr` in fixed graphs; Grace rejects both
   in XY graphs. plot-go does not yet render any of these types.
@@ -68,7 +74,7 @@ then vendored in the GUI and pinned in the debs.
 
 ## Later
 
-- **Other set types**: xyhilo, xyr, xysize, xycolor,
+- **Other set types**: xyhilo, xyr, xycolor,
   xycolpat, xyvmap, xyboxplot, xyz.
 - **Other graph types and stacked graphs**: polar, Smith, pie, chart,
   fixed.

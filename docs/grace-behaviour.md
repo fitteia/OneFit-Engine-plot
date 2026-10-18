@@ -101,7 +101,8 @@ Units: viewport units - the page's shorter side is 1, origin bottom left
   - every part is cut at the frame (an arrowhead past it is cut or gone).
 - A set's type given after its data (a parameter file's `s0 type`, after
   the data on the command line) keeps the data's columns in order: those
-  past the new type's are dropped, missing ones are 0.
+  past the new type's are dropped, missing ones are 0. Plot-go deliberately
+  preserves them instead; see Non-destructive display types below.
 - A set the file says nothing more about (measured with `style-defaults`):
   straight line, no symbol, error bars on (place both, size 1, riser clip
   off with length 0.1), every color the set's number through the color map
@@ -729,3 +730,22 @@ cover types 0 through 5, missing third columns, superscripts, color/font/
 size/exponential precision, 37/90-degree rotation, offsets, skip, symbols,
 world edges and inverted logarithmic axes. This does not establish
 compliance for the other set or graph types listed as unsupported.
+
+## Per-point symbol sizes (`xysize`)
+
+Black-box EPS comparisons show that an `xysize` row's third value replaces
+`symbol size` for that point. It is not multiplied by the set size. Its
+magnitude is used, so negative values draw the same size as positive values;
+a zero value has zero geometric extent (an outline can still leave a dot).
+The usual symbol shape, fill, outline, skip and world-window inclusion apply,
+including character symbols. The legend sample still uses the set's ordinary
+`symbol size`. Circles, filled squares, character symbols, zero/negative sizes,
+row skipping and legend placement are covered by the renderer comparisons.
+
+### Non-destructive display types (intentional difference)
+Plot-go retains all numeric columns when a set type changes, including columns
+unused by the selected display type. Unlike Grace's resizing, it never drops
+trailing values or fills missing columns. Rows with fewer than x/y are rejected;
+rows missing columns required by their display type remain stored but are not
+drawn. Numeric data is written with round-trip float64 precision. Opening such
+a project in Grace may resize its data; this preservation applies to plot-go.
