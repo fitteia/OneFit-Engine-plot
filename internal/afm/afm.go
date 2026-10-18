@@ -1,7 +1,8 @@
 // Package afm gives plot-go the metrics of the 14 standard PDF fonts:
 // each character's advance width and ink box, from Adobe's Core 14 AFM
 // files (adobe-core14/, distributed with Adobe's MustRead.html as its
-// terms require; see NOTICE).
+// terms require; see NOTICE). Additional installed TTF/OpenType fonts are
+// measured from the same glyph data used for rendering.
 package afm
 
 import (
@@ -52,9 +53,10 @@ type glyph struct {
 
 // Font holds one font's metrics by character code.
 type Font struct {
-	Name   string
-	glyphs map[byte]glyph
-	kern   map[[2]byte]float64
+	Name    string
+	glyphs  map[byte]glyph
+	kern    map[[2]byte]float64
+	missing map[byte]bool
 }
 
 var (
@@ -62,8 +64,8 @@ var (
 	cache = map[string]*Font{}
 )
 
-// Get returns the metrics of a standard font by PostScript name
-// ("Helvetica", "Times-Roman", "Symbol", ...).
+// Get returns standard AFM metrics or an additional installed font's own
+// metrics, resolved by PostScript or full name.
 func Get(name string) (*Font, error) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -72,7 +74,11 @@ func Get(name string) (*Font, error) {
 	}
 	b, err := files.ReadFile("adobe-core14/" + name + ".afm")
 	if err != nil {
-		return nil, fmt.Errorf("no metrics for font %q", name)
+		f, err := external(name)
+		if err == nil {
+			cache[name] = f
+		}
+		return f, err
 	}
 	f, err := parse(name, string(b))
 	if err != nil {

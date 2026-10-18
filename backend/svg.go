@@ -104,7 +104,7 @@ func WriteSVGWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 			t := d.Texts[ti]
 			ti++
 			enter(t.ID)
-			if opt.TextAsPaths {
+			if opt.TextAsPaths || !afm.Standard(t.Font) {
 				if path, ok := textPath(t, X, Y); ok {
 					p(`<path d="%s" fill="%s"/>`+"\n", path, rgb(t.Color))
 					continue

@@ -3,7 +3,7 @@ name: Release
 # On a version tag ("git tag v0.1.0 && git push origin v0.1.0"): plot-go
 # built for Linux (amd64, arm64), macOS (Intel, Apple Silicon) and Windows,
 # published as a GitHub Release with SHA256SUMS. OneFit's installers
-# download the binary for their platform from the latest release.
+# download the binary for their platform from their explicitly pinned release.
 on:
   push:
     tags:

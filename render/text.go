@@ -8,6 +8,7 @@ import (
 
 	"github.com/fitteia/OneFit-Engine-plot/draw"
 	"github.com/fitteia/OneFit-Engine-plot/internal/afm"
+	"github.com/fitteia/OneFit-Engine-plot/internal/fontfile"
 	"github.com/fitteia/OneFit-Engine-plot/internal/glyph"
 )
 
@@ -133,6 +134,12 @@ func (r *renderer) layout(s string, font int, size float64) typeset {
 		}
 		rn := run{str: str, font: cur, size: size, matrix: matrix, color: color, under: under, over: over}
 		m := r.metrics(cur)
+		rn.font = m.Name
+		for i := 0; i < len(str); i++ {
+			if m.Missing(str[i]) {
+				r.warn("font %q has no glyph for byte 0x%02x; missing-character glyph used", m.Name, str[i])
+			}
+		}
 		if kern && len(str) > 1 {
 			rn.kern = make([]float64, len(str)-1)
 			for i := range rn.kern {
@@ -609,6 +616,11 @@ func (ts typeset) origins(deg, grid float64) []draw.Point {
 // EPS TL operands for each standard font (URW base-35). Overlines use
 // glyph-aware placement instead. Also used without installed font files.
 func decorationMetrics(font string) (float64, float64) {
+	if !afm.Standard(font) {
+		if f, err := fontfile.Get(font); err == nil {
+			return f.UnderlinePosition, f.UnderlineThickness
+		}
+	}
 	switch font {
 	case "Times-Roman":
 		return -0.107, 0.050

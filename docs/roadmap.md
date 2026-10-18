@@ -24,7 +24,8 @@ then vendored in the GUI and pinned in the debs.
   directions. Ligature toggles are recognized; the supported Core-14 Latin-1
   fonts have no encodable ligature substitutions, matching measured Grace.
   These controls, including the corrected overline placement, are included in
-  v0.2.19, which the GUI and OFE-Go pin and vendor.
+  v0.2.21, which the GUI and OFE-Go pin and vendor. v0.2.20 also fixes
+  Latin-1 advance widths in the outlined SVG preview.
 
 - **Annotated values** (`avalue`): v0.2.16. Point values and quoted labels,
   including style, rotation, offsets, symbol skip and clipping. The GUI
@@ -53,6 +54,18 @@ then vendored in the GUI and pinned in the debs.
 - **Other graph types and stacked graphs**: polar, Smith, pie, chart,
   fixed.
 - **Axis scales** beyond normal, logarithmic and reciprocal.
-- **Additional fonts** outside the standard 14, including any font-specific
-  ligature substitutions beyond the current Latin-1 encoding.
+- **Further font support**: font collections, variable/colour fonts, Unicode
+  text beyond the current Latin-1 encoding and font-specific shaping/ligatures.
 - **Packages**: RPM, SUSE and Arch packages of plot-go.
+
+## Additional fonts: v0.2.21
+
+- Additional installed TTF/OpenType fonts by PostScript/full name, with their
+  own glyph advances, ink bounds, kerning and underline metrics.
+- Discoverable font names (`-list-fonts`) and additional font paths
+  (`OFE_FONT_PATH`). Standard font output remains unchanged.
+- Self-contained PDF/EPS vector glyph subsets and outlined SVG, including
+  selectable PDF text. Embedding-restricted fonts use a warned fallback.
+- The GUI and OFE-Go pin and vendor this release; OFE-Raku pins its installer.
+  Figures font discovery controls are a separate step; the GUI can select fonts
+  present in an imported project's font map, or use `\f{font-name}` in text.

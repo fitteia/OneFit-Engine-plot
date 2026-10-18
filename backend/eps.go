@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/fitteia/OneFit-Engine-plot/draw"
+	"github.com/fitteia/OneFit-Engine-plot/internal/afm"
 )
 
 // WriteEPS writes the drawing as Encapsulated PostScript on a page of
@@ -118,6 +119,14 @@ ellipsedict /mtrx matrix put
 		if _, ok := fonts[t.Font]; !ok {
 			id := len(fonts)
 			fonts[t.Font] = id
+			if !afm.Standard(t.Font) {
+				chars, box, err := usedGlyphs(d, t.Font)
+				if err != nil {
+					return fmt.Errorf("embed font %q: %w", t.Font, err)
+				}
+				p("%s", embedEPSFont(chars, box, id))
+				continue
+			}
 			if t.Font == "Symbol" || t.Font == "ZapfDingbats" {
 				p("/%s findfont\n/Font%d exch definefont pop\n", t.Font, id)
 			} else {

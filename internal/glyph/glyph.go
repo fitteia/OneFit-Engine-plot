@@ -1,4 +1,4 @@
-// Package glyph gives the outlines of characters in the standard fonts, so
+// Package glyph gives the outlines of characters in standard and installed fonts, so
 // text can be drawn as shapes - the same in every browser, whatever fonts
 // it has.
 //
@@ -26,6 +26,7 @@ import (
 	"sync"
 
 	"github.com/fitteia/OneFit-Engine-plot/internal/afm"
+	"github.com/fitteia/OneFit-Engine-plot/internal/fontfile"
 
 	"github.com/go-fonts/liberation/liberationmonobold"
 	"github.com/go-fonts/liberation/liberationmonobolditalic"
@@ -195,13 +196,14 @@ type font struct {
 	kernAFM  *afm.Font
 	f        *sfnt.Font
 	upm      float64
-	urw      bool // a URW font: Symbol is looked up by its own codes
+	urw      bool   // a URW font: Symbol is looked up by its own codes
+	path     string // additional font file; empty for Core-14 outlines
 	mu       sync.Mutex
 	buf      sfnt.Buffer
 }
 
-// Source is where a standard font's outlines come from: the URW file's
-// path, or "Liberation" (the fonts plot-go carries).
+// Source is where outlines come from: the installed font file's path, or
+// "Liberation" (the standard-font stand-ins plot-go carries).
 func Source(name string) string {
 	f, err := load(name)
 	if err != nil {
@@ -209,6 +211,9 @@ func Source(name string) string {
 	}
 	if f.urw {
 		return urwPath(name)
+	}
+	if f.path != "" {
+		return f.path
 	}
 	return "Liberation"
 }
@@ -253,6 +258,15 @@ func load(name string) (*font, error) {
 	}
 	ttf, ok := standIns[name]
 	if !ok {
+		if !afm.Standard(name) {
+			face, err := fontfile.Get(name)
+			if err != nil {
+				return nil, err
+			}
+			ft := &font{f: face.Font, upm: float64(face.Font.UnitsPerEm()), path: face.Path}
+			cache[name] = ft
+			return ft, nil
+		}
 		return nil, fmt.Errorf("no outlines for font %q", name)
 	}
 	f, err := sfnt.Parse(ttf)
@@ -264,8 +278,9 @@ func load(name string) (*font, error) {
 	return ft, nil
 }
 
-// Outline is the outline of character c in a standard font, in ems.
-// A character the font has no glyph for has an empty outline.
+// Outline is the outline of byte c in a supported font, in ems. An additional
+// font uses its .notdef outline for missing characters; standard fonts retain
+// their historical empty-outline behavior for unavailable glyphs.
 func Outline(fontName string, c byte) ([]Seg, error) {
 	f, err := load(fontName)
 	if err != nil {
@@ -279,7 +294,7 @@ func Outline(fontName string, c byte) ([]Seg, error) {
 		r = rune(c)
 	}
 	i, err := f.f.GlyphIndex(&f.buf, r)
-	if err != nil || i == 0 {
+	if err != nil || (i == 0 && f.path == "") {
 		return nil, err
 	}
 	// one unit per font unit: ppem = units per em, in 26.6 fixed point

@@ -81,12 +81,19 @@ func main() {
 	quiet := flag.Bool("q", false, "do not print warnings")
 	showVersion := flag.Bool("version", false, "print the version and exit")
 	showNotices := flag.Bool("notices", false, "print the license and third-party notices and exit")
+	listFonts := flag.Bool("list-fonts", false, "list standard and available installed TTF/OpenType font names and exit")
 	outlineText := flag.Bool("outline-text", false, "SVG: draw text as glyph outlines (the same in every browser) instead of <text>")
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, "usage: plot-go [-o OUT] [-format pdf|eps|svg|png] [-dpi N] [-q] FILE.agr")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+	if *listFonts {
+		for _, name := range render.AvailableFonts() {
+			fmt.Println(name)
+		}
+		return
+	}
 	if *showNotices {
 		printNotices()
 		return

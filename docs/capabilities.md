@@ -21,7 +21,14 @@ OneFit's own 704 files use; it is history, not this list.
   installed converter - pdftoppm, else Ghostscript, else ImageMagick
   ([grace-behaviour.md](grace-behaviour.md), "PNG").
 - Fonts: the standard 14 PostScript fonts by Grace's font map, measured
-  with Adobe's metrics; others warn and use Helvetica.
+  with Adobe's metrics, plus additional installed TTF/OpenType fonts found
+  by PostScript or full name. Additional fonts use their own glyph metrics,
+  kerning and underline metrics; their used glyphs are embedded as vector
+  Type-3 subsets in PDF/EPS and outlined even in native-text SVG. PDF text
+  remains selectable through a Unicode mapping. `-list-fonts` lists discovered
+  names; `OFE_FONT_PATH` supplies extra font files/directories. Missing,
+  unreadable or embedding-restricted fonts warn and use Helvetica for both
+  layout and output. See [fonts.md](fonts.md) for the discovery/encoding limits.
 
 ## Drawn
 
@@ -52,8 +59,9 @@ OneFit's own 704 files use; it is history, not this list.
   Matrices, colours and explicit kerning survive EPS, PDF and SVG export;
   the SVG preview's outlined text uses the same layout. All documented
   Grace text control codes are recognized for the supported standard 14
-  fonts. Unknown controls and malformed arguments warn; braced arguments
-  are consumed with their control. Fonts outside those 14 remain unsupported.
+  fonts and available additional Latin fonts. Unknown controls and malformed
+  arguments warn; braced arguments are consumed with their control. Additional
+  fonts still use the same Latin-1 text encoding, without complex shaping.
 - Legends: position (viewport or world), box, fill, gaps, length,
   inverted order, every set's line and symbol.
 - Sets of type `xy` and those with error bars (`xydx`, `xydy`, `xydxdx`,

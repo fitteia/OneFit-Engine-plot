@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/fitteia/OneFit-Engine-plot/draw"
+	"github.com/fitteia/OneFit-Engine-plot/internal/afm"
 )
 
 // kappa: control point distance for a quarter circle drawn as one cubic
@@ -17,8 +18,8 @@ const kappa = 0.5522847498
 
 // WritePDF writes the drawing as a one-page PDF cropped to its bounding box
 // (the page is the box, the drawing shifted into it), as epstopdf makes
-// OneFit's PDFs from gracebat's EPS. The standard fonts are named, not
-// embedded.
+// OneFit's PDFs from gracebat's EPS. The standard fonts are named; additional
+// fonts are embedded as vector glyph subsets with a Unicode text mapping.
 func WritePDF(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) error {
 	return WritePDFWith(w, d, pageW, pageH, title, PDFOptions{})
 }
@@ -174,6 +175,10 @@ func WritePDFWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 	objs = append(objs, fmt.Sprintf("<< /Length %d /Filter /FlateDecode >>\nstream\n%s\nendstream", z.Len(), z.String()))
 	objs = append(objs, fmt.Sprintf("<< /Producer (plot-go) /Title (%s) >>", psString(title)))
 	for _, f := range fontOrder {
+		if !afm.Standard(f) {
+			objs = append(objs, "") // filled after pattern objects, so their IDs stay stable
+			continue
+		}
 		// WinAnsi has the hyphen at 45 and grave at 96 already; 39 is
 		// quoteright in gracebat's encoding
 		enc := " /Encoding << /Type /Encoding /BaseEncoding /WinAnsiEncoding /Differences [39 /quoteright] >>"
@@ -189,6 +194,20 @@ func WritePDFWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 		s := unit * draw.PatternUnit
 		objs = append(objs, fmt.Sprintf("<< /Type /Pattern /PatternType 1 /PaintType 2 /TilingType 1 /BBox [0 0 16 16] /XStep 16 /YStep 16 /Resources << >> /Matrix [%s 0 0 %s %s %s] /Length %d >>\nstream\n%sendstream",
 			num(s), num(s), num(-bb.LLX), num(-bb.LLY), len(body), body))
+	}
+	for i, f := range fontOrder {
+		if afm.Standard(f) {
+			continue
+		}
+		chars, box, err := usedGlyphs(d, f)
+		if err != nil {
+			return fmt.Errorf("embed font %q: %w", f, err)
+		}
+		if len(chars) == 0 {
+			continue
+		}
+		fontObj := embedPDFFont(&objs, chars, box, f)
+		objs[5+i] = fontObj
 	}
 
 	var out bytes.Buffer

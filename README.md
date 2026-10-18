@@ -100,7 +100,12 @@ Inline matrices (`\t{}`, `\T{}`), rotation/slant (`\r{}`, `\l{}`, `\q`,
 (`\dl`, `\dr`, `\dL`, `\dR`) are also supported. Ligature toggles
 (`\Fl`, `\FL`) are accepted; the supported Core-14 Latin-1 fonts do not
 provide encodable ligature substitutions, matching the measured Grace output.
-Fonts outside the standard 14 remain unsupported.
+Additional installed TTF/OpenType fonts can be used by PostScript or full name.
+Run `plot-go -list-fonts` to list discovered names. Set `OFE_FONT_PATH` to a
+font file or a path-list of font directories to use fonts outside the usual
+system folders. Their glyphs are embedded in PDF/EPS and outlined in SVG, so
+viewers do not need the font installed. See [fonts.md](docs/fonts.md) for
+examples, search order, embedding restrictions and encoding limits.
 
 The [capabilities](docs/capabilities.md) list and
 [roadmap](docs/roadmap.md) describe the supported controls and remaining font limitations.
