@@ -828,6 +828,11 @@ func init() {
 		r("S# line linewidth N", func(p *parser, a []string) { p.set(a).Line.LineWidth = p.width(a[1]) }),
 		r("S# line color N", func(p *parser, a []string) { p.set(a).Line.Color = p.nonNeg(p.set(a).Line.Color, a[1]) }),
 		r("S# line pattern N", func(p *parser, a []string) { p.set(a).Line.Pattern = p.nonNeg(p.set(a).Line.Pattern, a[1]) }),
+		// older Grace files' spellings of the three, which gracebat still
+		// reads (measured: it saves them as "line color" etc.)
+		r("S# linestyle N", func(p *parser, a []string) { p.set(a).Line.LineStyle = p.nonNeg(p.set(a).Line.LineStyle, a[1]) }),
+		r("S# linewidth N", func(p *parser, a []string) { p.set(a).Line.LineWidth = p.width(a[1]) }),
+		r("S# color N", func(p *parser, a []string) { p.set(a).Line.Color = p.nonNeg(p.set(a).Line.Color, a[1]) }),
 		r("S# baseline type N", func(p *parser, a []string) { p.set(a).Baseline.Type = p.nonNeg(p.set(a).Baseline.Type, a[1]) }),
 		r("S# baseline W", func(p *parser, a []string) { p.set(a).Baseline.On = p.bool(a[1]) }),
 		r("S# dropline W", func(p *parser, a []string) { p.set(a).Dropline = p.bool(a[1]) }),
