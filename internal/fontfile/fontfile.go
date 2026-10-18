@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"golang.org/x/image/font/sfnt"
 )
@@ -21,9 +22,31 @@ type Face struct {
 	UnderlinePosition, UnderlineThickness float64
 }
 
-var mu sync.Mutex
-var indexes = map[string]map[string]string{}
-var faces = map[string]*Face{}
+// loc is where a name's font is: its file, and the face in a collection
+// (.ttc; 0 in a single-font file).
+type loc struct {
+	path string
+	face int
+}
+
+// fresh is how long a process trusts the index it built before listing the
+// font folders again: a long-running one (the OneFit GUI) sees a font
+// installed meanwhile, and a run drawing one plot lists them once.
+const fresh = 30 * time.Second
+
+var (
+	mu      sync.Mutex
+	indexes = map[string]*index{}
+	faces   = map[loc]*Face{}
+)
+
+// filesRead counts the font files read whole to index them (tests).
+var filesRead int
+
+type index struct {
+	names map[string]loc
+	built time.Time
+}
 
 // Get resolves a PostScript or full font name. OFE_FONT_PATH is a path-list of
 // files or directories searched before the standard system/user font folders.
@@ -32,66 +55,96 @@ var faces = map[string]*Face{}
 func Get(name string) (*Face, error) {
 	mu.Lock()
 	defer mu.Unlock()
-	index := indexLocked()
-	path := index[name]
-	if path == "" {
+	l, ok := indexLocked()[name]
+	if !ok {
 		return nil, fmt.Errorf("font %q not found in OFE_FONT_PATH or system font folders", name)
 	}
-	if f := faces[path]; f != nil {
+	if f := faces[l]; f != nil {
 		return f, nil
 	}
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(l.path)
 	if err != nil {
 		return nil, fmt.Errorf("font %q: %w", name, err)
 	}
-	f, err := sfnt.Parse(b)
-	if err != nil {
+	var f *sfnt.Font
+	data := b // the face's own tables: a collection's face starts further in
+	if isCollection(b) {
+		c, err := sfnt.ParseCollection(b)
+		if err != nil {
+			return nil, fmt.Errorf("font %q: %w", name, err)
+		}
+		if f, err = c.Font(l.face); err != nil {
+			return nil, fmt.Errorf("font %q: %w", name, err)
+		}
+		off, ok := faceOffset(b, l.face)
+		if !ok {
+			return nil, fmt.Errorf("font %q: bad collection", name)
+		}
+		data = b[off:]
+	} else if f, err = sfnt.Parse(b); err != nil {
 		return nil, fmt.Errorf("font %q: %w", name, err)
 	}
-	if flags := embeddingFlags(b); flags&(0x0002|0x0100|0x0200) != 0 {
+	if flags := embeddingFlags(data, b); flags&(0x0002|0x0100|0x0200) != 0 {
 		return nil, fmt.Errorf("font %q disallows outline subset embedding (OS/2 fsType 0x%04x)", name, flags)
 	}
-	pos, thickness := underline(b, float64(f.UnitsPerEm()))
-	face := &Face{Font: f, Path: path, UnderlinePosition: pos, UnderlineThickness: thickness}
-	faces[path] = face
+	pos, thickness := underline(data, b, float64(f.UnitsPerEm()))
+	face := &Face{Font: f, Path: l.path, UnderlinePosition: pos, UnderlineThickness: thickness}
+	faces[l] = face
 	return face, nil
 }
 
-func indexLocked() map[string]string {
+// indexLocked is the name index: built by listing the font folders and
+// reading only the name tables of files the disk cache (cache.go) does not
+// already know as they are.
+func indexLocked() map[string]loc {
 	key := os.Getenv("OFE_FONT_PATH") + "\x00" + os.Getenv("OFE_URW_FONTS") + "\x00" + os.Getenv("HOME") + "\x00" + os.Getenv("WINDIR")
-	index := indexes[key]
-	if index == nil {
-		index = map[string]string{}
-		for _, root := range searchPaths() {
-			// WalkDir's lexical order makes duplicate names deterministic.
-			_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-				if err != nil || d.IsDir() {
-					return nil
-				}
-				ext := strings.ToLower(filepath.Ext(path))
-				if ext != ".otf" && ext != ".ttf" {
-					return nil
-				}
-				b, err := os.ReadFile(path)
-				if err != nil {
-					return nil
-				}
-				f, err := sfnt.Parse(b)
-				if err != nil {
-					return nil
-				}
-				var buf sfnt.Buffer
-				for _, id := range []sfnt.NameID{sfnt.NameIDPostScript, sfnt.NameIDFull} {
-					if n, err := f.Name(&buf, id); err == nil && n != "" && index[n] == "" {
-						index[n] = path
+	if ix := indexes[key]; ix != nil && time.Since(ix.built) < fresh {
+		return ix.names
+	}
+	old := loadCache()
+	files := map[string]cacheEntry{}
+	names := map[string]loc{}
+	for _, root := range searchPaths() {
+		// WalkDir's lexical order makes duplicate names deterministic.
+		_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return nil
+			}
+			switch strings.ToLower(filepath.Ext(path)) {
+			case ".otf", ".ttf", ".ttc":
+			default:
+				return nil
+			}
+			if _, seen := files[path]; seen {
+				return nil
+			}
+			info, err := d.Info()
+			if err != nil {
+				return nil
+			}
+			e, ok := old.Files[path]
+			if !ok || e.Size != info.Size() || e.Mod != info.ModTime().UnixNano() {
+				// unreadable or not a font: remembered with no faces, so it
+				// is not read again until it changes
+				e = cacheEntry{Size: info.Size(), Mod: info.ModTime().UnixNano(), Faces: readNames(path)}
+				filesRead++
+			}
+			files[path] = e
+			for i, fn := range e.Faces {
+				for _, n := range fn {
+					if _, taken := names[n]; !taken && n != "" {
+						names[n] = loc{path, i}
 					}
 				}
-				return nil
-			})
-		}
-		indexes[key] = index
+			}
+			return nil
+		})
 	}
-	return index
+	if !sameFiles(old.Files, files) {
+		saveCache(files)
+	}
+	indexes[key] = &index{names: names, built: time.Now()}
+	return names
 }
 
 // Names returns sorted resolvable names (PostScript names and full-name aliases).

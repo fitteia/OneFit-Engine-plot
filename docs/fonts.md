@@ -44,9 +44,20 @@ folders, macOS Library/Fonts folders, Homebrew's shared fonts and Windows'
 Fonts folder. Unknown or malformed fonts do not stop a batch: plot-go warns
 and uses Helvetica for both measurement and output.
 
-Discovery and loaded fonts are cached for the process lifetime. Restart a
-long-running GUI after installing or replacing a font. In remote mode, fonts
-and `OFE_FONT_PATH` belong on the server that renders the figure.
+TrueType collections (`.ttc`) are searched too, each font in them by its
+own names. A font plot-go cannot draw - one its font reader cannot parse, or
+a bitmap-only font such as color emoji - is not listed.
+
+The names found are kept in a cache file, `plot-go/fonts.json` in the
+user's cache folder (`~/Library/Caches` on macOS, `$XDG_CACHE_HOME` or
+`~/.cache` on Linux): with each font file's size and modification time.
+A run lists the font folders and reads only the files that are new or
+changed since, so only the first run (and the first after installing
+fonts) reads them all. Deleting the file is harmless: it is made again. A
+long-running GUI looks at the folders again after 30 seconds, so a font
+installed meanwhile shows up without a restart; a font file replaced in
+place is used from its next start. In remote mode, fonts and
+`OFE_FONT_PATH` belong on the server that renders the figure.
 
 ## Consistent output
 
