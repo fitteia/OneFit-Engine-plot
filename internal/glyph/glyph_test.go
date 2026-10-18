@@ -43,9 +43,28 @@ func TestRune(t *testing.T) {
 	}
 }
 
-func TestUnknownFont(t *testing.T) {
-	if _, err := Outline("ZapfDingbats", 'a'); err == nil {
-		t.Error("ZapfDingbats has no stand-in, but an outline came back")
+// TestZapfDingbats: with the URW fonts installed, ZapfDingbats' outlines
+// come from D050000L by the font's own codes ('A' is the a10 dingbat, not
+// a Latin A); without them it has no stand-in.
+func TestZapfDingbats(t *testing.T) {
+	segs, err := Outline("ZapfDingbats", 'A')
+	if urwPath("ZapfDingbats") == "" {
+		if err == nil {
+			t.Error("ZapfDingbats has no stand-in, but an outline came back")
+		}
+		t.Skip("URW base-35 OpenType fonts not installed")
+	}
+	if err != nil || len(segs) == 0 {
+		t.Fatalf("no outline for ZapfDingbats 'A': %v", err)
+	}
+	if !strings.HasSuffix(Source("ZapfDingbats"), "D050000L.otf") {
+		t.Errorf("outlines from %q, not D050000L.otf", Source("ZapfDingbats"))
+	}
+	// a10 is a cross whose arms reach 0.035 to 0.657 em across (Adobe's
+	// ZapfDingbats.afm); a Latin A would be narrower and start further in
+	llx, _, urx, _, ok := URWInk("ZapfDingbats", 'A')
+	if !ok || llx > 0.06 || urx < 0.63 {
+		t.Errorf("'A' ink %.3f to %.3f em: not the a10 dingbat", llx, urx)
 	}
 }
 

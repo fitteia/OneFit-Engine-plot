@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fitteia/OneFit-Engine-plot/internal/eps"
+
 	pdraw "github.com/fitteia/OneFit-Engine-plot/draw"
 )
 
@@ -48,6 +50,9 @@ func TestSVGTextAsPathsMatchesGracebat(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			sameTime(t, name)
 			p, d := drawing(t, f)
+			if overlineFiles[name] {
+				gracebatDecorations(t, d, name)
+			}
 			for _, path := range d.Paths {
 				if path.Style.Pattern != 0 {
 					// gracebat's page was drawn by Ghostscript, which moves
@@ -83,5 +88,42 @@ func TestSVGTextAsPathsMatchesGracebat(t *testing.T) {
 				t.Errorf("%.2f%% differ from gracebat's page, limit %.1f%%", 100*frac, 100*glyphLimit)
 			}
 		})
+	}
+}
+
+// overlineFiles draw \o overlines, which plot-go deliberately puts above
+// the glyphs where Grace's stroke crosses them (docs/grace-behaviour.md,
+// Text); render's text tests check where plot-go puts them.
+var overlineFiles = map[string]bool{
+	"style-text-context": true, "style-text-decorations": true, "style-text-decoration-rotation": true,
+}
+
+// gracebatDecorations moves the text decoration strokes (underlines and
+// overlines, drawn with their text's ID) to where gracebat's EPS has them,
+// as render's TestMatchesGracebat does, so the pixels compare everything
+// else.
+func gracebatDecorations(t *testing.T, d *pdraw.Drawing, name string) {
+	t.Helper()
+	r, err := os.Open(filepath.Join("..", "testdata", "ref", name+".eps"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	want, err := eps.Parse(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < min(len(d.Paths), len(want.Paths)); i++ {
+		id := d.Paths[i].ID
+		if !strings.HasPrefix(id, "string.") && !strings.HasSuffix(id, ".label") && !strings.HasSuffix(id, ".title") &&
+			!strings.HasSuffix(id, ".subtitle") && !strings.HasSuffix(id, ".ticklabel") && !strings.HasSuffix(id, ".avalue") {
+			continue
+		}
+		for j := 0; j < min(len(d.Paths[i].Segments), len(want.Paths[i].Segments)); j++ {
+			gs, ws := d.Paths[i].Segments[j].Points, want.Paths[i].Segments[j].Points
+			for k := 0; k < min(len(gs), len(ws)); k++ {
+				gs[k] = ws[k]
+			}
+		}
 	}
 }

@@ -146,7 +146,13 @@ var urwFiles = map[string]string{
 	"Courier-Oblique":       "NimbusMonoPS-Italic.otf",
 	"Courier-BoldOblique":   "NimbusMonoPS-BoldItalic.otf",
 	"Symbol":                "StandardSymbolsPS.otf",
+	"ZapfDingbats":          "D050000L.otf",
 }
+
+// ownCodes: the URW fonts that map a standard font's own character codes
+// ('m' is mu in Standard Symbols, 'A' the a10 dingbat in D050000L), not
+// Latin-1.
+func ownCodes(font string) bool { return font == "Symbol" || font == "ZapfDingbats" }
 
 // urwDirs are searched in order, after $OFE_URW_FONTS: Debian's and
 // Fedora's places, Homebrew's (where the onefite-go formula installs
@@ -289,8 +295,7 @@ func Outline(fontName string, c byte) ([]Seg, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	r := Rune(fontName, c)
-	if f.urw && fontName == "Symbol" {
-		// Standard Symbols maps the Symbol font's own codes ('m' is mu)
+	if f.urw && ownCodes(fontName) {
 		r = rune(c)
 	}
 	i, err := f.f.GlyphIndex(&f.buf, r)
@@ -304,9 +309,19 @@ func Outline(fontName string, c byte) ([]Seg, error) {
 	}
 	out := make([]Seg, 0, len(segs))
 	for _, s := range segs {
-		n := map[sfnt.SegmentOp]int{sfnt.SegmentOpMoveTo: 1, sfnt.SegmentOpLineTo: 1, sfnt.SegmentOpQuadTo: 2, sfnt.SegmentOpCubeTo: 3}[s.Op]
-		op := map[sfnt.SegmentOp]Op{sfnt.SegmentOpMoveTo: MoveTo, sfnt.SegmentOpLineTo: LineTo, sfnt.SegmentOpQuadTo: QuadTo, sfnt.SegmentOpCubeTo: CubeTo}[s.Op]
-		seg := Seg{Op: op}
+		var n int
+		var op Op
+		switch s.Op {
+		case sfnt.SegmentOpMoveTo:
+			n, op = 1, MoveTo
+		case sfnt.SegmentOpLineTo:
+			n, op = 1, LineTo
+		case sfnt.SegmentOpQuadTo:
+			n, op = 2, QuadTo
+		case sfnt.SegmentOpCubeTo:
+			n, op = 3, CubeTo
+		}
+		seg := Seg{Op: op, Pts: make([][2]float64, 0, n)}
 		for k := 0; k < n; k++ {
 			// font units to ems; sfnt's y grows down, ems' up
 			seg.Pts = append(seg.Pts, [2]float64{
@@ -334,8 +349,8 @@ func URWInk(fontName string, c byte) (llx, lly, urx, ury float64, ok bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	r := Rune(fontName, c)
-	if fontName == "Symbol" {
-		r = rune(c) // Standard Symbols maps the Symbol font's own codes
+	if ownCodes(fontName) {
+		r = rune(c)
 	}
 	i, err := f.f.GlyphIndex(&f.buf, r)
 	if err != nil || i == 0 {
