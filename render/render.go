@@ -614,6 +614,13 @@ func (r *renderer) set(t xform, s *agr.Set) {
 		r.warn("set %d: rows missing %s display columns are retained but not drawn; edit data to supply them", s.ID, s.Type)
 		s = complete
 	}
+	if s.Type == "xyhilo" {
+		r.hilo(t, s)
+		if s.AValue.On {
+			r.annotatedValues(t, s)
+		}
+		return
+	}
 
 	pts, breaks := r.linePoints(t, s)
 	if s.Line.Type != 0 && (s.Fill.Type == 1 || s.Fill.Type == 2) {
@@ -653,6 +660,40 @@ func (r *renderer) set(t xform, s *agr.Set) {
 	}
 	if s.AValue.On {
 		r.annotatedValues(t, s)
+	}
+}
+
+// hilo draws Grace's XYHILO set from (x, high, low, open, close) rows.
+// The symbol size sets half the open/close tick span; symbol color, line
+// width, line style and pattern style all three strokes, even when the
+// ordinary symbol type and set line are off (measured from gracebat).
+func (r *renderer) hilo(t xform, s *agr.Set) {
+	st, ok := r.style(s.Symbol.Color, s.Symbol.LineWidth, s.Symbol.LineStyle)
+	st, ok = r.patterned(st, ok, s.Symbol.Pattern)
+	if !ok {
+		return
+	}
+	half := max(0, s.Symbol.Size) * tickUnit
+	step := s.Symbol.Skip + 1
+	for i, row := range s.Data {
+		if i%step != 0 {
+			continue
+		}
+		x, high, low, open, close := row[0], row[1], row[2], row[3], row[4]
+		if !t.ok(x, high) || !t.ok(x, low) || !t.ok(x, open) || !t.ok(x, close) {
+			continue
+		}
+		px := t.x(x)
+		for _, seg := range []draw.Segment{
+			line(draw.Point{X: px, Y: t.y(high)}, draw.Point{X: px, Y: t.y(low)}),
+			line(draw.Point{X: px, Y: t.y(open)}, draw.Point{X: px - half, Y: t.y(open)}),
+			line(draw.Point{X: px, Y: t.y(close)}, draw.Point{X: px + half, Y: t.y(close)}),
+		} {
+			if a, b, visible := clipSegment(seg.Points[0], seg.Points[1], t.g.View); visible {
+				r.id = fmt.Sprintf("g%d.s%d.hilo", t.g.ID, s.ID)
+				r.path(st, false, line(a, b))
+			}
+		}
 	}
 }
 

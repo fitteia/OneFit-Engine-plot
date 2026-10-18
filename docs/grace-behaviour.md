@@ -742,6 +742,16 @@ including character symbols. The legend sample still uses the set's ordinary
 `symbol size`. Circles, filled squares, character symbols, zero/negative sizes,
 row skipping and legend placement are covered by the renderer comparisons.
 
+## Hi/Lo/Open/Close candles (`xyhilo`)
+
+Grace reads five values per row: x, high, low, open and close. Black-box
+EPS comparisons show a vertical high-to-low stroke, an open tick from the
+data x position toward the left, and a close tick toward the right. The
+symbol size sets the half-length of both ticks in viewport units; symbol
+color, line width, line style and pattern style all three strokes, even when
+the ordinary symbol and set line are off. Symbol skip counts source rows,
+including rows outside the viewport. Candles are clipped to the graph view.
+
 ### Non-destructive display types (intentional difference)
 Plot-go retains all numeric columns when a set type changes, including columns
 unused by the selected display type. Unlike Grace's resizing, it never drops

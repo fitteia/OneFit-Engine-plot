@@ -78,6 +78,9 @@ OneFit's own 704 files use; it is history, not this list.
 - XY sets `bar`, `bardy` and `bardydy`: vertical bars from their selected
   baseline, with symbol-sized widths and the set's line and fill styles;
   optional symmetric or separate upper/lower y errors.
+- `xyhilo` sets: Hi/Lo/Open/Close candles from five columns `(x, high,
+  low, open, close)`. The symbol color, line width/style/pattern and size
+  control the three strokes; symbol skip controls which rows are drawn.
 - Point annotations (`avalue`): X, Y, X/Y pairs, optional quoted text
   after each numeric data row, or the third numeric column (including
   an error column). Format, precision, prepend/append, font, size, color,
@@ -102,7 +105,7 @@ Where an enabled item would affect hardcopy, a warning names it.
 directives back as read, so a project opened and saved loses none of them.
 
 - Stacked graphs and graph types other than XY.
-- Other set types (`xyhilo`, `xycolor`,
+- Other set types (`xycolor`,
   `xyvmap`, `xyboxplot`, `xyz`, and the graph-specific `xycolpat` and `xyr`);
   their data rows are read as far as they go. Axis scales other than normal,
   logarithmic and reciprocal.
