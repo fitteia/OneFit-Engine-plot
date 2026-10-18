@@ -752,6 +752,15 @@ color, line width, line style and pattern style all three strokes, even when
 the ordinary symbol and set line are off. Symbol skip counts source rows,
 including rows outside the viewport. Candles are clipped to the graph view.
 
+## Per-point fill colors (`xycolor`)
+
+An `xycolor` row's third value is rounded to the nearest integer color-map
+index for that point's symbol fill. The symbol outline keeps the set's regular
+symbol color. The selected fill pattern still determines whether and how the
+interior is painted; a pattern of zero leaves the symbol unfilled. Black-box
+EPS comparisons cover fractional indices, two distinct fill colors and the
+ordinary outline style.
+
 ### Non-destructive display types (intentional difference)
 Plot-go retains all numeric columns when a set type changes, including columns
 unused by the selected display type. Unlike Grace's resizing, it never drops

@@ -81,6 +81,10 @@ OneFit's own 704 files use; it is history, not this list.
 - `xyhilo` sets: Hi/Lo/Open/Close candles from five columns `(x, high,
   low, open, close)`. The symbol color, line width/style/pattern and size
   control the three strokes; symbol skip controls which rows are drawn.
+- `xycolor` sets: x, y and a per-point symbol fill-color index from the
+  project's color map (fractional indices round to the nearest integer).
+  Symbol shape, fill pattern, outline, line, and skip settings remain the
+  ordinary set styles.
 - Point annotations (`avalue`): X, Y, X/Y pairs, optional quoted text
   after each numeric data row, or the third numeric column (including
   an error column). Format, precision, prepend/append, font, size, color,
@@ -105,8 +109,8 @@ Where an enabled item would affect hardcopy, a warning names it.
 directives back as read, so a project opened and saved loses none of them.
 
 - Stacked graphs and graph types other than XY.
-- Other set types (`xycolor`,
-  `xyvmap`, `xyboxplot`, `xyz`, and the graph-specific `xycolpat` and `xyr`);
+- Other set types (`xyvmap`, `xyboxplot`, `xyz`, and the graph-specific
+  `xycolpat` and `xyr`);
   their data rows are read as far as they go. Axis scales other than normal,
   logarithmic and reciprocal.
 - Anything else plot-go does not know: an unknown directive warns and is

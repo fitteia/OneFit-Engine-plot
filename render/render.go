@@ -1160,11 +1160,17 @@ func (r *renderer) symbols(t xform, s *agr.Set) {
 			continue
 		}
 		pointPen := p
-		if s.Type == "xysize" {
-			// Grace's size column replaces the set size, including for
-			// character symbols; its sign does not change the symbol.
+		if s.Type == "xysize" || s.Type == "xycolor" {
+			// Point-specific size and fill color both use a local style copy;
+			// neither changes the set's ordinary legend sample.
 			copySet := *s
-			copySet.Symbol.Size = math.Abs(row[2])
+			if s.Type == "xysize" {
+				copySet.Symbol.Size = math.Abs(row[2])
+			} else {
+				// XYColor's third column selects the symbol fill color; its
+				// outline keeps the set's regular symbol color.
+				copySet.Symbol.FillColor = int(math.Round(row[2]))
+			}
 			pointPen = r.pen(&copySet)
 		}
 		pointPen.draw(r, t.x(x), t.y(y))

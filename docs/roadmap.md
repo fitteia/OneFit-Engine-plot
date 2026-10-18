@@ -26,10 +26,15 @@ then vendored in the GUI and pinned in the debs.
   controls alongside its existing data editor and column calculator.
   The fitting Plots pane is unchanged.
 
-- **Hi/Lo/Open/Close candles** (`xyhilo`): implemented, pending release.
+- **Hi/Lo/Open/Close candles** (`xyhilo`): v0.2.26.
   The renderer and Figures editor support five-column candle data, Grace's
   symbol-based stroke styling, size and row skipping. The fitting Plots pane
   is unchanged.
+
+- **Per-point fill colors** (`xycolor`): implemented, pending release.
+  The third data column selects each symbol's fill color from the project
+  color map; Figures exposes the type and explains fill/outline behavior.
+  The fitting Plots pane is unchanged.
 
 - **Foreground annotations**: v0.2.22. Optional per-object On top setting
   draws shapes above legends and text while retaining coordinate attachment.
@@ -61,8 +66,8 @@ then vendored in the GUI and pinned in the debs.
   output, so plot-go preserves these directives without warning rather than
   implementing them as drawing features.
 
-- **Remaining set types surveyed**: Grace draws `xycolor`,
-  `xyvmap`, `xyboxplot`, and `xyz` in XY graphs.
+- **Remaining set types surveyed**: Grace draws `xyvmap`, `xyboxplot`, and
+  `xyz` in XY graphs.
   `xycolpat` draws in pie graphs and `xyr` in fixed graphs; Grace rejects both
   in XY graphs. plot-go does not yet render any of these types.
 
@@ -79,8 +84,7 @@ then vendored in the GUI and pinned in the debs.
 
 ## Later
 
-- **Other set types**: xyr, xycolor,
-  xycolpat, xyvmap, xyboxplot, xyz.
+- **Other set types**: xyr, xycolpat, xyvmap, xyboxplot, xyz.
 - **Other graph types and stacked graphs**: polar, Smith, pie, chart,
   fixed.
 - **Axis scales** beyond normal, logarithmic and reciprocal.
