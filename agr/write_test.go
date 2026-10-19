@@ -269,6 +269,9 @@ func TestEditedShapeDoesNotChangeLaterInheritedShape(t *testing.T) {
 // TestWriteRoundTrip: every corpus file, written and read back, is the same
 // Project and draws the same - the figure editor saves through Write.
 func TestWriteRoundTrip(t *testing.T) {
+	// one time for every drawing: a timestamp (style-timestamp.agr) drawn
+	// twice across a second's turn differs (seen in CI under -race)
+	t.Setenv("SOURCE_DATE_EPOCH", "1760000000")
 	files, _ := filepath.Glob("../testdata/corpus/*.agr")
 	if len(files) == 0 {
 		t.Fatal("no corpus files")
