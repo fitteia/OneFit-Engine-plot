@@ -99,7 +99,81 @@ func Overlay(fig *agr.Project, base, over int, shared string) error {
 	sa.Bar.Color, sa.Bar.LineStyle, sa.Bar.LineWidth = b.Frame.Color, max(b.Frame.LineStyle, 1), b.Frame.LineWidth
 	SyncLinks(fig, base, shared)
 	ArrangeOverlays(fig)
+	separateLegend(fig, o)
 	return nil
+}
+
+// LegendGap is the space, in viewport units, between an overlay's legend
+// and the one above it.
+const LegendGap = 0.01
+
+// separateLegend moves graph o's legend, when it covers the legend of
+// another graph of its overlay, below the lowest of them, its left edge
+// with theirs - legends placed apart by hand stay where they are.
+func separateLegend(fig *agr.Project, o *agr.Graph) {
+	box := func(d *draw.Drawing, g *agr.Graph) (backend.Box, bool) {
+		return part(d, fmt.Sprintf("g%d.legend", g.ID))
+	}
+	d, _ := render.Render(fig)
+	mine, ok := box(d, o)
+	if !ok {
+		return
+	}
+	var others []backend.Box
+	covered := false
+	base := graph(fig, o.Overlay.Base)
+	for _, g := range append([]*agr.Graph{base}, Overlays(fig, o.Overlay.Base)...) {
+		if g == o || g == nil {
+			continue
+		}
+		if b, ok := box(d, g); ok {
+			others = append(others, b)
+			covered = covered || b.LLX < mine.URX && mine.LLX < b.URX && b.LLY < mine.URY && mine.LLY < b.URY
+		}
+	}
+	if !covered {
+		return
+	}
+	low := others[0]
+	for _, b := range others[1:] {
+		if b.LLY < low.LLY {
+			low = b
+		}
+	}
+	// the legend's place is a fixed step from its box, whatever the
+	// legend holds: move the place by what the box is off
+	L := &o.Legend
+	if L.LocType == "world" {
+		L.LocType = "view"
+		L.X, L.Y = mine.LLX, mine.URY
+		d, _ = render.Render(fig)
+		mine, _ = box(d, o)
+	}
+	L.X += low.LLX - mine.LLX
+	L.Y += low.LLY - LegendGap - mine.URY
+}
+
+// part is the box, in viewport units, of what the drawing draws with IDs
+// id or starting "id."; false when it draws nothing.
+func part(d *draw.Drawing, id string) (backend.Box, bool) {
+	sub := &draw.Drawing{Width: d.Width, Height: d.Height}
+	for _, p := range d.Paths {
+		if p.ID == id || strings.HasPrefix(p.ID, id+".") {
+			sub.Paths = append(sub.Paths, p)
+		}
+	}
+	for _, t := range d.Texts {
+		if t.ID == id || strings.HasPrefix(t.ID, id+".") {
+			sub.Texts = append(sub.Texts, t)
+		}
+	}
+	if len(sub.Paths)+len(sub.Texts) == 0 {
+		return backend.Box{}, false
+	}
+	const unit = 10000
+	b := backend.BoundingBox(sub, unit)
+	// BoundingBox adds a point of margin each side
+	return backend.Box{LLX: (b.LLX + 1) / unit, LLY: (b.LLY + 1) / unit, URX: (b.URX - 1) / unit, URY: (b.URY - 1) / unit}, true
 }
 
 // OverlayAll overlays every graph of the figure on its first one, sharing
@@ -254,27 +328,14 @@ func Reach(fig *agr.Project, base int, shared string) float64 {
 // by off) graph g's axis name, on the opposite side, reaches with all it
 // draws there.
 func reach(d *draw.Drawing, g *agr.Graph, name string, off float64) float64 {
-	prefix := fmt.Sprintf("g%d.%s.", g.ID, name)
-	part := &draw.Drawing{Width: d.Width, Height: d.Height}
-	for _, p := range d.Paths {
-		if strings.HasPrefix(p.ID, prefix) {
-			part.Paths = append(part.Paths, p)
-		}
-	}
-	for _, t := range d.Texts {
-		if strings.HasPrefix(t.ID, prefix) {
-			part.Texts = append(part.Texts, t)
-		}
-	}
-	if len(part.Paths)+len(part.Texts) == 0 {
+	box, ok := part(d, fmt.Sprintf("g%d.%s", g.ID, name))
+	if !ok {
 		return 0
 	}
-	const unit = 10000
-	box := backend.BoundingBox(part, unit)
 	if name == "y" {
-		return max(0, box.URX/unit-g.View.XMax-off)
+		return max(0, box.URX-g.View.XMax-off)
 	}
-	return max(0, box.URY/unit-g.View.YMax-off)
+	return max(0, box.URY-g.View.YMax-off)
 }
 
 // sharedNumbers puts the numbers and label of the group's shared axis on
@@ -413,5 +474,91 @@ func AxisColor(fig *agr.Project, id int, name string, color int) error {
 	a.Bar.Color, a.Tick.MajorMarks.Color, a.Tick.MinorMarks.Color = color, color, color
 	a.TickLabel.Color, a.Label.Color = color, color
 	SyncLinks(fig, id, name)
+	return nil
+}
+
+// Candidate is a graph that looks overlaid on another without a link - an
+// overlay made in Grace: Over sits exactly over Base and has its range and
+// scale on axis Shared.
+type Candidate struct {
+	Over   int    `json:"over"`
+	Base   int    `json:"base"`
+	Shared string `json:"shared"`
+}
+
+// Candidates are the figure's unlinked overlays, for an editor to offer
+// linking (Link): each graph without a link over an earlier one that is
+// not itself overlaid, at the same place, sharing the range and scale of
+// an axis. When both axes match, the shared one is the axis whose other
+// axis the graph draws on the opposite side, else x.
+func Candidates(fig *agr.Project) []Candidate {
+	var out []Candidate
+	near := func(a, b float64) bool { return math.Abs(a-b) <= 1e-6*max(1, math.Abs(a), math.Abs(b)) }
+	sameView := func(a, b agr.Rect) bool {
+		return near(a.XMin, b.XMin) && near(a.XMax, b.XMax) && near(a.YMin, b.YMin) && near(a.YMax, b.YMax)
+	}
+	same := func(a, b *agr.Graph, name string) bool {
+		if name == "x" {
+			return near(a.World.XMin, b.World.XMin) && near(a.World.XMax, b.World.XMax) && a.X.Scale == b.X.Scale && a.X.Invert == b.X.Invert
+		}
+		return near(a.World.YMin, b.World.YMin) && near(a.World.YMax, b.World.YMax) && a.Y.Scale == b.Y.Scale && a.Y.Invert == b.Y.Invert
+	}
+	linked := map[int]bool{} // a graph a candidate overlays: not a base too
+	for i, o := range fig.Graphs {
+		if o.Overlay.Shared != "" || len(Overlays(fig, o.ID)) > 0 || o.Hidden {
+			continue
+		}
+		for _, b := range fig.Graphs[:i] {
+			if b.Overlay.Shared != "" || linked[b.ID] || b.Hidden || !sameView(o.View, b.View) {
+				continue
+			}
+			sx, sy := same(o, b, "x"), same(o, b, "y")
+			shared := ""
+			switch {
+			case sx && sy:
+				shared = "x"
+				if o.X.TickLabel.Place == "opposite" && o.Y.TickLabel.Place != "opposite" {
+					shared = "y"
+				}
+			case sx:
+				shared = "x"
+			case sy:
+				shared = "y"
+			default:
+				continue
+			}
+			out = append(out, Candidate{Over: o.ID, Base: b.ID, Shared: shared})
+			linked[o.ID] = true
+			break
+		}
+	}
+	return out
+}
+
+// Link links graph over to graph base, sharing axis shared, as an overlay
+// already drawn as wanted (one made in Grace): only the link is added,
+// and over takes base's shared axis (SyncLinks); its frame, its axes and
+// their places stay as they are.
+func Link(fig *agr.Project, base, over int, shared string) error {
+	if shared != "x" && shared != "y" {
+		return fmt.Errorf("the shared axis is x or y, not %q", shared)
+	}
+	b, o := graph(fig, base), graph(fig, over)
+	switch {
+	case b == nil:
+		return fmt.Errorf("no graph %d", base)
+	case o == nil:
+		return fmt.Errorf("no graph %d", over)
+	case base == over:
+		return fmt.Errorf("a graph cannot be overlaid on itself")
+	case b.Overlay.Shared != "":
+		return fmt.Errorf("graph %d is overlaid on graph %d; link to that one", base, b.Overlay.Base)
+	case o.Overlay.Shared != "":
+		return fmt.Errorf("graph %d is already overlaid on graph %d", over, o.Overlay.Base)
+	case len(Overlays(fig, over)) > 0:
+		return fmt.Errorf("graph %d has graphs overlaid on it", over)
+	}
+	o.Overlay = agr.Link{Base: base, Shared: shared}
+	SyncLinks(fig, base, shared)
 	return nil
 }

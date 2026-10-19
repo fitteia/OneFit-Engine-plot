@@ -163,6 +163,13 @@ plus `AxisGap`. `OverlayAll` overlays every graph on the first.
   Only the outermost copy has the numbers and the label; the others draw
   their line and ticks.
 - `AxisColor` colours an axis whole; on a shared axis, in every graph.
+- An overlay's legend that covers another legend of its group goes below
+  the lowest of them, left edges aligned, `LegendGap` apart; legends
+  already apart stay where they are.
+- `Candidates` lists graphs that look overlaid without a link - at the
+  same place as an earlier graph, with its range and scale on an axis, as
+  Grace saves an overlay - for an editor to offer; `Link` adds only the
+  link (and syncs the shared axis), leaving the drawing as it was.
 - `Unlink` makes a graph its own again; `RemoveGraph` of a base makes its
   first overlay the base. `Layout` places each group as one panel, with room
   for the free axes on the right or on top (`Reach`).

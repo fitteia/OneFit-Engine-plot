@@ -233,11 +233,21 @@ func TestOverlayMatchesGracebat(t *testing.T) {
 		n      int
 		shared string
 		shift  float64
+		legend bool
 	}{
-		{"two", 2, "x", 0}, {"three", 3, "x", 0}, {"shifted", 2, "x", 0.03}, {"shared-y", 3, "y", 0.02},
+		{"two", 2, "x", 0, false}, {"three", 3, "x", 0, false}, {"shifted", 2, "x", 0.03, false}, {"shared-y", 3, "y", 0.02, false},
+		{"legends", 3, "x", 0, true},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			fig := overlayFigure(t, c.n)
+			for _, g := range fig.Graphs {
+				if c.legend {
+					g.Legend.On, g.Legend.LocType, g.Legend.X, g.Legend.Y = true, "view", 0.3, 0.8
+					for _, s := range g.Sets {
+						s.Legend = fmt.Sprintf("graph %d set %d", g.ID, s.ID)
+					}
+				}
+			}
 			if err := OverlayAll(fig, c.shared); err != nil {
 				t.Fatal(err)
 			}
@@ -330,5 +340,85 @@ func TestOverlayKeepsLabels(t *testing.T) {
 		if g.X.Label.Text != want {
 			t.Errorf("g%d x label %q, want %q", g.ID, g.X.Label.Text, want)
 		}
+	}
+}
+
+// TestOverlayLegendsApart: overlaid, each legend goes below the one
+// before, left edges aligned; legends already apart stay.
+func TestOverlayLegendsApart(t *testing.T) {
+	fig := overlayFigure(t, 3)
+	for _, g := range fig.Graphs {
+		g.Legend.On, g.Legend.LocType, g.Legend.X, g.Legend.Y = true, "view", 0.3, 0.8
+		for _, s := range g.Sets {
+			s.Legend = fmt.Sprintf("graph %d set %d", g.ID, s.ID)
+		}
+	}
+	if err := OverlayAll(fig, "x"); err != nil {
+		t.Fatal(err)
+	}
+	d, _ := render.Render(fig)
+	var boxes []backend.Box
+	for _, g := range fig.Graphs {
+		b, ok := part(d, fmt.Sprintf("g%d.legend", g.ID))
+		if !ok {
+			t.Fatalf("g%d draws no legend", g.ID)
+		}
+		boxes = append(boxes, b)
+	}
+	for i := 1; i < len(boxes); i++ {
+		a, b := boxes[i-1], boxes[i]
+		if math.Abs(b.LLX-a.LLX) > 2e-4 || math.Abs(a.LLY-LegendGap-b.URY) > 2e-4 {
+			t.Errorf("legend %d at %+v, legend %d above at %+v", i, b, i-1, a)
+		}
+	}
+	// moved apart by hand, a legend stays when overlaid again
+	g2 := fig.Graphs[2]
+	g2.Legend.X, g2.Legend.Y = 0.3, 0.3
+	Unlink(fig, g2.ID)
+	if err := Overlay(fig, 0, g2.ID, "x"); err != nil {
+		t.Fatal(err)
+	}
+	if g2.Legend.X != 0.3 || g2.Legend.Y != 0.3 {
+		t.Errorf("a legend apart was moved to %v, %v", g2.Legend.X, g2.Legend.Y)
+	}
+}
+
+// TestCandidates: graphs at one place sharing an axis's range, without a
+// link (as Grace saves an overlay), are offered; Link adds only the link.
+func TestCandidates(t *testing.T) {
+	fig := overlayFigure(t, 3)
+	if err := Layout(fig, "grid"); err != nil {
+		t.Fatal(err)
+	}
+	if c := Candidates(fig); len(c) != 0 {
+		t.Fatalf("separate panels offered: %+v", c)
+	}
+	g0, g1, g2 := fig.Graphs[0], fig.Graphs[1], fig.Graphs[2]
+	g1.View, g2.View = g0.View, g0.View
+	g1.Y.TickLabel.Place = "opposite"
+	g2.World.XMax *= 2 // its y range is g0's x 100 too: nothing shared
+	got := Candidates(fig)
+	if len(got) != 1 || got[0] != (Candidate{Over: 1, Base: 0, Shared: "x"}) {
+		t.Fatalf("candidates %+v", got)
+	}
+	// both axes the same: the one whose other axis is drawn opposite
+	g2.World = g0.World
+	g2.X.TickLabel.Place = "opposite"
+	if got = Candidates(fig); len(got) != 2 || got[1] != (Candidate{Over: 2, Base: 0, Shared: "y"}) {
+		t.Fatalf("candidates %+v", got)
+	}
+	frame := g1.Frame
+	g1.X.Tick.Major = 0.05
+	if err := Link(fig, 0, 1, "x"); err != nil {
+		t.Fatal(err)
+	}
+	if g1.Overlay != (agr.Link{Base: 0, Shared: "x"}) || g1.Frame != frame || g1.X.Tick.Major != g0.X.Tick.Major || g1.Y.TickLabel.Place != "opposite" {
+		t.Errorf("linked %+v frame %+v tick %v", g1.Overlay, g1.Frame, g1.X.Tick.Major)
+	}
+	if got = Candidates(fig); len(got) != 1 || got[0].Over != 2 {
+		t.Errorf("after linking g1: %+v", got)
+	}
+	if Link(fig, 1, 2, "x") == nil || Link(fig, 0, 1, "x") == nil || Link(fig, 0, 2, "z") == nil {
+		t.Error("a bad link was made")
 	}
 }

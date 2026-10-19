@@ -16,7 +16,9 @@ then vendored in the GUI and pinned in the debs.
   sharing its x or y axis, keeps that axis linked (`figure.Overlay`,
   `SyncLinks`, `Unlink`, `OverlayShift`, `ArrangeOverlays`). The link is a
   `# plot-go: gN overlays gM shared x|y` comment; the rest is plain Grace,
-  drawn by gracebat as by plot-go (`figure` tests compare them).
+  drawn by gracebat as by plot-go (`figure` tests compare them). v0.2.40:
+  legends of an overlay kept apart, and Grace's own overlays found
+  (`Candidates`) and linked as they are (`Link`).
 - **Variable-size symbols** (`xysize`): v0.2.25. Per-point
   size column with standard symbol styles, character symbols and legend sample
   sizing measured against Grace. Figures pairs this with a plot-type choice and
