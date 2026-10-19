@@ -23,6 +23,9 @@ type Box struct {
 func BoundingBox(d *draw.Drawing, unit float64) Box {
 	lx, ly, ux, uy := math.Inf(1), math.Inf(1), math.Inf(-1), math.Inf(-1)
 	grow := func(x, y float64) {
+		if math.IsNaN(x) || math.IsNaN(y) || math.IsInf(x, 0) || math.IsInf(y, 0) {
+			return
+		}
 		lx, ly, ux, uy = min(lx, x), min(ly, y), max(ux, x), max(uy, y)
 	}
 	for _, p := range d.Paths {
@@ -58,8 +61,12 @@ func BoundingBox(d *draw.Drawing, unit float64) Box {
 	if math.IsInf(lx, 1) {
 		return Box{0, 0, d.Width * unit, d.Height * unit}
 	}
+	// ink far off the page (a text of size 1e300) would make a box no
+	// reader can use - an EPS whose box overflows, a raster of one pixel:
+	// the box stays within a page's width and height around the page
+	w, h := d.Width*unit, d.Height*unit
 	return Box{
-		LLX: math.Floor(lx*unit - 1), LLY: math.Floor(ly*unit - 1),
-		URX: math.Ceil(ux*unit + 1), URY: math.Ceil(uy*unit + 1),
+		LLX: math.Floor(max(lx*unit-1, -w)), LLY: math.Floor(max(ly*unit-1, -h)),
+		URX: math.Ceil(min(ux*unit+1, 2*w)), URY: math.Ceil(min(uy*unit+1, 2*h)),
 	}
 }

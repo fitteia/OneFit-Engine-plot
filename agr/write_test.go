@@ -194,6 +194,52 @@ func TestEditedDrawingObjectsSurviveRoundTrip(t *testing.T) {
 	}
 }
 
+// A shape edited and saved again and again keeps one line of each setting
+// (each save once added all of them again), and its unknown lines once.
+func TestShapeEditedRepeatedlyDoesNotGrow(t *testing.T) {
+	in := `@version 50125
+@with line
+@    line on
+@    line loctype world
+@    line g0
+@    line 1, 2, 3, 4
+@    line color 2
+@    line future setting 42
+@line def
+@g0 on
+@with g0
+@    world 0, 0, 5, 5
+`
+	text := in
+	var sizes []int
+	for i := range 4 {
+		p, err := agr.Parse(strings.NewReader(text))
+		if err != nil {
+			t.Fatal(err)
+		}
+		p.Shapes[0].X2 = 4 + float64(i)/10
+		var b bytes.Buffer
+		if err := agr.Write(&b, p); err != nil {
+			t.Fatal(err)
+		}
+		text = b.String()
+		q, err := agr.Parse(strings.NewReader(text))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if *q.Shapes[0] != *p.Shapes[0] {
+			t.Fatalf("save %d: shape read back as %+v, want %+v", i+1, q.Shapes[0], p.Shapes[0])
+		}
+		sizes = append(sizes, strings.Count(text, "@    line "))
+		if n := strings.Count(text, "line future setting 42"); n != 1 {
+			t.Fatalf("save %d: the unknown setting is written %d times", i+1, n)
+		}
+	}
+	if sizes[3] != sizes[0] {
+		t.Fatalf("the block's lines, save by save: %v; want no growth", sizes)
+	}
+}
+
 func TestAddAndDeleteShapesKeepInheritedSettings(t *testing.T) {
 	p, err := agr.Parse(strings.NewReader(`@with box
 @    box on

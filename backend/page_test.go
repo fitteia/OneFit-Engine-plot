@@ -50,3 +50,36 @@ func TestInvalidPageSizesMatchExplicitFallback(t *testing.T) {
 		})
 	}
 }
+
+// A text far larger than the page (size 1e300) made a box no reader could
+// use: an EPS %%BoundingBox of minus and plus 2^63, a cropped raster of one
+// pixel. The box now stays within a page's size around the page.
+func TestBoundingBoxOfHugeTextStaysNearPage(t *testing.T) {
+	p, err := agr.ParseFile("../testdata/corpus/test3-1.agr")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Strings) == 0 {
+		p.Strings = append(p.Strings, &agr.Text{On: true, LocType: "view", X: 0.5, Y: 0.5, Color: 1, Font: 4, Text: "huge"})
+	}
+	p.Strings[0].On, p.Strings[0].CharSize = true, 1e300
+	d, _ := render.Render(p)
+	unit := math.Min(p.PageWidth, p.PageHeight)
+	w, h := d.Width*unit, d.Height*unit
+	bb := BoundingBox(d, unit)
+	for _, v := range []float64{bb.LLX, bb.LLY, bb.URX, bb.URY} {
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			t.Fatalf("box %+v is not finite", bb)
+		}
+	}
+	if bb.LLX < -w || bb.LLY < -h || bb.URX > 2*w || bb.URY > 2*h || bb.URX <= bb.LLX || bb.URY <= bb.LLY {
+		t.Fatalf("box %+v is not within a page's size around the %gx%g page", bb, w, h)
+	}
+	var b bytes.Buffer
+	if err := WriteEPS(&b, d, p.PageWidth, p.PageHeight, "huge"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(b.String(), "9223372036854775807") {
+		t.Fatal("the EPS box overflowed")
+	}
+}

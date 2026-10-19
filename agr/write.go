@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -175,12 +176,11 @@ func writeShape(pf func(string, ...any), raw []string, s *Shape) error {
 			end--
 		}
 		for _, d := range raw[1:end] {
-			// A previous graph reference must not survive a change back to
-			// the unspecified graph (-1).
-			if s.Graph < 0 && strings.HasPrefix(d, k+" g") {
-				if _, err := strconv.Atoi(strings.TrimPrefix(d, k+" g")); err == nil {
-					continue
-				}
+			// the settings written below replace the block's own, so that
+			// a shape edited again and again keeps one line of each (and a
+			// graph reference does not survive a change back to -1)
+			if knownShapeSetting(k, d) {
+				continue
 			}
 			pf("@    %s", d)
 		}
@@ -209,6 +209,38 @@ func writeShape(pf func(string, ...any), raw []string, s *Shape) error {
 	}
 	pf("@%s def", k)
 	return nil
+}
+
+// knownShapeSetting tells whether d, a line of a kind k object's block
+// ("box color 2"), is a setting writeShape writes from the Shape - one of
+// those Parse reads into it (shapeLine).
+func knownShapeSetting(k, d string) bool {
+	f := strings.FieldsFunc(d, func(r rune) bool { return r == ' ' || r == '\t' || r == ',' })
+	if len(f) < 2 || f[0] != k {
+		return false
+	}
+	f = f[1:]
+	isNum := func(ws ...string) bool {
+		for _, w := range ws {
+			if _, err := strconv.ParseFloat(w, 64); err != nil {
+				return false
+			}
+		}
+		return true
+	}
+	switch len(f) {
+	case 1:
+		return slices.Contains([]string{"on", "off", "true", "false"}, f[0]) || matchIndex("g", f[0])
+	case 2:
+		return f[0] == "loctype" && (f[1] == "view" || f[1] == "world") ||
+			slices.Contains([]string{"linestyle", "linewidth", "color", "arrow"}, f[0]) && isNum(f[1])
+	case 3:
+		return (f[0] == "fill" && (f[1] == "color" || f[1] == "pattern") ||
+			f[0] == "arrow" && (f[1] == "type" || f[1] == "length")) && isNum(f[2])
+	case 4:
+		return isNum(f...) || f[0] == "arrow" && f[1] == "layout" && isNum(f[2:]...)
+	}
+	return false
 }
 
 // kept writes kept directives (see Project.Kept): each in place of the
