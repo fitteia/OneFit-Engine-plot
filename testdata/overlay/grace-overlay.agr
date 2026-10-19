@@ -1,0 +1,56 @@
+@version 50125
+@page size 792, 612
+@map color 0 to (255, 255, 255), "white"
+@map color 1 to (0, 0, 0), "black"
+@map color 2 to (255, 0, 0), "red"
+@map color 4 to (0, 0, 255), "blue"
+@g0 on
+@g0 type XY
+@with g0
+@    world 0, 0, 10, 10
+@    view 0.15, 0.15, 1.15, 0.85
+@    xaxis  label "x"
+@    xaxis  tick major 2
+@    yaxis  label "R1 (left)"
+@    yaxis  label color 2
+@    yaxis  ticklabel color 2
+@    yaxis  tick major 2
+@    s0 type xy
+@    s0 symbol 1
+@    s0 symbol color 2
+@    s0 line color 2
+@g1 on
+@g1 type XY
+@with g1
+@    world 0, 0, 10, 1000
+@    view 0.15, 0.15, 1.15, 0.85
+@    xaxis  tick off
+@    xaxis  ticklabel off
+@    xaxis  bar off
+@    yaxis  label "T (right)"
+@    yaxis  label place opposite
+@    yaxis  label color 4
+@    yaxis  ticklabel place opposite
+@    yaxis  ticklabel color 4
+@    yaxis  tick place opposite
+@    yaxis  tick major 200
+@    s0 type xy
+@    s0 symbol 2
+@    s0 symbol color 4
+@    s0 line color 4
+@target G0.S0
+@type xy
+1 2
+3 4
+5 5
+7 7
+9 8
+&
+@target G1.S0
+@type xy
+1 900
+3 600
+5 400
+7 300
+9 250
+&

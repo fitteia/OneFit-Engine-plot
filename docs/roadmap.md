@@ -18,7 +18,9 @@ then vendored in the GUI and pinned in the debs.
   `# plot-go: gN overlays gM shared x|y` comment; the rest is plain Grace,
   drawn by gracebat as by plot-go (`figure` tests compare them). v0.2.40:
   legends of an overlay kept apart, and Grace's own overlays found
-  (`Candidates`) and linked as they are (`Link`).
+  (`Candidates`) and linked as they are (`Link`). v0.2.41: a shared axis's
+  label edited on a copy that does not draw it is no longer lost; Grace's
+  own overlay files in `testdata/overlay`.
 - **Variable-size symbols** (`xysize`): v0.2.25. Per-point
   size column with standard symbol styles, character symbols and legend sample
   sizing measured against Grace. Figures pairs this with a plot-type choice and

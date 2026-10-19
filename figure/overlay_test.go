@@ -422,3 +422,87 @@ func TestCandidates(t *testing.T) {
 		t.Error("a bad link was made")
 	}
 }
+
+// TestOverlayLabelEdits: the shared axis's label edited on any copy - the
+// one drawing it or one that does not - is the label; cleared where it is
+// drawn, it is cleared.
+func TestOverlayLabelEdits(t *testing.T) {
+	edit := func(fig *agr.Project, g *agr.Graph, text string) {
+		g.X.Label.Text = text
+		SyncLinks(fig, g.ID, "x")
+		ArrangeOverlays(fig)
+	}
+	shown := func(fig *agr.Project) (string, int) {
+		text, n := "", 0
+		for _, g := range fig.Graphs {
+			if g.X.Label.Text != "" {
+				text, n = g.X.Label.Text, n+1
+			}
+		}
+		return text, n
+	}
+	for _, shift := range []float64{0, 0.03} {
+		fig := overlayFigure(t, 3)
+		if err := OverlayAll(fig, "x"); err != nil {
+			t.Fatal(err)
+		}
+		if err := OverlayShift(fig, 1, shift); err != nil {
+			t.Fatal(err)
+		}
+		carrier := fig.Graphs[0]
+		if shift > 0 {
+			carrier = fig.Graphs[1]
+		}
+		for _, g := range fig.Graphs {
+			edit(fig, g, fmt.Sprintf("from g%d", g.ID))
+			if text, n := shown(fig); n != 1 || text != fmt.Sprintf("from g%d", g.ID) || carrier.X.Label.Text != text {
+				t.Errorf("shift %v, edited on g%d: %q on %d copies, carrier has %q", shift, g.ID, text, n, carrier.X.Label.Text)
+			}
+		}
+		// other properties edited on a copy without the label keep it
+		fig.Graphs[2].World.XMax *= 2
+		SyncLinks(fig, 2, "x")
+		ArrangeOverlays(fig)
+		if text, _ := shown(fig); text != "from g2" {
+			t.Errorf("shift %v: a range edit changed the label to %q", shift, text)
+		}
+		edit(fig, carrier, "")
+		if text, n := shown(fig); n != 0 {
+			t.Errorf("shift %v: cleared, %q is left", shift, text)
+		}
+	}
+}
+
+// TestCandidatesInGraceFiles: an overlay as Grace saves it - no link -
+// is found, as read, as gracebat saved it, and as the installed gracebat
+// saves it now.
+func TestCandidatesInGraceFiles(t *testing.T) {
+	files := []string{"../testdata/overlay/grace-overlay.agr", "../testdata/overlay/grace-overlay-saved.agr"}
+	if _, err := exec.LookPath("gracebat"); err == nil {
+		dir := t.TempDir()
+		saved := filepath.Join(dir, "saved.agr")
+		if o, err := exec.Command("gracebat", "-nosafe", "-hdevice", "EPS", "-printfile", filepath.Join(dir, "out.eps"), files[0], "-saveall", saved).CombinedOutput(); err != nil {
+			t.Fatalf("gracebat: %v %s", err, o)
+		}
+		files = append(files, saved)
+	}
+	for _, f := range files {
+		p, err := agr.ParseFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(p.Graphs) != 2 {
+			t.Fatalf("%s: %d graphs", f, len(p.Graphs))
+		}
+		if got := Candidates(p); len(got) != 1 || got[0] != (Candidate{Over: 1, Base: 0, Shared: "x"}) {
+			t.Errorf("%s: candidates %+v", f, got)
+		}
+		frame := p.Graphs[1].Frame
+		if err := Link(p, 0, 1, "x"); err != nil {
+			t.Fatal(err)
+		}
+		if p.Graphs[1].Frame != frame || p.Graphs[1].Y.TickLabel.Place != "opposite" || len(Candidates(p)) != 0 {
+			t.Errorf("%s: linking changed the drawing or left a candidate", f)
+		}
+	}
+}

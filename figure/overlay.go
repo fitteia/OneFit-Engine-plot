@@ -430,15 +430,28 @@ func Linked(fig *agr.Project, id int, name string) []int {
 }
 
 // SyncLinks gives every graph sharing axis name with graph id what id's
-// axis has: its range, scale, inversion, ticks, numbers and color. What
-// each graph keeps of its own: whether its copy is drawn (On), where (the
-// axis offset and the sides of its ticks, numbers and label), and whether
-// it has the numbers and the label, which only one copy draws
-// (ArrangeOverlays; the label's color is shared). Nothing is done
-// when the axis is not shared.
+// axis has: its range, scale, inversion, ticks, numbers, color and label.
+// What each graph keeps of its own: whether its copy is drawn (On), where
+// (the axis offset and the sides of its ticks, numbers and label), and
+// whether it has the numbers. The label's text is the group's: id's, or
+// when id's copy has none (only the copy that draws the label keeps the
+// text, ArrangeOverlays) the one another copy has - so a label edited on
+// any copy, drawn or not, is the label, and one cleared where it is drawn
+// is cleared. Nothing is done when the axis is not shared.
 func SyncLinks(fig *agr.Project, id int, name string) {
 	from := graph(fig, id)
-	for _, g := range group(fig, id, name) {
+	members := group(fig, id, name)
+	if from == nil || members == nil {
+		return
+	}
+	label := axisOf(from, name).Label.Text
+	for _, g := range members {
+		if t := axisOf(g, name).Label.Text; label == "" && t != "" {
+			label = t
+		}
+	}
+	for _, g := range members {
+		axisOf(g, name).Label.Text = label
 		if g == from {
 			continue
 		}
@@ -452,8 +465,7 @@ func SyncLinks(fig *agr.Project, id int, name string) {
 		*dst = *src
 		dst.On, dst.Offset, dst.Zero = keep.On, keep.Offset, keep.Zero
 		dst.Bar.On, dst.Bar.LineStyle, dst.Bar.LineWidth = keep.Bar.On, keep.Bar.LineStyle, keep.Bar.LineWidth
-		dst.Label = keep.Label
-		dst.Label.Color = src.Label.Color
+		dst.Label.Place, dst.Label.Spec, dst.Label.SpecAt = keep.Label.Place, keep.Label.Spec, keep.Label.SpecAt
 		dst.Tick.Place, dst.TickLabel.Place = keep.Tick.Place, keep.TickLabel.Place
 		dst.TickLabel.On = keep.TickLabel.On // which copy has the numbers: sharedNumbers
 		dst.Tick.Spec = append([]agr.SpecTick(nil), src.Tick.Spec...)

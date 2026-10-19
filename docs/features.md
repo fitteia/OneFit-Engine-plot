@@ -156,8 +156,10 @@ the axis offset, each beyond what the one before draws (numbers and label)
 plus `AxisGap`. `OverlayAll` overlays every graph on the first.
 
 - `SyncLinks` copies the shared axis - range, scale, inversion, ticks,
-  numbers, formula and colour - from the graph edited to the others; each
-  keeps where its copy is drawn and whether it is.
+  numbers, formula, colour and label - from the graph edited to the others;
+  each keeps where its copy is drawn and whether it is. The label is the
+  group's: edited on any copy, drawn or not, it is the label; only the copy
+  that draws it keeps the text.
 - `OverlayShift` moves an overlay off its base at right angles to the
   shared axis (down for x, left for y), so it draws its own linked copy.
   Only the outermost copy has the numbers and the label; the others draw
