@@ -283,7 +283,9 @@ func ArrangeOverlays(fig *agr.Project) {
 		for _, shared := range []string{"x", "y"} {
 			sharedNumbers(fig, b, shared)
 		}
-		var d *draw.Drawing
+		// what each free axis draws, measured where it is drawn now, before
+		// any moves: an axis's reach does not depend on its offset
+		d, _ := render.Render(fig)
 		for _, shared := range []string{"x", "y"} {
 			out := 0.0 // how far the last free axis on the side reaches
 			first := true
@@ -292,15 +294,13 @@ func ArrangeOverlays(fig *agr.Project) {
 					continue
 				}
 				a := axisOf(o, free(shared))
+				r := reach(d, o, free(shared), a.Offset[1])
 				if first {
 					a.Offset[1], first = 0, false
 				} else {
 					a.Offset[1] = out + AxisGap
 				}
-				if d == nil {
-					d, _ = render.Render(fig)
-				}
-				out = a.Offset[1] + reach(d, o, free(shared), a.Offset[1])
+				out = a.Offset[1] + r
 			}
 		}
 	}
@@ -482,6 +482,24 @@ func SyncLinks(fig *agr.Project, id int, name string) {
 		dst.Tick.On = keep.Tick.On           // a copy drawn without ticks stays so
 		dst.Tick.Spec = append([]agr.SpecTick(nil), src.Tick.Spec...)
 	}
+}
+
+// ShareLabel is SyncLinks after an edit of the label of graph id's axis
+// name: its text, even none (cleared), becomes the label of every graph
+// sharing the axis, whichever copy was edited - where SyncLinks, after an
+// edit of something else, keeps the label when the copy edited has none.
+// ArrangeOverlays then leaves it on the copy that draws it. Nothing is done
+// when the axis is not shared.
+func ShareLabel(fig *agr.Project, id int, name string) {
+	from := graph(fig, id)
+	if from == nil {
+		return
+	}
+	text := axisOf(from, name).Label.Text
+	for _, g := range group(fig, id, name) {
+		axisOf(g, name).Label.Text = text
+	}
+	SyncLinks(fig, id, name)
 }
 
 // AxisColor colors an axis whole - its line, ticks, numbers and label -

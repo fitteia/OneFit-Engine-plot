@@ -22,7 +22,10 @@ then vendored in the GUI and pinned in the debs.
   label edited on a copy that does not draw it is no longer lost; overlay
   files without a link (hand-written Grace format, and gracebat's save of it) in
   `testdata/overlay`. v0.2.42: clearing a shared label where it is drawn
-  always clears it, and linking keeps each copy's ticks.
+  always clears it, and linking keeps each copy's ticks. v0.2.44 (audit):
+  a label cleared on a copy that does not draw it clears it too
+  (`ShareLabel`), and free axes beyond one that grew are placed by what it
+  draws now, from the third overlay on a side on too.
 - **Variable-size symbols** (`xysize`): v0.2.25. Per-point
   size column with standard symbol styles, character symbols and legend sample
   sizing measured against Grace. Figures pairs this with a plot-type choice and

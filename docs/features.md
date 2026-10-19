@@ -153,13 +153,17 @@ of the shared axis is off (the base draws it once) and its free axis moves to
 the opposite side - right for a y axis, top for an x axis - with an axis line
 styled like the base's frame. Further overlays on that side are moved out by
 the axis offset, each beyond what the one before draws (numbers and label)
-plus `AxisGap`. `OverlayAll` overlays every graph on the first.
+plus `AxisGap`, as drawn when `ArrangeOverlays` runs (again after edits
+that change what an axis draws). `OverlayAll` overlays every graph on the
+first.
 
 - `SyncLinks` copies the shared axis - range, scale, inversion, ticks,
   numbers, formula, colour and label - from the graph edited to the others;
   each keeps where its copy is drawn and whether it is. The label is the
-  group's: edited on any copy, drawn or not, it is the label; only the copy
-  that draws it keeps the text.
+  group's; only the copy that draws it keeps the text. After a label edit,
+  `ShareLabel` makes the edited copy's text the group's, even none, on any
+  copy; after other edits `SyncLinks` keeps the label when the copy edited
+  has none.
 - `OverlayShift` moves an overlay off its base at right angles to the
   shared axis (down for x, left for y), so it draws its own linked copy.
   Only the outermost copy has the numbers and the label; the others draw

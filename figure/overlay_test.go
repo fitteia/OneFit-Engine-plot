@@ -474,6 +474,55 @@ func TestOverlayLabelEdits(t *testing.T) {
 	}
 }
 
+// TestOverlayArrangeAfterResize: when what a free axis draws grows, the
+// free axes beyond it move out, each just beyond the one before as drawn
+// now - one ArrangeOverlays, with three overlays on one side, so the third
+// is placed by a second whose offset changed in the same call.
+func TestOverlayArrangeAfterResize(t *testing.T) {
+	fig := overlayFigure(t, 4)
+	if err := OverlayAll(fig, "x"); err != nil {
+		t.Fatal(err)
+	}
+	fig.Graphs[1].Y.TickLabel.CharSize *= 3
+	ArrangeOverlays(fig)
+	d, _ := render.Render(fig)
+	for k := 2; k < 4; k++ {
+		prev, o := fig.Graphs[k-1], fig.Graphs[k]
+		want := prev.Y.Offset[1] + reach(d, prev, "y", prev.Y.Offset[1]) + AxisGap
+		if math.Abs(o.Y.Offset[1]-want) > 1e-3 {
+			t.Errorf("g%d free axis at %.4f, want %.4f (just beyond g%d)", o.ID, o.Y.Offset[1], want, prev.ID)
+		}
+	}
+}
+
+// TestOverlayShareLabel: a label edited on any copy of a shared axis is
+// the group's - typed or cleared, on the copy that draws it or not.
+func TestOverlayShareLabel(t *testing.T) {
+	fig := overlayFigure(t, 3)
+	if err := OverlayAll(fig, "x"); err != nil {
+		t.Fatal(err)
+	}
+	set := func(g *agr.Graph, text string) {
+		g.X.Label.Text = text
+		ShareLabel(fig, g.ID, "x")
+		ArrangeOverlays(fig)
+	}
+	set(fig.Graphs[0], "time (s)")
+	for _, g := range fig.Graphs[1:] {
+		set(fig.Graphs[0], "time (s)")
+		set(g, "")
+		for _, h := range fig.Graphs {
+			if h.X.Label.Text != "" {
+				t.Errorf("cleared on g%d, g%d still has %q", g.ID, h.ID, h.X.Label.Text)
+			}
+		}
+	}
+	set(fig.Graphs[2], "t")
+	if fig.Graphs[0].X.Label.Text != "t" {
+		t.Errorf("typed on g2: the base draws %q", fig.Graphs[0].X.Label.Text)
+	}
+}
+
 // TestCandidatesInGraceFiles: an overlay in Grace's format without a link
 // (written by hand; testdata/overlay/README.md) is found as read, as
 // gracebat saved it, and as the installed gracebat saves it now; linking
