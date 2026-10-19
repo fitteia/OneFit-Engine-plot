@@ -41,6 +41,11 @@ jobs:
 
       - uses: actions/checkout@v5
 
+      # in the container git refuses the checkout (owned by the runner, not
+      # root) unless it is marked safe - go build's version stamp needs it
+      - name: Mark the checkout safe
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Set up Go
         uses: actions/setup-go@v6
         with:

@@ -17,6 +17,28 @@ import (
 	"golang.org/x/image/tiff"
 )
 
+// TestMain: with PLOT_GO_RUN_MAIN=1 the test binary is plot-go itself, so
+// tests run the command line without building it (a nested go build needs
+// the toolchain, and in CI's containers git refuses to stamp the checkout).
+func TestMain(m *testing.M) {
+	if os.Getenv("PLOT_GO_RUN_MAIN") == "1" {
+		main()
+		os.Exit(0)
+	}
+	os.Exit(m.Run())
+}
+
+// plotGo runs plot-go's command line with args, as a separate process.
+func plotGo(args ...string) ([]byte, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return nil, err
+	}
+	cmd := exec.Command(exe, args...)
+	cmd.Env = append(os.Environ(), "PLOT_GO_RUN_MAIN=1")
+	return cmd.CombinedOutput()
+}
+
 func needConverter(t *testing.T) {
 	t.Helper()
 	if !raster.Available() {
@@ -105,10 +127,6 @@ func TestGracebatCallTIFF(t *testing.T) {
 // (773x600 points: 1546x1200 at 144 dpi); without it, the crop box.
 func TestFullPageFlag(t *testing.T) {
 	needConverter(t)
-	bin := filepath.Join(t.TempDir(), "plot-go")
-	if out, err := exec.Command("go", "build", "-o", bin, ".").CombinedOutput(); err != nil {
-		t.Fatalf("build: %v %s", err, out)
-	}
 	input, err := filepath.Abs("../../testdata/corpus/p96-10-1.agr")
 	if err != nil {
 		t.Fatal(err)
@@ -120,7 +138,7 @@ func TestFullPageFlag(t *testing.T) {
 	}{{nil, cw, ch}, {[]string{"-fullpage"}, 1546, 1200}} {
 		out := filepath.Join(t.TempDir(), "x.png")
 		args := append(append([]string{"-q", "-dpi", "144"}, c.flags...), "-o", out, input)
-		if msg, err := exec.Command(bin, args...).CombinedOutput(); err != nil {
+		if msg, err := plotGo(args...); err != nil {
 			t.Fatalf("%v: %v %s", c.flags, err, msg)
 		}
 		f, err := os.Open(out)

@@ -30,6 +30,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      # in the container git refuses the checkout (owned by the runner, not
+      # root) unless it is marked safe - go build's version stamp needs it,
+      # in the tests and in the release build
+      - name: Mark the checkout safe
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -40,12 +46,8 @@ jobs:
         run: go test ./...
 
       - name: Build every platform
-        # go build stamps the git version into the binaries; in the
-        # container git refuses the checkout (owned by the runner, not
-        # root) unless it is marked safe
-        run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          VERSION="${GITHUB_REF_NAME#v}" bash scripts/build-release.sh
+        # go build stamps the git version into the binaries
+        run: VERSION="${GITHUB_REF_NAME#v}" bash scripts/build-release.sh
 
       - name: Publish the release
         uses: softprops/action-gh-release@v2
