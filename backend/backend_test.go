@@ -92,7 +92,18 @@ func TestBoundingBoxNearGracebats(t *testing.T) {
 // names. Poppler (pdftoppm), which many viewers use, must open it without
 // complaint; its pixels are not compared (it snaps thin lines and draws
 // fonts its own way).
+// skipInShort: the whole-corpus pixel comparisons with gracebat are most
+// of the tests' time, eight times more under the race detector; CI runs
+// them without -race and the rest again with -race -short.
+func skipInShort(t *testing.T) {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("whole-corpus pixel comparison; run without -short")
+	}
+}
+
 func TestPDFPixelsMatchGracebat(t *testing.T) {
+	skipInShort(t)
 	if _, err := exec.LookPath("gs"); err != nil {
 		t.Skip("Ghostscript (gs) not installed")
 	}

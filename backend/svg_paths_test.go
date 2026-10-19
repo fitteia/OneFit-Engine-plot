@@ -42,6 +42,7 @@ const glyphLimit = 0.025
 // TestSVGTextAsPathsMatchesGracebat: the editor preview's SVG - text drawn
 // as outlines, no <text> left - shows gracebat's page.
 func TestSVGTextAsPathsMatchesGracebat(t *testing.T) {
+	skipInShort(t)
 	if _, err := exec.LookPath("rsvg-convert"); err != nil {
 		t.Skip("rsvg-convert not installed")
 	}

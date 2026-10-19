@@ -55,8 +55,14 @@ jobs:
       - name: go vet
         run: go vet ./...
 
+      - name: go test
+        run: go test ./...
+
+      # the race detector makes the whole-corpus pixel comparisons eight
+      # times slower and finds nothing in them (no goroutines): -short
+      # skips those, the step above runs them
       - name: go test (race detector)
-        run: go test -race ./...
+        run: go test -race -short ./...
 
   windows-raster:
     name: Windows Ghostscript PNG and TIFF

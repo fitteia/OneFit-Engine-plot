@@ -103,6 +103,7 @@ func differing(a, b image.Image, tol, shift int) (diff, ink int) {
 // from gracebat's); anything structural - a missing tick, a wrong dash, a
 // misplaced label, a different glyph - is far above the limit.
 func TestPixelsMatchGracebat(t *testing.T) {
+	skipInShort(t)
 	if _, err := exec.LookPath("gs"); err != nil {
 		t.Skip("Ghostscript (gs) not installed")
 	}
