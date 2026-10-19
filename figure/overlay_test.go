@@ -384,7 +384,8 @@ func TestOverlayLegendsApart(t *testing.T) {
 }
 
 // TestCandidates: graphs at one place sharing an axis's range, without a
-// link (as Grace saves an overlay), are offered; Link adds only the link.
+// link (as an overlay saved by Grace would be), are offered; Link adds only
+// the link.
 func TestCandidates(t *testing.T) {
 	fig := overlayFigure(t, 3)
 	if err := Layout(fig, "grid"); err != nil {
@@ -473,9 +474,10 @@ func TestOverlayLabelEdits(t *testing.T) {
 	}
 }
 
-// TestCandidatesInGraceFiles: an overlay as Grace saves it - no link -
-// is found, as read, as gracebat saved it, and as the installed gracebat
-// saves it now.
+// TestCandidatesInGraceFiles: an overlay in Grace's format without a link
+// (written by hand; testdata/overlay/README.md) is found as read, as
+// gracebat saved it, and as the installed gracebat saves it now; linking
+// it leaves the drawing as it is.
 func TestCandidatesInGraceFiles(t *testing.T) {
 	files := []string{"../testdata/overlay/grace-overlay.agr", "../testdata/overlay/grace-overlay-saved.agr"}
 	if _, err := exec.LookPath("gracebat"); err == nil {
@@ -497,12 +499,31 @@ func TestCandidatesInGraceFiles(t *testing.T) {
 		if got := Candidates(p); len(got) != 1 || got[0] != (Candidate{Over: 1, Base: 0, Shared: "x"}) {
 			t.Errorf("%s: candidates %+v", f, got)
 		}
-		frame := p.Graphs[1].Frame
+		before, _ := render.Render(p)
 		if err := Link(p, 0, 1, "x"); err != nil {
 			t.Fatal(err)
 		}
-		if p.Graphs[1].Frame != frame || p.Graphs[1].Y.TickLabel.Place != "opposite" || len(Candidates(p)) != 0 {
-			t.Errorf("%s: linking changed the drawing or left a candidate", f)
+		after, _ := render.Render(p)
+		for _, d := range drawcmp.Compare(after, before, 5) {
+			t.Errorf("%s: linking changed the drawing: %s", f, d)
+		}
+		if len(Candidates(p)) != 0 {
+			t.Errorf("%s: a candidate is left", f)
+		}
+		// both copies with a label, as a file may have them: cleared where
+		// it is drawn, the label is cleared; typed on the other, it is it
+		p.Graphs[1].X.Label.Text = "x too"
+		p.Graphs[0].X.Label.Text = ""
+		SyncLinks(p, 0, "x")
+		ArrangeOverlays(p)
+		if p.Graphs[0].X.Label.Text != "" || p.Graphs[1].X.Label.Text != "" {
+			t.Errorf("%s: cleared on the base, the labels are %q and %q", f, p.Graphs[0].X.Label.Text, p.Graphs[1].X.Label.Text)
+		}
+		p.Graphs[1].X.Label.Text = "typed"
+		SyncLinks(p, 1, "x")
+		ArrangeOverlays(p)
+		if p.Graphs[0].X.Label.Text != "typed" || p.Graphs[1].X.Label.Text != "" {
+			t.Errorf("%s: typed on the overlay, the labels are %q and %q", f, p.Graphs[0].X.Label.Text, p.Graphs[1].X.Label.Text)
 		}
 	}
 }

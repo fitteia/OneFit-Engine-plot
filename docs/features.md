@@ -170,8 +170,10 @@ plus `AxisGap`. `OverlayAll` overlays every graph on the first.
   already apart stay where they are.
 - `Candidates` lists graphs that look overlaid without a link - at the
   same place as an earlier graph, with its range and scale on an axis, as
-  Grace saves an overlay - for an editor to offer; `Link` adds only the
-  link (and syncs the shared axis), leaving the drawing as it was.
+  an overlay saved by Grace would be - for an editor to offer; `Link` adds
+  the link and syncs the shared axis, leaving the drawing as it was. Tested
+  on a hand-written Grace-format overlay and gracebat's save of it
+  (`testdata/overlay`), not yet on one made with xmgrace's Overlay graphs.
 - `Unlink` makes a graph its own again; `RemoveGraph` of a base makes its
   first overlay the base. `Layout` places each group as one panel, with room
   for the free axes on the right or on top (`Reach`).

@@ -17,9 +17,9 @@ import (
 // the base, unless an overlaid graph is shifted away from it (OverlayShift)
 // and draws its own copy. The other axis of an overlaid graph, its free
 // axis, is drawn on the base's opposite side (right for a y axis, top for
-// an x one), each further one on that side moved out by OverlayAxisStep.
-// an axis's width as drawn (its numbers and label) and AxisGap apart. The
-// links are saved in the project (agr.Link).
+// an x one), each further one on that side moved out beyond the one
+// before - by what that one draws, its numbers and label - and AxisGap.
+// The links are saved in the project (agr.Link).
 
 // AxisGap is the space, in viewport units, between the drawn extent of one
 // free axis and the next on the same side.
@@ -229,7 +229,7 @@ func Unlink(fig *agr.Project, id int) {
 	a := axisOf(g, shared)
 	a.On, a.Offset = true, [2]float64{}
 	a.Bar.On = false
-	a.TickLabel.On = true
+	a.Tick.On, a.TickLabel.On = true, true
 	if a.Label.Text == "" {
 		a.Label.Text = label
 	}
@@ -338,6 +338,18 @@ func reach(d *draw.Drawing, g *agr.Graph, name string, off float64) float64 {
 	return max(0, box.URY-g.View.YMax-off)
 }
 
+// carrier is the copy of base b's shared axis that draws its numbers and
+// label: the overlay shifted furthest whose copy is on, else the base.
+func carrier(fig *agr.Project, b *agr.Graph, shared string) *agr.Graph {
+	outer, far := b, 0.0
+	for _, o := range Overlays(fig, b.ID) {
+		if o.Overlay.Shared == shared && axisOf(o, shared).On && Shift(fig, o.ID) > far {
+			outer, far = o, Shift(fig, o.ID)
+		}
+	}
+	return outer
+}
+
 // sharedNumbers puts the numbers and label of the group's shared axis on
 // its outermost copy; the label text moves with them, never lost. Numbers
 // switched off by the user stay off.
@@ -351,16 +363,13 @@ func sharedNumbers(fig *agr.Project, b *agr.Graph, shared string) {
 	if len(copies) < 2 {
 		return
 	}
-	outer, far := b, 0.0
+	outer := carrier(fig, b, shared)
 	numbers, label := false, ""
 	for _, g := range copies {
 		a := axisOf(g, shared)
-		if g != b && a.On && Shift(fig, g.ID) > far {
-			outer, far = g, Shift(fig, g.ID)
-		}
 		numbers = numbers || a.TickLabel.On
 		if label == "" {
-			label = a.Label.Text
+			label = a.Label.Text // all the same after SyncLinks
 		}
 	}
 	for _, g := range copies {
@@ -433,22 +442,24 @@ func Linked(fig *agr.Project, id int, name string) []int {
 // axis has: its range, scale, inversion, ticks, numbers, color and label.
 // What each graph keeps of its own: whether its copy is drawn (On), where
 // (the axis offset and the sides of its ticks, numbers and label), and
-// whether it has the numbers. The label's text is the group's: id's, or
-// when id's copy has none (only the copy that draws the label keeps the
-// text, ArrangeOverlays) the one another copy has - so a label edited on
-// any copy, drawn or not, is the label, and one cleared where it is drawn
-// is cleared. Nothing is done when the axis is not shared.
+// whether it draws ticks, a line and the numbers. The label's text is the
+// group's, set by the copy edited: by the copy that draws it (carrier)
+// always - cleared there, it is cleared - and by another copy when it has
+// a text, so a label typed on a copy that does not draw it is the label
+// too. ArrangeOverlays then leaves the text on the copy that draws it only.
+// Nothing is done when the axis is not shared.
 func SyncLinks(fig *agr.Project, id int, name string) {
 	from := graph(fig, id)
 	members := group(fig, id, name)
 	if from == nil || members == nil {
 		return
 	}
+	// the label: what the copy edited has - when it is the copy that draws
+	// it, even nothing (cleared); else what that copy has, unless it has
+	// none (an edit of something else on a copy without the label)
 	label := axisOf(from, name).Label.Text
-	for _, g := range members {
-		if t := axisOf(g, name).Label.Text; label == "" && t != "" {
-			label = t
-		}
+	if c := carrier(fig, members[0], name); from != c && label == "" {
+		label = axisOf(c, name).Label.Text
 	}
 	for _, g := range members {
 		axisOf(g, name).Label.Text = label
@@ -468,6 +479,7 @@ func SyncLinks(fig *agr.Project, id int, name string) {
 		dst.Label.Place, dst.Label.Spec, dst.Label.SpecAt = keep.Label.Place, keep.Label.Spec, keep.Label.SpecAt
 		dst.Tick.Place, dst.TickLabel.Place = keep.Tick.Place, keep.TickLabel.Place
 		dst.TickLabel.On = keep.TickLabel.On // which copy has the numbers: sharedNumbers
+		dst.Tick.On = keep.Tick.On           // a copy drawn without ticks stays so
 		dst.Tick.Spec = append([]agr.SpecTick(nil), src.Tick.Spec...)
 	}
 }
@@ -548,9 +560,10 @@ func Candidates(fig *agr.Project) []Candidate {
 }
 
 // Link links graph over to graph base, sharing axis shared, as an overlay
-// already drawn as wanted (one made in Grace): only the link is added,
-// and over takes base's shared axis (SyncLinks); its frame, its axes and
-// their places stay as they are.
+// already drawn as wanted (one made in Grace): the link is added, over
+// takes base's shared axis (SyncLinks) and the axis's numbers and label are
+// left to the base's copy, where the two coincide; frames, the other axes
+// and the places of everything stay as they are.
 func Link(fig *agr.Project, base, over int, shared string) error {
 	if shared != "x" && shared != "y" {
 		return fmt.Errorf("the shared axis is x or y, not %q", shared)
@@ -571,6 +584,10 @@ func Link(fig *agr.Project, base, over int, shared string) error {
 		return fmt.Errorf("graph %d has graphs overlaid on it", over)
 	}
 	o.Overlay = agr.Link{Base: base, Shared: shared}
+	if ba, oa := axisOf(b, shared), axisOf(o, shared); ba.Label.Text == "" {
+		ba.Label.Text = oa.Label.Text // the overlay's label, if only it has one
+	}
 	SyncLinks(fig, base, shared)
+	sharedNumbers(fig, b, shared)
 	return nil
 }
