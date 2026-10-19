@@ -11,13 +11,14 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/fitteia/OneFit-Engine-plot/agr"
 )
 
 // DataBlock is a block of a data file: its number (1-based, file order),
 // its TAG when it has one, and its rows - each a row's leading numbers.
+// A blank comma/semicolon field is NaN, preserving its column position;
+// rows() omits rows missing any selected value.
 type DataBlock struct {
 	N    int
 	Tag  string
@@ -47,7 +48,8 @@ func isDataLine(line string) bool {
 // file as one block when it has none. A row is a line's leading numbers,
 // separated by spaces, tabs, commas or semicolons; comment lines ("#"),
 // blank lines and lines that start with text are not rows. Text after a
-// row's numbers (a label) is left out.
+// row's numbers (a label) is left out. Empty comma/semicolon fields keep
+// their column position as NaN; they never shift later values left.
 func ReadData(text string) []DataBlock {
 	var blocks []DataBlock
 	cur := &DataBlock{N: 1}
@@ -69,18 +71,41 @@ func ReadData(text string) []DataBlock {
 			continue
 		}
 		var row []float64
-		for _, f := range strings.FieldsFunc(t, func(r rune) bool { return unicode.IsSpace(r) || r == ',' || r == ';' }) {
+		hasNumber := false
+		for _, f := range dataFields(t) {
+			if f == "" {
+				row = append(row, math.NaN())
+				continue
+			}
 			v, err := strconv.ParseFloat(f, 64)
 			if err != nil || math.IsNaN(v) || math.IsInf(v, 0) {
 				break
 			}
 			row = append(row, v)
+			hasNumber = true
 		}
-		if len(row) > 0 {
+		if hasNumber {
 			cur.Rows = append(cur.Rows, row)
 		}
 	}
 	return append(blocks, *cur)
+}
+
+// dataFields collapses whitespace but preserves empty comma/semicolon cells.
+func dataFields(line string) []string {
+	if !strings.ContainsAny(line, ",;") {
+		return strings.Fields(line)
+	}
+	var fields []string
+	for _, cell := range strings.Split(strings.ReplaceAll(line, ";", ","), ",") {
+		parts := strings.Fields(cell)
+		if len(parts) == 0 {
+			fields = append(fields, "")
+		} else {
+			fields = append(fields, parts...)
+		}
+	}
+	return fields
 }
 
 // DataRef names columns of a data file's block: the file's path (as the
@@ -148,7 +173,7 @@ func rows(b DataBlock, cols []int) (out [][]float64, skipped int) {
 		v := make([]float64, len(cols))
 		ok := true
 		for i, c := range cols {
-			if c > len(r) {
+			if c < 1 || c > len(r) || math.IsNaN(r[c-1]) || math.IsInf(r[c-1], 0) {
 				ok = false
 				break
 			}
@@ -192,11 +217,23 @@ func AddData(fig *agr.Project, g int, path, text string, spec DataSpec) ([]int, 
 	if len(spec.Errors) > 0 && len(spec.Y) > 1 {
 		return nil, nil, fmt.Errorf("error columns go with a single y column")
 	}
+	for _, cols := range [][]int{spec.Y, spec.Errors} {
+		for _, c := range cols {
+			if c < 1 {
+				return nil, nil, fmt.Errorf("column numbers must be positive (got %d)", c)
+			}
+		}
+	}
 	blocks := ReadData(text)
 	chosen := spec.Blocks
 	if len(chosen) == 0 {
 		for _, b := range blocks {
 			chosen = append(chosen, b.N)
+		}
+	}
+	for _, n := range chosen {
+		if n < 1 || n > len(blocks) {
+			return nil, nil, fmt.Errorf("%s has no block %d", path, n)
 		}
 	}
 	next := 0
@@ -206,9 +243,6 @@ func AddData(fig *agr.Project, g int, path, text string, spec DataSpec) ([]int, 
 	var added []int
 	var notes []string
 	for _, n := range chosen {
-		if n < 1 || n > len(blocks) {
-			return added, notes, fmt.Errorf("%s has no block %d", path, n)
-		}
 		b := blocks[n-1]
 		for _, y := range spec.Y {
 			// x, y, then dy - or dx, dy: Grace's xydy and xydxdy columns
@@ -243,19 +277,18 @@ func AddData(fig *agr.Project, g int, path, text string, spec DataSpec) ([]int, 
 }
 
 // updateData reads a data set's columns again from its file's text.
-func updateData(s *agr.Set, ref DataRef, text string) error {
-	blocks := ReadData(text)
-	if ref.Block > len(blocks) {
-		return fmt.Errorf("%s has no block %d", ref.Path, ref.Block)
+func updateData(s *agr.Set, ref DataRef, blocks []DataBlock) (int, error) {
+	if ref.Block < 1 || ref.Block > len(blocks) {
+		return 0, fmt.Errorf("%s has no block %d", ref.Path, ref.Block)
 	}
-	data, _ := rows(blocks[ref.Block-1], ref.Cols)
+	data, skipped := rows(blocks[ref.Block-1], ref.Cols)
 	if len(data) == 0 {
-		return fmt.Errorf("%s block %d has no rows with columns %v", ref.Path, ref.Block, ref.Cols)
+		return 0, fmt.Errorf("%s block %d has no rows with columns %v", ref.Path, ref.Block, ref.Cols)
 	}
 	s.Type = dataType(len(ref.Cols))
 	s.Data = data
 	s.Labels = nil
-	return nil
+	return skipped, nil
 }
 
 // AddDataGraph adds a new graph holding sets from a data file (AddData):

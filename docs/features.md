@@ -143,3 +143,13 @@ new or copied shapes enter after ranked shapes, in the default kind order.
 Grace ignores these comments and may discard them on save. Ordering does not
 cross graph/page or layer boundaries. Use `OnTop` to cover a legend, or
 `BehindData` to put an annotation under curves.
+
+## Figures from numeric data files
+
+The `figure` library imports numeric text tables or OneFit `# DATA` blocks.
+Column indexes are positive and 1-based. Blank comma/semicolon cells keep
+their positions; selecting a missing value skips that row with a warning.
+`ReadData` represents these missing cells as NaN internally, and no NaN is
+copied into plotted sets. Selecting other, present columns remains valid.
+`UpdateFiles` caches parsed blocks per source for one refresh, so many sets
+from one file do not cause repeated full-file parses.

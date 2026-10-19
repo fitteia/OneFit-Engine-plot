@@ -2,8 +2,10 @@ package figure
 
 import (
 	"bytes"
+	"fmt"
 	"math"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -101,7 +103,7 @@ func TestAddDataAndUpdate(t *testing.T) {
 			}
 			return "x,a,b\n1,2,3\n", nil
 		})
-	if len(warnings) != 0 || n != before+4 {
+	if len(warnings) != 1 || !strings.Contains(warnings[0], "block 2: 1 row(s)") || n != before+4 {
 		t.Errorf("updated %d, warnings %q", n, warnings)
 	}
 	if s.Data[1][1] != 25 || s.Symbol.Size != 2.5 {
@@ -171,5 +173,67 @@ func TestAddDataGraphAxesAndLegend(t *testing.T) {
 		if fx := (x.Legend.X - v.XMin) / (v.XMax - v.XMin); math.Abs(fx-0.5) > 1e-9 {
 			t.Errorf("graph %d legend at %g of its width, want 0.5", x.ID, fx)
 		}
+	}
+}
+
+func TestDataImportPreservesBlankColumnPositions(t *testing.T) {
+	for _, sep := range []string{",", ";"} {
+		text := strings.ReplaceAll("x,y,z\n1,,30\n2,20,40\n,50,60\n", ",", sep)
+		blocks := ReadData(text)
+		if len(blocks[0].Rows[0]) != 3 || !math.IsNaN(blocks[0].Rows[0][1]) || blocks[0].Rows[0][2] != 30 {
+			t.Fatalf("columns shifted: %v", blocks)
+		}
+		for _, tt := range []struct {
+			cols    []int
+			want    [][]float64
+			skipped int
+		}{
+			{[]int{1, 2}, [][]float64{{2, 20}}, 2},
+			{[]int{1, 3}, [][]float64{{1, 30}, {2, 40}}, 1},
+			{[]int{2, 3}, [][]float64{{20, 40}, {50, 60}}, 1},
+		} {
+			p := &agr.Project{Graphs: []*agr.Graph{{ID: 0}}}
+			ids, notes, err := AddData(p, 0, "data.txt", text, DataSpec{X: tt.cols[0], Y: tt.cols[1:]})
+			if err != nil || len(ids) != 1 || len(notes) != 1 || !reflect.DeepEqual(p.Graphs[0].Sets[0].Data, tt.want) {
+				t.Fatalf("columns %v: ids=%v notes=%v err=%v project=%+v", tt.cols, ids, notes, err, p)
+			}
+			n, warnings := UpdateFiles(p, nil, func(string) (string, error) { return text, nil })
+			if n != 1 || len(warnings) != 1 || !strings.Contains(warnings[0], fmt.Sprintf("%d row(s)", tt.skipped)) || !reflect.DeepEqual(p.Graphs[0].Sets[0].Data, tt.want) {
+				t.Fatalf("update changed columns or omitted warning: %v %v", n, warnings)
+			}
+		}
+	}
+}
+
+func TestAddDataRejectsInvalidIndexesBeforeChangingGraph(t *testing.T) {
+	for _, spec := range []DataSpec{
+		{X: 0, Y: []int{2}}, {X: 1, Y: []int{0}}, {X: 1, Y: []int{-2}},
+		{X: 1, Y: []int{2}, Errors: []int{0}}, {X: 1, Y: []int{2}, Errors: []int{-1}},
+		{X: 1, Y: []int{2}, Blocks: []int{1, 2}},
+	} {
+		p := &agr.Project{Graphs: []*agr.Graph{{ID: 0}}}
+		if _, _, err := AddData(p, 0, "data.txt", "1 2 3\n", spec); err == nil || len(p.Graphs[0].Sets) != 0 {
+			t.Fatalf("spec %+v changed graph or accepted: %v", spec, err)
+		}
+	}
+}
+
+func BenchmarkUpdateDataBlocks(b *testing.B) {
+	for _, n := range []int{50, 100, 200, 400} {
+		b.Run(strconv.Itoa(n), func(b *testing.B) {
+			text := strings.Repeat("# DATA dum = 1\n"+strings.Repeat("1 2 0.1\n", 50), n)
+			p := &agr.Project{Graphs: []*agr.Graph{{ID: 0}}}
+			if _, _, err := AddData(p, 0, "data.txt", text, DataSpec{X: 1, Y: []int{2}, Errors: []int{3}}); err != nil {
+				b.Fatal(err)
+			}
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				loads := 0
+				updated, warnings := UpdateFiles(p, nil, func(string) (string, error) { loads++; return text, nil })
+				if updated != n || loads != 1 || len(warnings) != 0 {
+					b.Fatalf("updated=%d loads=%d warnings=%v", updated, loads, warnings)
+				}
+			}
+		})
 	}
 }

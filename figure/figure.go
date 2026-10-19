@@ -267,7 +267,7 @@ func Update(fig *agr.Project, load func(path string) (*agr.Project, error)) (int
 // their data.
 func UpdateFiles(fig *agr.Project, load func(path string) (*agr.Project, error), loadText func(path string) (string, error)) (int, []string) {
 	cache := map[string]*agr.Project{}
-	texts := map[string]*string{}
+	blocks := map[string][]DataBlock{}
 	var warnings []string
 	updated := 0
 	for _, g := range fig.Graphs {
@@ -276,22 +276,26 @@ func UpdateFiles(fig *agr.Project, load func(path string) (*agr.Project, error),
 				if loadText == nil {
 					continue
 				}
-				t, seen := texts[dref.Path]
+				data, seen := blocks[dref.Path]
 				if !seen {
 					text, err := loadText(dref.Path)
 					if err != nil {
 						warnings = append(warnings, fmt.Sprintf("set %d: %s: %v; its data is kept", s.ID, dref.Path, err))
 					} else {
-						t = &text
+						data = ReadData(text)
 					}
-					texts[dref.Path] = t
+					blocks[dref.Path] = data
 				}
-				if t == nil {
+				if data == nil {
 					continue
 				}
-				if err := updateData(s, dref, *t); err != nil {
+				skipped, err := updateData(s, dref, data)
+				if err != nil {
 					warnings = append(warnings, fmt.Sprintf("set %d: %v; its data is kept", s.ID, err))
 					continue
+				}
+				if skipped > 0 {
+					warnings = append(warnings, fmt.Sprintf("set %d: %s block %d: %d row(s) without all of columns %v left out", s.ID, dref.Path, dref.Block, skipped, dref.Cols))
 				}
 				updated++
 				continue
