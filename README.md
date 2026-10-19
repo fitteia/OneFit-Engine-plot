@@ -27,11 +27,25 @@ plot-go -o plot.svg fit-curves-1.agr      # format from the extension
 plot-go -format eps fit-curves-1.agr      # what OneFit's C core asks for
 plot-go -o plot.png fit-curves-1.agr      # the whole page at 300 dpi
 plot-go -dpi 600 -o plot.png fit-curves-1.agr   # line art at 600 dpi
+plot-go -dpi 600 -o plot.tiff fit-curves-1.agr  # lossless TIFF (.tif also accepted)
 
 # gracebat's command line, as OneFit's C core calls Grace:
 plot-go -settype xydy gnu0.da_ -nxy fit-curves-1 -param fit1.agr-par \
   -hdevice EPS -hardcopy -printfile fit-curves-1.eps -saveall fit-curves-1.agr
 ```
+
+PNG and TIFF are full-page raster exports. `-dpi` selects their resolution
+(default 300); it does not affect PDF/EPS/SVG. TIFF uses lossless compression
+and both formats record resolution metadata. Exports accept 1–2400 DPI and
+at most 100 million pixels per page; choose a lower DPI for a large page.
+
+Raster export needs one installed converter: Poppler (`pdftoppm`) is tried
+first, then Ghostscript, then ImageMagick. On Windows, Ghostscript's console
+programs `gswin64c.exe` and `gswin32c.exe` are found on PATH or in the standard
+Program Files `gs/gs*/bin` folders, newest version first. Add a nonstandard
+installation's `bin` directory to PATH. Windows' unrelated `convert.exe` is
+never used. ImageMagick may also need Ghostscript and a policy allowing PDF.
+Vector exports do not require any of these converters.
 
 ## Plan
 

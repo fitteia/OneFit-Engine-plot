@@ -381,15 +381,15 @@ func (g *graceRun) finish() int {
 			format = "pdf"
 		}
 		write := writers[format]
-		if format == "png" {
+		if format == "png" || format == "tiff" || format == "tif" {
 			dpi := graceDPI
-			if n, ok := g.dpi["png"]; ok {
+			if n, ok := g.dpi[format]; ok {
 				dpi = n
 			}
-			write = pngWriter(dpi)
+			write = rasterWriter(format, dpi)
 		}
 		if write == nil {
-			g.warn("device " + g.device + " is not supported (EPS, PostScript, PDF, SVG, PNG)")
+			g.warn("device " + g.device + " is not supported (EPS, PostScript, PDF, SVG, PNG, TIFF)")
 			return 1
 		}
 		if err := writeFile(g.print, func(w io.Writer) error {

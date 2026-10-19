@@ -52,3 +52,18 @@ jobs:
 
       - name: go test (race detector)
         run: go test -race ./...
+
+  windows-raster:
+    name: Windows Ghostscript PNG and TIFF
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: Install Ghostscript
+        run: choco install ghostscript --yes --no-progress
+      - name: Check native console executable discovery and raster exports
+        run: go test -v ./raster -run 'TestWindowsGhostscriptDiscovery|TestGhostscriptRaster|TestRasterValidation'
+        env:
+          PLOT_GO_REQUIRE_GS: '1'

@@ -153,3 +153,16 @@ their positions; selecting a missing value skips that row with a warning.
 copied into plotted sets. Selecting other, present columns remains valid.
 `UpdateFiles` caches parsed blocks per source for one refresh, so many sets
 from one file do not cause repeated full-file parses.
+
+
+### Raster exports
+
+The command-line tool exports PNG and losslessly compressed TIFF (`.tiff` or
+`.tif`) using the shared `raster` package. Resolution is explicit with `-dpi`
+(default 300), with full-page dimensions and DPI metadata. Grace-compatible
+`-hdevice PNG`/`TIFF` calls use 72 DPI unless `DEVICE "name" DPI n` overrides it.
+Poppler is preferred, with Ghostscript and ImageMagick fallbacks. Windows
+Ghostscript console names and standard installation folders are supported.
+No JPEG export is provided. DPI is limited to 1–2400 and a page to 100 million
+pixels, to bound converter memory use; conversion respects cancellation and a
+two-minute timeout.
