@@ -107,3 +107,27 @@ func TestAddDataAndUpdate(t *testing.T) {
 		t.Errorf("after update: %v, symbol size %v", s.Data, s.Symbol.Size)
 	}
 }
+
+func TestAddDataGraph(t *testing.T) {
+	fig := FromPlot(load(t, "test3-1.agr"), "a/fit-curves-1.agr")
+	id, added, _, err := AddDataGraph(fig, "data/t.dat", "# TAG = run\n100 3 0.1\n300 4 0.2\n", DataSpec{X: 1, Y: []int{2}, Errors: []int{3}})
+	if err != nil || len(added) != 1 {
+		t.Fatal(id, added, err)
+	}
+	g := fig.Graphs[len(fig.Graphs)-1]
+	if g.ID != id || len(g.Sets) != 1 || g.Title.Text != "" || g.Sets[0].Legend != "run" {
+		t.Fatalf("graph %+v", g)
+	}
+	w := g.World
+	lo, hi := min(w.XMin, w.XMax), max(w.XMin, w.XMax)
+	if !(lo <= 100 && hi >= 300 && lo < hi && w.YMin <= 2.9 && w.YMax >= 4.2) {
+		t.Errorf("window %+v does not hold the data", w)
+	}
+	// the first graph is as it was
+	if len(fig.Graphs[0].Sets) == 0 || fig.Graphs[0].ID == id {
+		t.Error("first graph changed")
+	}
+	if _, _, _, err := AddDataGraph(fig, "x", "no numbers here\n", DataSpec{X: 1, Y: []int{2}}); err == nil || len(fig.Graphs) != 2 {
+		t.Errorf("a file without data: err %v, %d graphs", err, len(fig.Graphs))
+	}
+}

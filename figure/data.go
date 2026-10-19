@@ -257,3 +257,53 @@ func updateData(s *agr.Set, ref DataRef, text string) error {
 	s.Labels = nil
 	return nil
 }
+
+// AddDataGraph adds a new graph holding sets from a data file (AddData):
+// styled as the figure's first graph - its axes, frame and legend - with
+// no sets and no title, and its window fitted to the new data (Extend from
+// the first point). It returns the graph's number with AddData's results.
+// Layout places it.
+func AddDataGraph(fig *agr.Project, path, text string, spec DataSpec) (int, []int, []string, error) {
+	if len(fig.Graphs) == 0 {
+		return 0, nil, nil, fmt.Errorf("the figure has no graph to take a style from")
+	}
+	from := fig.Graphs[0]
+	id := 0
+	for _, g := range fig.Graphs {
+		id = max(id, g.ID+1)
+	}
+	g := *from
+	g.ID = id
+	g.Sets = nil
+	g.Kept = append([]string(nil), from.Kept...)
+	g.KeptHeader = append([]string(nil), from.KeptHeader...)
+	for _, a := range []*agr.Axis{&g.X, &g.Y, &g.AltX, &g.AltY} {
+		a.Tick.Spec = append([]agr.SpecTick(nil), a.Tick.Spec...)
+	}
+	g.Title.Text, g.Subtitle.Text = "", ""
+	fig.Graphs = append(fig.Graphs, &g)
+	added, notes, err := AddData(fig, id, path, text, spec)
+	if err != nil || len(added) == 0 {
+		fig.Graphs = fig.Graphs[:len(fig.Graphs)-1]
+		if err == nil {
+			err = fmt.Errorf("%s gives no data with these columns", path)
+		}
+		return 0, nil, notes, err
+	}
+	// the window from the first point the axes can show, then grown to
+	// all of the new data
+	for _, s := range g.Sets {
+		for _, r := range s.Data {
+			if (g.X.Scale == "Logarithmic" && r[0] <= 0) || (g.Y.Scale == "Logarithmic" && r[1] <= 0) {
+				continue
+			}
+			g.World = agr.Rect{XMin: r[0], XMax: r[0], YMin: r[1], YMax: r[1]}
+			if g.X.Invert {
+				g.World.XMin, g.World.XMax = g.World.XMax, g.World.XMin
+			}
+			_, err := Extend(fig, id, added)
+			return id, added, notes, err
+		}
+	}
+	return id, added, notes, nil
+}
