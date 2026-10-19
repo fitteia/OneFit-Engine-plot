@@ -260,8 +260,8 @@ func updateData(s *agr.Set, ref DataRef, text string) error {
 
 // AddDataGraph adds a new graph holding sets from a data file (AddData):
 // styled as the figure's first graph - its axes, frame and legend - with
-// no sets and no title, and its window fitted to the new data (Extend from
-// the first point). It returns the graph's number with AddData's results.
+// no sets and no title, on linear axes, its window the new data's span on
+// whole major ticks. It returns the graph's number with AddData's results.
 // Layout places it.
 func AddDataGraph(fig *agr.Project, path, text string, spec DataSpec) (int, []int, []string, error) {
 	if len(fig.Graphs) == 0 {
@@ -281,6 +281,24 @@ func AddDataGraph(fig *agr.Project, path, text string, spec DataSpec) (int, []in
 		a.Tick.Spec = append([]agr.SpecTick(nil), a.Tick.Spec...)
 	}
 	g.Title.Text, g.Subtitle.Text = "", ""
+	// a legend placed on the first graph's axes goes to the same place of
+	// the new graph's view: the new axes have other windows
+	if L := &g.Legend; L.LocType == "world" {
+		L.X = from.View.XMin + frac(L.X, from.World.XMin, from.World.XMax, from.X.Scale)*(from.View.XMax-from.View.XMin)
+		L.Y = from.View.YMin + frac(L.Y, from.World.YMin, from.World.YMax, from.Y.Scale)*(from.View.YMax-from.View.YMin)
+		L.LocType = "view"
+	}
+	// a table of numbers starts on linear axes, whatever the first graph's
+	// (a log axis's power labels and nine minor ticks go with it)
+	for _, a := range []*agr.Axis{&g.X, &g.Y} {
+		if a.Scale == "Logarithmic" {
+			a.Tick.MinorTicks = 1
+			if a.TickLabel.Format == "power" {
+				a.TickLabel.Format, a.TickLabel.Prec = "general", 5
+			}
+		}
+		a.Scale, a.Invert = "Normal", false
+	}
 	fig.Graphs = append(fig.Graphs, &g)
 	added, notes, err := AddData(fig, id, path, text, spec)
 	if err != nil || len(added) == 0 {
@@ -290,20 +308,35 @@ func AddDataGraph(fig *agr.Project, path, text string, spec DataSpec) (int, []in
 		}
 		return 0, nil, notes, err
 	}
-	// the window from the first point the axes can show, then grown to
-	// all of the new data
-	for _, s := range g.Sets {
-		for _, r := range s.Data {
-			if (g.X.Scale == "Logarithmic" && r[0] <= 0) || (g.Y.Scale == "Logarithmic" && r[1] <= 0) {
-				continue
+	// the window: the new data's span on about five major ticks, the ends
+	// on them, as OneFit's own plots end
+	xlo, xhi, ylo, yhi := extent(&g, added)
+	if xlo <= xhi {
+		g.World = agr.Rect{XMin: xlo, XMax: xhi, YMin: ylo, YMax: yhi}
+		for _, a := range []struct {
+			lo, hi *float64
+			ax     *agr.Axis
+		}{{&g.World.XMin, &g.World.XMax, &g.X}, {&g.World.YMin, &g.World.YMax, &g.Y}} {
+			span := *a.hi - *a.lo
+			if span == 0 {
+				span = math.Max(math.Abs(*a.hi), 1) * 0.2
+				*a.lo, *a.hi = *a.lo-span/2, *a.hi+span/2
 			}
-			g.World = agr.Rect{XMin: r[0], XMax: r[0], YMin: r[1], YMax: r[1]}
-			if g.X.Invert {
-				g.World.XMin, g.World.XMax = g.World.XMax, g.World.XMin
-			}
-			_, err := Extend(fig, id, added)
-			return id, added, notes, err
+			a.ax.Tick.Major = niceStep(span / 5)
+			*a.lo = math.Floor(*a.lo/a.ax.Tick.Major+1e-9) * a.ax.Tick.Major
+			*a.hi = math.Ceil(*a.hi/a.ax.Tick.Major-1e-9) * a.ax.Tick.Major
 		}
 	}
 	return id, added, notes, nil
+}
+
+// frac is where v is between an axis's ends, 0 to 1 (log axes in decades).
+func frac(v, lo, hi float64, scale string) float64 {
+	if scale == "Logarithmic" && v > 0 && lo > 0 && hi > 0 {
+		v, lo, hi = math.Log10(v), math.Log10(lo), math.Log10(hi)
+	}
+	if hi == lo {
+		return 0.5
+	}
+	return min(1, max(0, (v-lo)/(hi-lo)))
 }

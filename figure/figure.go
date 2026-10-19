@@ -521,9 +521,16 @@ func Layout(fig *agr.Project, layout string) error {
 // smaller panel is not crowded. It is relative to the graph's size before,
 // so going back to a bigger layout restores the sizes.
 func resize(fig *agr.Project, g *agr.Graph, v agr.Rect) {
-	old := (g.View.XMax - g.View.XMin) * (g.View.YMax - g.View.YMin)
+	ov := g.View
+	old := (ov.XMax - ov.XMin) * (ov.YMax - ov.YMin)
 	area := (v.XMax - v.XMin) * (v.YMax - v.YMin)
 	g.View = v
+	// a legend placed on the page moves with its graph, to the same place
+	// in it (a world-placed one follows the axes by itself)
+	if L := &g.Legend; L.LocType != "world" && ov.XMax > ov.XMin && ov.YMax > ov.YMin {
+		L.X = v.XMin + (L.X-ov.XMin)/(ov.XMax-ov.XMin)*(v.XMax-v.XMin)
+		L.Y = v.YMin + (L.Y-ov.YMin)/(ov.YMax-ov.YMin)*(v.YMax-v.YMin)
+	}
 	if old <= 0 || area <= 0 {
 		return
 	}
@@ -631,12 +638,26 @@ func Extend(fig *agr.Project, g int, sets []int) (bool, error) {
 	if gr == nil {
 		return false, fmt.Errorf("the figure has no graph %d", g)
 	}
+	xlog, ylog := gr.X.Scale == "Logarithmic", gr.Y.Scale == "Logarithmic"
+	xlo, xhi, ylo, yhi := extent(gr, sets)
+	if xlo > xhi {
+		return false, nil
+	}
+	w := &gr.World
+	cx := grow(&w.XMin, &w.XMax, xlo, xhi, xlog, &gr.X)
+	cy := grow(&w.YMin, &w.YMax, ylo, yhi, ylog, &gr.Y)
+	return cx || cy, nil
+}
+
+// extent is the span of the graph's sets (their numbers), error bars
+// included; lo > hi when they have no point the axes can show.
+func extent(gr *agr.Graph, sets []int) (xlo, xhi, ylo, yhi float64) {
 	mine := map[int]bool{}
 	for _, id := range sets {
 		mine[id] = true
 	}
 	xlog, ylog := gr.X.Scale == "Logarithmic", gr.Y.Scale == "Logarithmic"
-	xlo, xhi, ylo, yhi := math.Inf(1), math.Inf(-1), math.Inf(1), math.Inf(-1)
+	xlo, xhi, ylo, yhi = math.Inf(1), math.Inf(-1), math.Inf(1), math.Inf(-1)
 	for _, s := range gr.Sets {
 		if !mine[s.ID] {
 			continue
@@ -669,13 +690,7 @@ func Extend(fig *agr.Project, g int, sets []int) (bool, error) {
 			ylo, yhi = min(ylo, y0), max(yhi, y1)
 		}
 	}
-	if xlo > xhi {
-		return false, nil
-	}
-	w := &gr.World
-	cx := grow(&w.XMin, &w.XMax, xlo, xhi, xlog, &gr.X)
-	cy := grow(&w.YMin, &w.YMax, ylo, yhi, ylog, &gr.Y)
-	return cx || cy, nil
+	return
 }
 
 // grow widens [*a, *b] (in either order - an inverted range keeps its

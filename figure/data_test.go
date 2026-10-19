@@ -2,6 +2,7 @@ package figure
 
 import (
 	"bytes"
+	"math"
 	"reflect"
 	"strings"
 	"testing"
@@ -129,5 +130,46 @@ func TestAddDataGraph(t *testing.T) {
 	}
 	if _, _, _, err := AddDataGraph(fig, "x", "no numbers here\n", DataSpec{X: 1, Y: []int{2}}); err == nil || len(fig.Graphs) != 2 {
 		t.Errorf("a file without data: err %v, %d graphs", err, len(fig.Graphs))
+	}
+}
+
+func TestAddDataGraphAxesAndLegend(t *testing.T) {
+	fig := &agr.Project{}
+	g := &agr.Graph{View: agr.Rect{XMin: 0.15, YMin: 0.15, XMax: 1.15, YMax: 0.85},
+		World: agr.Rect{XMin: 1, XMax: 1e4, YMin: 0, YMax: 1}}
+	g.X.Scale, g.X.Invert, g.Y.Scale = "Logarithmic", true, "Normal"
+	g.X.Tick.Major, g.Y.Tick.Major = 10, 0.2
+	g.X.Tick.MinorTicks, g.X.TickLabel.Format, g.X.TickLabel.Prec = 9, "power", 0
+	g.Legend.LocType, g.Legend.X, g.Legend.Y = "world", 100, 0.5
+	fig.Graphs = []*agr.Graph{g}
+	id, added, _, err := AddDataGraph(fig, "t.csv", "0,3\n7,41\n", DataSpec{X: 1, Y: []int{2}})
+	if err != nil || len(added) != 1 {
+		t.Fatal(id, added, err)
+	}
+	n := fig.Graphs[1]
+	if n.X.Scale != "Normal" || n.X.Invert || n.Y.Scale != "Normal" {
+		t.Errorf("axes %s %v %s, want linear", n.X.Scale, n.X.Invert, n.Y.Scale)
+	}
+	if n.X.Tick.MinorTicks != 1 || n.X.TickLabel.Format != "general" || n.X.TickLabel.Prec != 5 {
+		t.Errorf("x ticks %d minor, labels %s %d, want 1 general 5", n.X.Tick.MinorTicks, n.X.TickLabel.Format, n.X.TickLabel.Prec)
+	}
+	if w := n.World; w.XMin != 0 || w.XMax != 8 || w.YMin != 0 || w.YMax != 50 || n.X.Tick.Major != 2 || n.Y.Tick.Major != 10 {
+		t.Errorf("world %+v majors %g %g", w, n.X.Tick.Major, n.Y.Tick.Major)
+	}
+	if L := n.Legend; L.LocType != "view" || math.Abs(L.X-0.65) > 1e-9 || math.Abs(L.Y-0.5) > 1e-9 {
+		t.Errorf("legend %s %g %g, want view 0.65 0.5", L.LocType, L.X, L.Y)
+	}
+	if g.Legend.LocType != "world" {
+		t.Error("the first graph's legend changed")
+	}
+	// side by side: each legend stays at its place in its own graph
+	if err := Layout(fig, "grid"); err != nil {
+		t.Fatal(err)
+	}
+	for _, x := range fig.Graphs[1:] {
+		v := x.View
+		if fx := (x.Legend.X - v.XMin) / (v.XMax - v.XMin); math.Abs(fx-0.5) > 1e-9 {
+			t.Errorf("graph %d legend at %g of its width, want 0.5", x.ID, fx)
+		}
 	}
 }
