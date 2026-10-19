@@ -100,6 +100,19 @@ then vendored in the GUI and pinned in the debs.
 - The set types with other error bars (`xydx`, `xydxdx`, `xydxdy`,
   `xydydy`, `xydxdxdydy`): v0.2.4.
 
+## Next: overlay links for Figures (v0.2.39)
+
+plot-go already draws overlays (graphs sharing a viewport and an axis). For
+the Figures editor it will keep them linked:
+- `agr`: a graph's overlay link (base graph, shared axis), saved as a
+  `# plot-go: graph overlays N shared x|y` comment.
+- `figure`: `Overlay`, `SyncLinks` and `Unlink`. Layouts move a group as one
+  panel, and separated free or shared axes use the axis offset or a shifted
+  viewport.
+
+Measured with gracebat first: frame off with an offset axis bar, and the
+placement of opposite-side axes.
+
 ## Later
 
 - **Other set types**: xycolpat.
