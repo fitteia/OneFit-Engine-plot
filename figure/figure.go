@@ -259,11 +259,43 @@ func nextKey[V any](m map[int]V) int {
 // set, is a warning and the set keeps its data. It returns how many sets
 // were updated.
 func Update(fig *agr.Project, load func(path string) (*agr.Project, error)) (int, []string) {
+	return UpdateFiles(fig, load, nil)
+}
+
+// UpdateFiles is Update for figures with sets from data files too (AddData):
+// loadText reads a recorded data file's text. Without it those sets keep
+// their data.
+func UpdateFiles(fig *agr.Project, load func(path string) (*agr.Project, error), loadText func(path string) (string, error)) (int, []string) {
 	cache := map[string]*agr.Project{}
+	texts := map[string]*string{}
 	var warnings []string
 	updated := 0
 	for _, g := range fig.Graphs {
 		for _, s := range g.Sets {
+			if dref, ok := DataSourceOf(s); ok {
+				if loadText == nil {
+					continue
+				}
+				t, seen := texts[dref.Path]
+				if !seen {
+					text, err := loadText(dref.Path)
+					if err != nil {
+						warnings = append(warnings, fmt.Sprintf("set %d: %s: %v; its data is kept", s.ID, dref.Path, err))
+					} else {
+						t = &text
+					}
+					texts[dref.Path] = t
+				}
+				if t == nil {
+					continue
+				}
+				if err := updateData(s, dref, *t); err != nil {
+					warnings = append(warnings, fmt.Sprintf("set %d: %v; its data is kept", s.ID, err))
+					continue
+				}
+				updated++
+				continue
+			}
 			ref, ok := SourceOf(s)
 			if !ok {
 				continue
