@@ -25,11 +25,12 @@ func WritePDF(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) 
 	return WritePDFWith(w, d, pageW, pageH, title, PDFOptions{})
 }
 
-// PDFOptions: FullPage keeps the whole page, not cropped (what a raster
-// made from it needs: gracebat's PNG is the whole page). PixelsPerPoint,
-// when set, rounds every line's width to whole pixels of a raster at that
-// scale, one at least: gracebat's PNG lines are each a whole number of
-// pixels thick (measured; docs/grace-behaviour.md, "PNG"). EvenOdd fills
+// PDFOptions: FullPage keeps the whole page, not cropped (gracebat's PNG
+// is the whole page; plot-go's rasters are cropped unless asked).
+// PixelsPerPoint, when set, rounds every line's width to whole pixels of a
+// raster at that scale, one at least: gracebat's PNG lines are each a whole
+// number of pixels thick (measured; docs/grace-behaviour.md, "PNG"); a
+// cropped page then also starts and ends on whole pixels. EvenOdd fills
 // every area by the even-odd rule, the only one gracebat's raster devices
 // have (a star's middle stays empty).
 type PDFOptions struct {
@@ -44,6 +45,12 @@ func WritePDFWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 	bb := BoundingBox(d, unit)
 	if opt.FullPage {
 		bb = Box{0, 0, pageW, pageH}
+	} else if opt.PixelsPerPoint > 0 {
+		// outward to the raster's pixels, so lines snapped to whole
+		// pixels stay on them and the image is a whole number of pixels
+		px := opt.PixelsPerPoint
+		bb = Box{math.Floor(bb.LLX*px) / px, math.Floor(bb.LLY*px) / px,
+			math.Ceil(bb.URX*px) / px, math.Ceil(bb.URY*px) / px}
 	}
 
 	fonts := map[string]int{}

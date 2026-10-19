@@ -5,11 +5,14 @@ import (
 	"context"
 	"image"
 	"image/png"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/fitteia/OneFit-Engine-plot/agr"
+	"github.com/fitteia/OneFit-Engine-plot/backend"
+	"github.com/fitteia/OneFit-Engine-plot/draw"
 	"github.com/fitteia/OneFit-Engine-plot/render"
 )
 
@@ -36,7 +39,7 @@ func pngOf(t *testing.T, name string, dpi int) map[string]image.Image {
 	out := map[string]image.Image{}
 	for _, c := range all {
 		var b bytes.Buffer
-		if err := writeWith(context.Background(), &b, d, p.PageWidth, p.PageHeight, name, Options{Format: "png", DPI: dpi}, []converter{c}); err != nil {
+		if err := writeWith(context.Background(), &b, d, p.PageWidth, p.PageHeight, name, Options{Format: "png", DPI: dpi, FullPage: true}, []converter{c}); err != nil {
 			t.Fatalf("%s: %v", c.name, err)
 		}
 		img, err := png.Decode(&b)
@@ -48,7 +51,7 @@ func pngOf(t *testing.T, name string, dpi int) map[string]image.Image {
 	return out
 }
 
-// TestPNGIsTheWholePage: gracebat's PNG is the page, its points times
+// TestPNGIsTheWholePage: with FullPage, as gracebat's PNG, the PNG is the page, its points times
 // dpi/72 pixels, rounded (measured: 773x600 points -> 773x600 at 72 dpi,
 // 1546x1200 at 144, 3221x2500 at 300 - plot-go's own default).
 func TestPNGIsTheWholePage(t *testing.T) {
@@ -146,4 +149,58 @@ func unmatched(a, b image.Image, tol, shift int) (diff, ink int) {
 		}
 	}
 	return diff, ink
+}
+
+// TestRasterIsCroppedByDefault: without FullPage the PNG is the PDF's crop
+// box (the drawing's bounding box) at dpi/72 pixels a point, within a pixel
+// of rounding, with every ink pixel inside it: its outermost rows and
+// columns are the margin, white.
+func TestRasterIsCroppedByDefault(t *testing.T) {
+	needConverter(t)
+	p, err := agr.ParseFile(filepath.Join("../testdata/corpus", "p96-10-1.agr"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, _ := render.Render(p)
+	pw, ph := draw.PageSize(p.PageWidth, p.PageHeight)
+	bb := backend.BoundingBox(d, math.Min(pw, ph))
+	if bb.URX-bb.LLX >= pw && bb.URY-bb.LLY >= ph {
+		t.Fatalf("the corpus drawing fills its page (%v); it cannot show a crop", bb)
+	}
+	for _, c := range converters() {
+		for _, dpi := range []int{72, 144, DefaultDPI} {
+			var b bytes.Buffer
+			if err := writeWith(context.Background(), &b, d, p.PageWidth, p.PageHeight, "p96-10-1", Options{Format: "png", DPI: dpi}, []converter{c}); err != nil {
+				t.Fatalf("%s: %v", c.name, err)
+			}
+			img, err := png.Decode(&b)
+			if err != nil {
+				t.Fatalf("%s: %v", c.name, err)
+			}
+			r := img.Bounds()
+			w, h := (bb.URX-bb.LLX)*float64(dpi)/72, (bb.URY-bb.LLY)*float64(dpi)/72
+			if math.Abs(float64(r.Dx())-w) > 1 || math.Abs(float64(r.Dy())-h) > 1 {
+				t.Errorf("%s at %d dpi: %dx%d, crop box %.1fx%.1f", c.name, dpi, r.Dx(), r.Dy(), w, h)
+			}
+			for x := r.Min.X; x < r.Max.X; x++ {
+				for _, y := range []int{r.Min.Y, r.Max.Y - 1} {
+					if !white(img, x, y) {
+						t.Fatalf("%s at %d dpi: ink at the edge (%d,%d)", c.name, dpi, x, y)
+					}
+				}
+			}
+			for y := r.Min.Y; y < r.Max.Y; y++ {
+				for _, x := range []int{r.Min.X, r.Max.X - 1} {
+					if !white(img, x, y) {
+						t.Fatalf("%s at %d dpi: ink at the edge (%d,%d)", c.name, dpi, x, y)
+					}
+				}
+			}
+		}
+	}
+}
+
+func white(img image.Image, x, y int) bool {
+	r, g, b, _ := img.At(x, y).RGBA()
+	return r > 0xf000 && g > 0xf000 && b > 0xf000
 }

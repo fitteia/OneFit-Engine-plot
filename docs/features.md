@@ -159,7 +159,9 @@ from one file do not cause repeated full-file parses.
 
 The command-line tool exports PNG and losslessly compressed TIFF (`.tiff` or
 `.tif`) using the shared `raster` package. Resolution is explicit with `-dpi`
-(default 300), with full-page dimensions and DPI metadata. Grace-compatible
+(default 300), with DPI metadata. Both are cropped to the drawing, as the PDF,
+EPS and SVG are (`-fullpage`: the whole page, as gracebat's PNG); the crop box
+is extended to whole pixels so pixel-snapped lines stay sharp. Grace-compatible
 `-hdevice PNG`/`TIFF` calls use 72 DPI unless `DEVICE "name" DPI n` overrides it.
 Poppler is preferred, with Ghostscript and ImageMagick fallbacks. Windows
 Ghostscript console names and standard installation folders are supported.

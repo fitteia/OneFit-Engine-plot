@@ -1,5 +1,7 @@
-// Package raster exports whole-page PNG and losslessly compressed TIFF through
-// an installed PDF converter. Vector backends do not need these programs.
+// Package raster exports PNG and losslessly compressed TIFF through an
+// installed PDF converter, cropped to the drawing as the PDF, EPS and SVG
+// are, or the whole page with Options.FullPage. Vector backends do not need
+// these programs.
 package raster
 
 import (
@@ -28,13 +30,17 @@ const MaxPixels = 100_000_000
 // Options controls the raster format and resolution. DPI must be explicit;
 // callers wanting the default supply DefaultDPI. Both formats keep a white
 // page background and record the chosen resolution in the output metadata.
+// FullPage keeps the whole page (gracebat's PNG) instead of cropping to the
+// drawing's bounding box.
 type Options struct {
-	Format string
-	DPI    int
+	Format   string
+	DPI      int
+	FullPage bool
 }
 
 // Validate rejects unsupported formats and impractically large raster pages
-// before starting a converter. Dimensions follow the full PDF page, not its ink.
+// before starting a converter. The pixel limit is checked on the whole page,
+// which bounds a cropped image too.
 func Validate(pageW, pageH float64, opt Options) error {
 	if opt.Format != "png" && opt.Format != "tiff" && opt.Format != "tif" {
 		return fmt.Errorf("raster format must be png or tiff")
@@ -193,7 +199,7 @@ func writeWith(ctx context.Context, w io.Writer, d *draw.Drawing, pageW, pageH f
 	in, out := filepath.Join(dir, "page.pdf"), filepath.Join(dir, "page."+ext)
 	var tried []string
 	for _, c := range all {
-		pdfOpt := backend.PDFOptions{FullPage: true, EvenOdd: true}
+		pdfOpt := backend.PDFOptions{FullPage: opt.FullPage, EvenOdd: true}
 		if c.wholePixels {
 			pdfOpt.PixelsPerPoint = float64(opt.DPI) / 72
 		}

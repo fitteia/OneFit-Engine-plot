@@ -25,8 +25,9 @@ go install ./cmd/plot-go
 plot-go fit-curves-1.agr                  # -> fit-curves-1.pdf
 plot-go -o plot.svg fit-curves-1.agr      # format from the extension
 plot-go -format eps fit-curves-1.agr      # what OneFit's C core asks for
-plot-go -o plot.png fit-curves-1.agr      # the whole page at 300 dpi
+plot-go -o plot.png fit-curves-1.agr      # cropped to the drawing, at 300 dpi
 plot-go -dpi 600 -o plot.png fit-curves-1.agr   # line art at 600 dpi
+plot-go -fullpage -o plot.png fit-curves-1.agr  # the whole page, as gracebat's PNG
 plot-go -dpi 600 -o plot.tiff fit-curves-1.agr  # lossless TIFF (.tif also accepted)
 
 # gracebat's command line, as OneFit's C core calls Grace:
@@ -34,7 +35,10 @@ plot-go -settype xydy gnu0.da_ -nxy fit-curves-1 -param fit1.agr-par \
   -hdevice EPS -hardcopy -printfile fit-curves-1.eps -saveall fit-curves-1.agr
 ```
 
-PNG and TIFF are full-page raster exports. `-dpi` selects their resolution
+PNG and TIFF are cropped to the drawing, as the PDF, EPS and SVG are, so they
+drop straight into a document; `-fullpage` keeps the whole page instead (what
+gracebat's PNG is). This holds for gracebat's command line (`-hdevice PNG`) too.
+`-dpi` selects their resolution
 (default 300); it does not affect PDF/EPS/SVG. TIFF uses lossless compression
 and both formats record resolution metadata. Exports accept 1–2400 DPI and
 at most 100 million pixels per page; choose a lower DPI for a large page.

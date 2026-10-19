@@ -18,13 +18,13 @@ import (
 )
 
 func TestRasterValidation(t *testing.T) {
-	for _, opt := range []Options{{"jpeg", 300}, {"png", 0}, {"tiff", -1}, {"png", MaxDPI + 1}, {"tiff", 2400}} {
+	for _, opt := range []Options{{Format: "jpeg", DPI: 300}, {Format: "png", DPI: 0}, {Format: "tiff", DPI: -1}, {Format: "png", DPI: MaxDPI + 1}, {Format: "tiff", DPI: 2400}} {
 		if err := Validate(792, 612, opt); err == nil {
 			t.Fatalf("accepted %+v", opt)
 		}
 	}
 	for _, format := range []string{"png", "tiff", "tif"} {
-		if err := Validate(792, 612, Options{format, 600}); err != nil {
+		if err := Validate(792, 612, Options{Format: format, DPI: 600}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -50,13 +50,13 @@ func TestWindowsGhostscriptDiscovery(t *testing.T) {
 }
 func TestRasterMissingConverterAndCancellation(t *testing.T) {
 	var b bytes.Buffer
-	err := writeWith(context.Background(), &b, &draw.Drawing{}, 72, 72, "", Options{"png", 72}, nil)
+	err := writeWith(context.Background(), &b, &draw.Drawing{}, 72, 72, "", Options{Format: "png", DPI: 72}, nil)
 	if err == nil || !strings.Contains(err.Error(), "none was found") || b.Len() != 0 {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if err := Write(ctx, &b, &draw.Drawing{}, 72, 72, "", Options{"tiff", 72}); err != context.Canceled {
+	if err := Write(ctx, &b, &draw.Drawing{}, 72, 72, "", Options{Format: "tiff", DPI: 72}); err != context.Canceled {
 		t.Fatal(err)
 	}
 }
@@ -92,7 +92,7 @@ func testFormats(t *testing.T, c converter) {
 		for _, dpi := range []int{72, 144} {
 			t.Run(c.name+"/"+format+"/"+strconv.Itoa(dpi), func(t *testing.T) {
 				var out bytes.Buffer
-				if err := writeWith(context.Background(), &out, &draw.Drawing{}, 72, 36, "test", Options{format, dpi}, []converter{c}); err != nil {
+				if err := writeWith(context.Background(), &out, &draw.Drawing{}, 72, 36, "test", Options{Format: format, DPI: dpi, FullPage: true}, []converter{c}); err != nil {
 					t.Fatal(err)
 				}
 				var w, h int

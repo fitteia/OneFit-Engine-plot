@@ -668,8 +668,10 @@ Measured with `gracebat -hdevice PNG` (and `-pexec 'DEVICE "PNG" DPI n'`):
 
 plot-go's own `-format png` is at 300 dpi unless `-dpi` says otherwise
 (72 is too coarse for a publication); gracebat's command line
-(`-hdevice PNG`) gets gracebat's 72, or the `-pexec` DPI. It makes the
-PNG from its own full-page PDF with an installed converter: pdftoppm (given the whole-pixel widths, which it then draws as
+(`-hdevice PNG`) gets gracebat's 72, or the `-pexec` DPI. Unlike
+gracebat's, its PNG is cropped to the drawing, as its PDF, EPS and SVG are
+(the box extended to whole pixels); `-fullpage` keeps the whole page, as
+gracebat does. It makes the PNG from its own PDF with an installed converter: pdftoppm (given the whole-pixel widths, which it then draws as
 gracebat does), else Ghostscript or ImageMagick (the widths as they are,
 since Ghostscript inks every pixel a line touches). Every fill is even-odd.
 Unlike gracebat's, the image is antialiased, and a converter places each

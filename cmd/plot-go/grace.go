@@ -386,7 +386,7 @@ func (g *graceRun) finish() int {
 			if n, ok := g.dpi[format]; ok {
 				dpi = n
 			}
-			write = rasterWriter(format, dpi)
+			write = rasterWriter(format, dpi, false)
 		}
 		if write == nil {
 			g.warn("device " + g.device + " is not supported (EPS, PostScript, PDF, SVG, PNG, TIFF)")

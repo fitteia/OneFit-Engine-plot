@@ -1,12 +1,13 @@
 // plot-go renders a Grace project file (.agr) the way gracebat does,
-// without Grace: to PDF, EPS, SVG or PNG.
+// without Grace: to PDF, EPS, SVG, PNG or TIFF.
 //
-//	plot-go [-o OUT] [-format pdf|eps|svg|png|tiff] [-dpi N] FILE.agr
+//	plot-go [-o OUT] [-format pdf|eps|svg|png|tiff] [-dpi N] [-fullpage] FILE.agr
 //
-// Without -o the output is FILE.pdf (or .eps, .svg, .png) next to the
-// input. PNG is the whole page at -dpi (300 by default; gracebat's
-// command line gets gracebat's 72), made
-// by pdftoppm, Ghostscript or ImageMagick (png.go).
+// Without -o the output is FILE.pdf (or .eps, .svg, .png, .tiff) next to
+// the input. Every format is cropped to the drawing; PNG and TIFF are made
+// at -dpi (300 by default; gracebat's command line gets gracebat's 72) by
+// pdftoppm, Ghostscript or ImageMagick (png.go), and -fullpage makes them
+// the whole page, as gracebat's PNG is.
 // Lines plot-go cannot use, and features it does not draw, are warnings on
 // stderr; it still writes the file, as gracebat does.
 //
@@ -77,14 +78,15 @@ func main() {
 	}
 	out := flag.String("o", "", "output file (default: the input with the format's extension)")
 	format := flag.String("format", "", "pdf, eps, svg, png or tiff (default: from -o's extension, else pdf)")
-	dpi := flag.Int("dpi", defaultDPI, "png/tiff: resolution; the image is the page's size in points times dpi/72")
+	dpi := flag.Int("dpi", defaultDPI, "png/tiff: resolution; the image is its size in points times dpi/72")
+	fullPage := flag.Bool("fullpage", false, "png/tiff: the whole page, as gracebat's PNG, instead of cropped to the drawing")
 	quiet := flag.Bool("q", false, "do not print warnings")
 	showVersion := flag.Bool("version", false, "print the version and exit")
 	showNotices := flag.Bool("notices", false, "print the license and third-party notices and exit")
 	listFonts := flag.Bool("list-fonts", false, "list standard and available installed TTF/OpenType font names and exit")
 	outlineText := flag.Bool("outline-text", false, "SVG: draw text as glyph outlines (the same in every browser) instead of <text>")
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: plot-go [-o OUT] [-format pdf|eps|svg|png|tiff] [-dpi N] [-q] FILE.agr")
+		fmt.Fprintln(os.Stderr, "usage: plot-go [-o OUT] [-format pdf|eps|svg|png|tiff] [-dpi N] [-fullpage] [-q] FILE.agr")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -116,7 +118,7 @@ func main() {
 	}
 	write := writers[f]
 	if f == "png" || f == "tiff" || f == "tif" {
-		write = rasterWriter(f, *dpi)
+		write = rasterWriter(f, *dpi, *fullPage)
 	}
 	if f == "svg" && *outlineText {
 		write = func(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) error {

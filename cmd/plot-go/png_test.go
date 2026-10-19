@@ -2,12 +2,19 @@ package main
 
 import (
 	"bytes"
-	"github.com/fitteia/OneFit-Engine-plot/raster"
-	"golang.org/x/image/tiff"
 	"image/png"
+	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"github.com/fitteia/OneFit-Engine-plot/agr"
+	"github.com/fitteia/OneFit-Engine-plot/backend"
+	"github.com/fitteia/OneFit-Engine-plot/draw"
+	"github.com/fitteia/OneFit-Engine-plot/raster"
+	"github.com/fitteia/OneFit-Engine-plot/render"
+	"golang.org/x/image/tiff"
 )
 
 func needConverter(t *testing.T) {
@@ -17,9 +24,26 @@ func needConverter(t *testing.T) {
 	}
 }
 
+// cropSize is the drawing's crop box (its PDF's) in pixels at dpi.
+func cropSize(t *testing.T, agrFile string, dpi int) (w, h float64) {
+	t.Helper()
+	p, err := agr.ParseFile(agrFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, _ := render.Render(p)
+	pw, ph := draw.PageSize(p.PageWidth, p.PageHeight)
+	bb := backend.BoundingBox(d, math.Min(pw, ph))
+	return (bb.URX - bb.LLX) * float64(dpi) / 72, (bb.URY - bb.LLY) * float64(dpi) / 72
+}
+
+func nearSize(gotW, gotH int, w, h float64) bool {
+	return math.Abs(float64(gotW)-w) <= 1 && math.Abs(float64(gotH)-h) <= 1
+}
+
 // TestGracebatCallPNG: -hdevice PNG writes a PNG at gracebat's 72 dpi
 // (not plot-go's own 300), or at the DPI a -pexec DEVICE "PNG" DPI
-// command sets.
+// command sets - cropped to the drawing, unlike gracebat's whole page.
 func TestGracebatCallPNG(t *testing.T) {
 	needConverter(t)
 	agrFile, err := filepath.Abs("../../testdata/corpus/p96-10-1.agr")
@@ -28,8 +52,8 @@ func TestGracebatCallPNG(t *testing.T) {
 	}
 	for _, c := range []struct {
 		pexec []string
-		w, h  int
-	}{{nil, 773, 600}, {[]string{"-pexec", `DEVICE "PNG" DPI 144`}, 1546, 1200}} {
+		dpi   int
+	}{{nil, 72}, {[]string{"-pexec", `DEVICE "PNG" DPI 144`}, 144}} {
 		out := filepath.Join(t.TempDir(), "x.png")
 		args := append(append([]string{"-hdevice", "PNG"}, c.pexec...), "-hardcopy", "-printfile", out, agrFile)
 		var stdout, stderr bytes.Buffer
@@ -45,8 +69,8 @@ func TestGracebatCallPNG(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if cfg.Width != c.w || cfg.Height != c.h {
-			t.Errorf("%v: %dx%d, gracebat %dx%d", c.pexec, cfg.Width, cfg.Height, c.w, c.h)
+		if w, h := cropSize(t, agrFile, c.dpi); !nearSize(cfg.Width, cfg.Height, w, h) {
+			t.Errorf("%v: %dx%d, crop box %.1fx%.1f", c.pexec, cfg.Width, cfg.Height, w, h)
 		}
 	}
 }
@@ -72,7 +96,44 @@ func TestGracebatCallTIFF(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Width != 1546 || cfg.Height != 1200 {
-		t.Fatalf("TIFF dimensions %dx%d", cfg.Width, cfg.Height)
+	if w, h := cropSize(t, input, 144); !nearSize(cfg.Width, cfg.Height, w, h) {
+		t.Fatalf("TIFF dimensions %dx%d, crop box %.1fx%.1f", cfg.Width, cfg.Height, w, h)
+	}
+}
+
+// TestFullPageFlag: plot-go -fullpage is the whole page, gracebat's PNG
+// (773x600 points: 1546x1200 at 144 dpi); without it, the crop box.
+func TestFullPageFlag(t *testing.T) {
+	needConverter(t)
+	bin := filepath.Join(t.TempDir(), "plot-go")
+	if out, err := exec.Command("go", "build", "-o", bin, ".").CombinedOutput(); err != nil {
+		t.Fatalf("build: %v %s", err, out)
+	}
+	input, err := filepath.Abs("../../testdata/corpus/p96-10-1.agr")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cw, ch := cropSize(t, input, 144)
+	for _, c := range []struct {
+		flags []string
+		w, h  float64
+	}{{nil, cw, ch}, {[]string{"-fullpage"}, 1546, 1200}} {
+		out := filepath.Join(t.TempDir(), "x.png")
+		args := append(append([]string{"-q", "-dpi", "144"}, c.flags...), "-o", out, input)
+		if msg, err := exec.Command(bin, args...).CombinedOutput(); err != nil {
+			t.Fatalf("%v: %v %s", c.flags, err, msg)
+		}
+		f, err := os.Open(out)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cfg, err := png.DecodeConfig(f)
+		f.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !nearSize(cfg.Width, cfg.Height, c.w, c.h) {
+			t.Errorf("%v: %dx%d, want %.1fx%.1f", c.flags, cfg.Width, cfg.Height, c.w, c.h)
+		}
 	}
 }
