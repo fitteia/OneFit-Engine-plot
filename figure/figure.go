@@ -363,6 +363,7 @@ func AddGraph(fig *agr.Project, src *agr.Project, path string) (int, error) {
 	g := *from
 	g.ID = id
 	g.Sets = nil
+	g.Overlay = agr.Link{}
 	in.remap(&g)
 	fig.Graphs = append(fig.Graphs, &g)
 	sets := make([]int, 0, len(from.Sets))
@@ -398,29 +399,42 @@ func AddGraph(fig *agr.Project, src *agr.Project, path string) (int, error) {
 // several keep their arrangement - stacked, side by side or a grid - and
 // close the gap.
 func RemoveGraph(fig *agr.Project, id int) error {
-	layout := arrangement(fig)
+	layout := Arrangement(fig)
 	if err := removeGraph(fig, id); err != nil {
 		return err
 	}
-	if len(fig.Graphs) == 1 {
+	panels := 0
+	for _, g := range fig.Graphs {
+		if g.Overlay.Shared == "" {
+			panels++
+		}
+	}
+	if panels == 1 {
 		layout = "single"
 	}
 	return Layout(fig, layout)
 }
 
-// arrangement is how the figure's graphs sit: "stacked" when they share
-// their left edge, "side-by-side" when they share their top, else "grid".
-func arrangement(fig *agr.Project) string {
+// Arrangement is how the figure's graphs sit, a group of overlays counting
+// as one: "single" for one, "stacked" when they share their left edge,
+// "side-by-side" when they share their top, else "grid".
+func Arrangement(fig *agr.Project) string {
+	var panels []*agr.Graph // an overlay goes with its base
+	for _, g := range fig.Graphs {
+		if g.Overlay.Shared == "" {
+			panels = append(panels, g)
+		}
+	}
 	same := func(v func(agr.Rect) float64) bool {
-		for _, g := range fig.Graphs {
-			if math.Abs(v(g.View)-v(fig.Graphs[0].View)) > 1e-6 {
+		for _, g := range panels {
+			if math.Abs(v(g.View)-v(panels[0].View)) > 1e-6 {
 				return false
 			}
 		}
 		return true
 	}
 	switch {
-	case len(fig.Graphs) < 2:
+	case len(panels) < 2:
 		return "single"
 	case same(func(r agr.Rect) float64 { return r.XMin }):
 		return "stacked"
@@ -443,7 +457,26 @@ func removeGraph(fig *agr.Project, id int) error {
 	if i < 0 {
 		return fmt.Errorf("no graph %d", id)
 	}
+	// the graphs overlaid on it: the first is their base now, its free
+	// axis on the base's side, and the others are overlaid on it again
+	over := Overlays(fig, id)
+	shifts := make([]float64, len(over))
+	for k, o := range over {
+		shifts[k] = Shift(fig, o.ID)
+	}
+	removed := fig.Graphs[i]
 	fig.Graphs = append(fig.Graphs[:i], fig.Graphs[i+1:]...)
+	if len(over) > 0 {
+		nb := over[0]
+		Unlink(fig, nb.ID)
+		resize(fig, nb, removed.View)
+		for k, o := range over[1:] {
+			if err := Overlay(fig, nb.ID, o.ID, o.Overlay.Shared); err != nil {
+				return err
+			}
+			OverlayShift(fig, o.ID, shifts[k+1])
+		}
+	}
 	kept := fig.Strings[:0]
 	for _, s := range fig.Strings {
 		if !(s.LocType == "world" && s.Graph == id) {
@@ -469,7 +502,26 @@ var Layouts = []string{"single", "side-by-side", "stacked", "grid"}
 // what OneFit's one-graph plots use). Margins leave room for the axes'
 // numbers and labels.
 func Layout(fig *agr.Project, layout string) error {
-	n := len(fig.Graphs)
+	// overlaid graphs go with their base: each group is one panel, and
+	// the overlays are placed over it again, as far off it as they were
+	var panels []*agr.Graph
+	shift := map[int]float64{}
+	for _, g := range fig.Graphs {
+		if g.Overlay.Shared == "" || graph(fig, g.Overlay.Base) == nil {
+			panels = append(panels, g)
+		} else {
+			shift[g.ID] = Shift(fig, g.ID)
+		}
+	}
+	defer func() {
+		for _, g := range fig.Graphs {
+			if d, ok := shift[g.ID]; ok {
+				resize(fig, g, graph(fig, g.Overlay.Base).View)
+				OverlayShift(fig, g.ID, d)
+			}
+		}
+	}()
+	n := len(panels)
 	if n == 0 {
 		return fmt.Errorf("the figure has no graphs")
 	}
@@ -479,12 +531,20 @@ func Layout(fig *agr.Project, layout string) error {
 	}
 	unit := min(w, h)
 	pw, ph := w/unit, h/unit // the page in viewport units
+	// room for the free axes of overlays, on the right and on top
+	right, top := 0.04, 0.05
+	for _, g := range panels {
+		right = max(right, 0.02+Reach(fig, g.ID, "x"))
+		top = max(top, 0.03+Reach(fig, g.ID, "y"))
+	}
 	var cols, rows int
 	switch layout {
 	case "single":
-		for _, g := range fig.Graphs {
-			// OneFit's own one-graph viewport, on a page its shape
-			resize(fig, g, agr.Rect{XMin: 0.183247 * pw / (773.0 / 600), YMin: 0.149994 * ph, XMax: 1.038397 * pw / (773.0 / 600), YMax: 0.849964 * ph})
+		for _, g := range panels {
+			// OneFit's own one-graph viewport, on a page its shape -
+			// narrower or lower when overlays need the room
+			resize(fig, g, agr.Rect{XMin: 0.183247 * pw / (773.0 / 600), YMin: 0.149994 * ph,
+				XMax: min(1.038397*pw/(773.0/600), pw-right), YMax: min(0.849964*ph, ph-top)})
 		}
 		return nil
 	case "side-by-side":
@@ -504,13 +564,13 @@ func Layout(fig *agr.Project, layout string) error {
 	// them the run's name OneFit puts at (0.05, 0.05) - the outer margins
 	// are OneFit's own (its viewport starts at 0.18, 0.15); the gaps between
 	// panels hold the next panel's numbers and labels
-	const left, right, bottom, top, gapX, gapY = 0.18, 0.04, 0.15, 0.05, 0.13, 0.11
+	const left, bottom, gapX, gapY = 0.18, 0.15, 0.13, 0.11
 	cw := (pw - left - right - gapX*float64(cols-1)) / float64(cols)
 	ch := (ph - bottom - top - gapY*float64(rows-1)) / float64(rows)
 	if cw <= 0.05 || ch <= 0.05 {
 		return fmt.Errorf("%d graphs do not fit %s on this page", n, layout)
 	}
-	for i, g := range fig.Graphs {
+	for i, g := range panels {
 		c, r := i%cols, i/cols
 		x0 := left + float64(c)*(cw+gapX)
 		y1 := ph - top - float64(r)*(ch+gapY)
@@ -650,6 +710,14 @@ func Extend(fig *agr.Project, g int, sets []int) (bool, error) {
 	w := &gr.World
 	cx := grow(&w.XMin, &w.XMax, xlo, xhi, xlog, &gr.X)
 	cy := grow(&w.YMin, &w.YMax, ylo, yhi, ylog, &gr.Y)
+	// a shared axis grows in the graphs it is linked with (it only grows,
+	// so their data stay in)
+	if cx {
+		SyncLinks(fig, g, "x")
+	}
+	if cy {
+		SyncLinks(fig, g, "y")
+	}
 	return cx || cy, nil
 }
 

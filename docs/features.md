@@ -144,6 +144,34 @@ Grace ignores these comments and may discard them on save. Ordering does not
 cross graph/page or layer boundaries. Use `OnTop` to cover a legend, or
 `BehindData` to put an annotation under curves.
 
+## Overlays
+
+The `figure` library overlays graphs: `Overlay(fig, base, over, "x")` puts
+graph `over` on graph `base`, sharing the x axis (or "y"). The overlaid graph
+takes the base's viewport; its frame and frame background are off, its copy
+of the shared axis is off (the base draws it once) and its free axis moves to
+the opposite side - right for a y axis, top for an x axis - with an axis line
+styled like the base's frame. Further overlays on that side are moved out by
+the axis offset, each beyond what the one before draws (numbers and label)
+plus `AxisGap`. `OverlayAll` overlays every graph on the first.
+
+- `SyncLinks` copies the shared axis - range, scale, inversion, ticks,
+  numbers, formula and colour - from the graph edited to the others; each
+  keeps where its copy is drawn and whether it is.
+- `OverlayShift` moves an overlay off its base at right angles to the
+  shared axis (down for x, left for y), so it draws its own linked copy.
+  Only the outermost copy has the numbers and the label; the others draw
+  their line and ticks.
+- `AxisColor` colours an axis whole; on a shared axis, in every graph.
+- `Unlink` makes a graph its own again; `RemoveGraph` of a base makes its
+  first overlay the base. `Layout` places each group as one panel, with room
+  for the free axes on the right or on top (`Reach`).
+
+The link is saved as `# plot-go: gN overlays gM shared x|y` before the
+graph. Grace ignores it and drops it on save; the drawing does not depend on
+it. A link to a missing graph, to the graph itself or to an overlay warns
+and is dropped.
+
 ## Figures from numeric data files
 
 The `figure` library imports numeric text tables or OneFit `# DATA` blocks.

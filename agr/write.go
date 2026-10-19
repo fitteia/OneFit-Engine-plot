@@ -259,6 +259,9 @@ func (k *kept) rest() {
 }
 
 func writeGraph(out func(string, ...any), g *Graph) {
+	if g.Overlay.Shared != "" {
+		out("# plot-go: g%d overlays g%d shared %s", g.ID, g.Overlay.Base, g.Overlay.Shared)
+	}
 	header := &kept{out: out}
 	header.keep("g0 ", g.KeptHeader, func(d string) string { return fmt.Sprintf("@g%d %s", g.ID, d) })
 	pf := header.pf

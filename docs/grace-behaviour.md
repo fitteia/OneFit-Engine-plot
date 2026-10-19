@@ -626,6 +626,16 @@ it, the legend and the titles; then the drawing objects and the strings
 placed on the page (view coordinates), and the timestamp. Each tick is drawn on the
 normal side, then the opposite one.
 
+## Overlays
+
+Graphs drawn over one another are drawn in the file's order, each whole
+(sets, axes, frame) before the next; nothing is shared between them. An
+overlay as `figure.Overlay` makes it - frame line style 0 and background
+pattern 0, one axis off, the free axis's ticks, numbers and label `place
+opposite` with `bar on`, further ones moved out by `offset 0, d` - matches
+gracebat within the usual tolerances, with two and three graphs, a shared x
+or y, and one shifted off its base (`figure/overlay_test.go`).
+
 ## How closely plot-go matches
 
 Close, within stated tolerances - not identical. Two kinds of test, on

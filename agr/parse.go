@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -126,7 +127,18 @@ type parser struct {
 	nextObjectOnTop      bool
 	nextObjectBehindData bool
 	nextObjectOrder      int
+	links                []pendingLink
 }
+
+// pendingLink is an overlay link read, checked once every graph is in.
+type pendingLink struct {
+	graph int
+	link  Link
+	line  int
+	text  string
+}
+
+var linkRe = regexp.MustCompile(`^# plot-go: g([0-9]+) overlays g([0-9]+) shared ([xy])$`)
 
 func (p *parser) warn(format string, a ...any) {
 	p.proj.Warnings = append(p.proj.Warnings, Warning{Line: p.line, Text: p.text, Msg: fmt.Sprintf(format, a...)})
@@ -1021,6 +1033,16 @@ func Parse(rd io.Reader) (*Project, error) {
 			}
 			continue
 		}
+		if strings.HasPrefix(line, "# plot-go: g") {
+			if m := linkRe.FindStringSubmatch(line); m != nil {
+				g, _ := strconv.Atoi(m[1])
+				base, _ := strconv.Atoi(m[2])
+				p.links = append(p.links, pendingLink{g, Link{base, m[3]}, p.line, p.text})
+			} else {
+				p.warn("invalid plot-go overlay link")
+			}
+			continue
+		}
 		if line == "# plot-go: next object behind-data" {
 			p.nextObjectBehindData = true
 			continue
@@ -1038,11 +1060,50 @@ func Parse(rd io.Reader) (*Project, error) {
 	if p.inData {
 		p.warn("file ended inside a set's data (no \"&\")")
 	}
+	p.resolveLinks()
 	for _, s := range p.proj.Shapes {
 		original := *s
 		p.proj.originalShapes = append(p.proj.originalShapes, &original)
 	}
 	return p.proj, sc.Err()
+}
+
+// resolveLinks gives the graphs the overlay links read, dropping with a
+// warning one to a graph the file does not have, to the graph itself, to a
+// graph that is an overlay too, or a second one for the same graph.
+func (p *parser) resolveLinks() {
+	find := func(id int) *Graph {
+		for _, g := range p.proj.Graphs {
+			if g.ID == id {
+				return g
+			}
+		}
+		return nil
+	}
+	linked := map[int]bool{}
+	for _, l := range p.links {
+		linked[l.graph] = true
+	}
+	seen := map[int]bool{}
+	for _, l := range p.links {
+		p.line, p.text = l.line, l.text
+		g, base := find(l.graph), find(l.link.Base)
+		switch {
+		case g == nil:
+			p.warn("overlay link of g%d, which the project does not have", l.graph)
+		case base == nil:
+			p.warn("g%d overlays g%d, which the project does not have", l.graph, l.link.Base)
+		case l.graph == l.link.Base:
+			p.warn("g%d cannot overlay itself", l.graph)
+		case linked[l.link.Base]:
+			p.warn("g%d overlays g%d, which is an overlay itself", l.graph, l.link.Base)
+		case seen[l.graph]:
+			p.warn("g%d has a second overlay link", l.graph)
+		default:
+			seen[l.graph] = true
+			g.Overlay = l.link
+		}
+	}
 }
 
 // ParseFile reads a Grace project from a file.

@@ -280,12 +280,24 @@ type Graph struct {
 	Legend     Legend
 	Frame      Frame
 	Sets       []*Set
+	// Overlay links the graph to the graph it is overlaid on (a plot-go
+	// extension, a comment Grace ignores); none when Shared is "".
+	Overlay Link
 	// Kept are the graph's directives the model has no place for: those
 	// in its "@with g" block (alternate axes, axis bars, ...) as read, and
 	// in KeptHeader those of its "@gN" header (stacked, fixed point) as
 	// read but without "gN". See Project.Kept.
 	Kept       []string
 	KeptHeader []string
+}
+
+// Link is an overlaid graph's link to its base graph: the two share the
+// axis Shared ("x" or "y"), whose range, scale, ticks and numbers the
+// Figures editor keeps the same in both. The base is not itself an overlay.
+// It is saved as "# plot-go: gN overlays gM shared x".
+type Link struct {
+	Base   int
+	Shared string
 }
 
 // Title is a graph's title or subtitle.

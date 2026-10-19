@@ -1,0 +1,334 @@
+package figure
+
+import (
+	"bytes"
+	"fmt"
+	"math"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"testing"
+
+	"github.com/fitteia/OneFit-Engine-plot/agr"
+	"github.com/fitteia/OneFit-Engine-plot/backend"
+	"github.com/fitteia/OneFit-Engine-plot/internal/drawcmp"
+	"github.com/fitteia/OneFit-Engine-plot/internal/eps"
+	"github.com/fitteia/OneFit-Engine-plot/render"
+)
+
+// overlayFigure is test3 with n-1 more graphs from the same plot, each
+// set's y scaled by 10^k so the free axes differ.
+func overlayFigure(t *testing.T, n int) *agr.Project {
+	t.Helper()
+	fig := FromPlot(load(t, "test3-1.agr"), "a/fit-curves-1.agr")
+	for k := 1; k < n; k++ {
+		id, err := AddGraph(fig, load(t, "test3-1.agr"), fmt.Sprintf("b%d/fit-curves-1.agr", k))
+		if err != nil {
+			t.Fatal(err)
+		}
+		g := graph(fig, id)
+		f := math.Pow(10, float64(k))
+		for _, s := range g.Sets {
+			for _, row := range s.Data {
+				for c := 1; c < len(row); c++ {
+					row[c] *= f
+				}
+			}
+		}
+		g.World.YMin, g.World.YMax = g.World.YMin*f, g.World.YMax*f
+		g.Y.Tick.Major *= f
+	}
+	return fig
+}
+
+func TestOverlayLinksAndPlaces(t *testing.T) {
+	fig := overlayFigure(t, 3)
+	if err := Layout(fig, "stacked"); err != nil {
+		t.Fatal(err)
+	}
+	if err := OverlayAll(fig, "x"); err != nil {
+		t.Fatal(err)
+	}
+	b, o1, o2 := fig.Graphs[0], fig.Graphs[1], fig.Graphs[2]
+	if o1.Overlay != (agr.Link{Base: 0, Shared: "x"}) || o2.Overlay != (agr.Link{Base: 0, Shared: "x"}) {
+		t.Fatalf("links %+v %+v", o1.Overlay, o2.Overlay)
+	}
+	for _, o := range []*agr.Graph{o1, o2} {
+		if o.View != b.View {
+			t.Errorf("g%d at %+v, not over the base %+v", o.ID, o.View, b.View)
+		}
+		if o.X.On || o.Frame.LineStyle != 0 || o.Y.Tick.Place != "opposite" || o.Y.TickLabel.Place != "opposite" || !o.Y.Bar.On {
+			t.Errorf("g%d: shared copy on %v, frame %d, free axis %s/%s bar %v", o.ID, o.X.On, o.Frame.LineStyle, o.Y.Tick.Place, o.Y.TickLabel.Place, o.Y.Bar.On)
+		}
+	}
+	if b.Y.Tick.Place != "normal" {
+		t.Errorf("base y ticks %s, want normal", b.Y.Tick.Place)
+	}
+	// the second free axis just beyond all the first draws
+	d, _ := render.Render(fig)
+	if r := reach(d, o1, "y", 0); o1.Y.Offset[1] != 0 || r < 0.08 || math.Abs(o2.Y.Offset[1]-r-AxisGap) > 1e-3 {
+		t.Errorf("free axis offsets %v %v, first reaches %v", o1.Y.Offset, o2.Y.Offset, r)
+	}
+	// linked both ways
+	o2.World.XMin, o2.World.XMax, o2.X.Scale, o2.X.Tick.Major = 0.5, 50, "Logarithmic", 10
+	SyncLinks(fig, o2.ID, "x")
+	for _, g := range fig.Graphs {
+		if g.World.XMin != 0.5 || g.World.XMax != 50 || g.X.Scale != "Logarithmic" || g.X.Tick.Major != 10 {
+			t.Errorf("g%d x not synced: %v..%v %s %v", g.ID, g.World.XMin, g.World.XMax, g.X.Scale, g.X.Tick.Major)
+		}
+	}
+	// adding data to one graph grows the shared axis in all
+	o1.Sets[0].Data = append(o1.Sets[0].Data, []float64{200, 0.05})
+	if grown, _ := Extend(fig, o1.ID, []int{o1.Sets[0].ID}); !grown || b.World.XMax < 200 || o2.World.XMax != b.World.XMax {
+		t.Errorf("extended %v: base x to %v, other overlay %v", grown, b.World.XMax, o2.World.XMax)
+	}
+	if o1.X.On || !b.X.On {
+		t.Error("syncing switched a copy of the shared axis on or off")
+	}
+	b.World.XMin = 1
+	SyncLinks(fig, b.ID, "x")
+	if o1.World.XMin != 1 || o2.World.XMin != 1 {
+		t.Error("base to overlays not synced")
+	}
+	// the free axes are not linked
+	y := o1.World.YMax
+	b.World.YMax = 123
+	SyncLinks(fig, b.ID, "y")
+	if o1.World.YMax != y {
+		t.Error("a free axis was synced")
+	}
+	if err := AxisColor(fig, o1.ID, "x", 2); err != nil {
+		t.Fatal(err)
+	}
+	if b.X.TickLabel.Color != 2 || o2.X.Bar.Color != 2 {
+		t.Error("the shared axis color is not shared")
+	}
+	if err := AxisColor(fig, o1.ID, "y", 4); err != nil {
+		t.Fatal(err)
+	}
+	if o1.Y.TickLabel.Color != 4 || b.Y.TickLabel.Color == 4 || o2.Y.TickLabel.Color == 4 {
+		t.Error("a free axis color is not its own")
+	}
+	// the link is saved
+	var w bytes.Buffer
+	if err := agr.Write(&w, fig); err != nil {
+		t.Fatal(err)
+	}
+	back, err := agr.Parse(&w)
+	if err != nil || len(back.Warnings) > 0 {
+		t.Fatal(err, back.Warnings)
+	}
+	if back.Graphs[2].Overlay != o2.Overlay {
+		t.Errorf("read back %+v", back.Graphs[2].Overlay)
+	}
+}
+
+func TestOverlayRefusals(t *testing.T) {
+	fig := overlayFigure(t, 3)
+	if Overlay(fig, 0, 0, "x") == nil || Overlay(fig, 0, 1, "z") == nil || Overlay(fig, 0, 9, "x") == nil {
+		t.Error("a bad overlay was made")
+	}
+	if err := Overlay(fig, 0, 1, "x"); err != nil {
+		t.Fatal(err)
+	}
+	if Overlay(fig, 1, 2, "x") == nil {
+		t.Error("overlaid on an overlay")
+	}
+	if Overlay(fig, 2, 0, "x") == nil {
+		t.Error("a base was overlaid")
+	}
+}
+
+func TestOverlayShiftAndUnlink(t *testing.T) {
+	fig := overlayFigure(t, 2)
+	if err := OverlayAll(fig, "y"); err != nil {
+		t.Fatal(err)
+	}
+	b, o := fig.Graphs[0], fig.Graphs[1]
+	if o.X.Tick.Place != "opposite" || o.Y.On {
+		t.Fatal("shared y: the free x axis is not on top")
+	}
+	label := b.Y.Label.Text
+	if label == "" {
+		t.Fatal("test3 has a y label")
+	}
+	if err := OverlayShift(fig, o.ID, 0.03); err != nil {
+		t.Fatal(err)
+	}
+	if !o.Y.On || math.Abs(Shift(fig, o.ID)-0.03) > 1e-12 || o.View.YMin != b.View.YMin || math.Abs(b.View.XMin-o.View.XMin-0.03) > 1e-12 {
+		t.Errorf("shifted to %+v from %+v, copy on %v", o.View, b.View, o.Y.On)
+	}
+	// the outer copy, the shifted one, has the numbers and the label
+	if b.Y.TickLabel.On || b.Y.Label.Text != "" || !o.Y.TickLabel.On || o.Y.Label.Text != label {
+		t.Errorf("shifted: base numbers %v label %q, overlay %v %q", b.Y.TickLabel.On, b.Y.Label.Text, o.Y.TickLabel.On, o.Y.Label.Text)
+	}
+	OverlayShift(fig, o.ID, 0)
+	if !b.Y.TickLabel.On || b.Y.Label.Text != label || o.Y.On || o.Y.Label.Text != "" {
+		t.Errorf("back over: base numbers %v label %q, overlay on %v %q", b.Y.TickLabel.On, b.Y.Label.Text, o.Y.On, o.Y.Label.Text)
+	}
+	OverlayShift(fig, o.ID, 0.03)
+	if OverlayShift(fig, o.ID, -1) == nil || OverlayShift(fig, b.ID, 0.01) == nil {
+		t.Error("a bad shift was made")
+	}
+	// a layout keeps the group together, the shift too
+	if err := Layout(fig, "single"); err != nil {
+		t.Fatal(err)
+	}
+	if math.Abs(Shift(fig, o.ID)-0.03) > 1e-12 || o.View.YMax != b.View.YMax {
+		t.Errorf("after layout %+v base %+v", o.View, b.View)
+	}
+	if Arrangement(fig) != "single" {
+		t.Errorf("arrangement %s", Arrangement(fig))
+	}
+	Unlink(fig, b.ID)
+	if o.Overlay.Shared != "" || o.Frame.LineStyle != 1 || !o.Y.On || !o.Y.TickLabel.On {
+		t.Errorf("unlinked %+v frame %d", o.Overlay, o.Frame.LineStyle)
+	}
+	if b.Y.Label.Text != label || o.Y.Label.Text != label {
+		t.Errorf("labels after unlink: base %q, unlinked %q", b.Y.Label.Text, o.Y.Label.Text)
+	}
+	if o.X.TickLabel.Place != "normal" || o.X.Offset != [2]float64{} || o.X.Bar.On {
+		t.Errorf("the unlinked graph's other axis is not back on its side: %s %v", o.X.TickLabel.Place, o.X.Offset)
+	}
+}
+
+func TestRemoveOverlayBase(t *testing.T) {
+	fig := overlayFigure(t, 3)
+	if err := OverlayAll(fig, "x"); err != nil {
+		t.Fatal(err)
+	}
+	view := fig.Graphs[0].View
+	if err := RemoveGraph(fig, 0); err != nil {
+		t.Fatal(err)
+	}
+	nb, o := fig.Graphs[0], fig.Graphs[1]
+	if nb.Overlay.Shared != "" || nb.Frame.LineStyle != 1 || !nb.X.On || nb.Y.TickLabel.Place != "normal" || nb.Y.Offset != [2]float64{} {
+		t.Errorf("new base %+v frame %d x on %v y %s %v", nb.Overlay, nb.Frame.LineStyle, nb.X.On, nb.Y.TickLabel.Place, nb.Y.Offset)
+	}
+	if o.Overlay != (agr.Link{Base: nb.ID, Shared: "x"}) || o.Y.Offset[1] != 0 || o.View != nb.View {
+		t.Errorf("other overlay %+v offset %v view %+v", o.Overlay, o.Y.Offset, o.View)
+	}
+	if nb.View == view {
+		// "single" places the one panel left as OneFit's plot; the test
+		// only needs it placed
+		t.Log("same place")
+	}
+	if err := RemoveGraph(fig, o.ID); err != nil {
+		t.Fatal(err)
+	}
+	if len(fig.Graphs) != 1 {
+		t.Fatal(len(fig.Graphs))
+	}
+}
+
+// TestOverlayMatchesGracebat draws overlays as Overlay makes them -
+// two y axes, three (one moved out), a shifted one, and a shared y - with
+// plot-go and with gracebat, and compares.
+func TestOverlayMatchesGracebat(t *testing.T) {
+	if _, err := exec.LookPath("gracebat"); err != nil {
+		t.Skip("gracebat not installed")
+	}
+	for _, c := range []struct {
+		name   string
+		n      int
+		shared string
+		shift  float64
+	}{
+		{"two", 2, "x", 0}, {"three", 3, "x", 0}, {"shifted", 2, "x", 0.03}, {"shared-y", 3, "y", 0.02},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			fig := overlayFigure(t, c.n)
+			if err := OverlayAll(fig, c.shared); err != nil {
+				t.Fatal(err)
+			}
+			if c.shift > 0 {
+				if err := OverlayShift(fig, 1, c.shift); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := Layout(fig, "single"); err != nil {
+				t.Fatal(err)
+			}
+			for k, g := range fig.Graphs[1:] {
+				AxisColor(fig, g.ID, free(c.shared), []int{2, 4}[k])
+			}
+			var b bytes.Buffer
+			if err := agr.Write(&b, fig); err != nil {
+				t.Fatal(err)
+			}
+			dir := t.TempDir()
+			in, out := filepath.Join(dir, "o.agr"), filepath.Join(dir, "o.eps")
+			os.WriteFile(in, b.Bytes(), 0o644)
+			if os.Getenv("PLOT_GO_KEEP") != "" {
+				os.WriteFile(filepath.Join(os.Getenv("PLOT_GO_KEEP"), c.name+".agr"), b.Bytes(), 0o644)
+			}
+			if o, err := exec.Command("gracebat", "-hdevice", "EPS", "-printfile", out, in).CombinedOutput(); err != nil {
+				t.Fatalf("gracebat: %v %s", err, o)
+			}
+			r, err := os.Open(out)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer r.Close()
+			want, err := eps.Parse(r)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, warnings := render.Render(fig)
+			for _, w := range warnings {
+				t.Errorf("warning: %s", w)
+			}
+			for _, d := range drawcmp.Compare(got, want, 30) {
+				t.Error(d)
+			}
+		})
+	}
+}
+
+// TestOverlayFitsThePage: the free axes of an overlay, on the right or on
+// top, stay on the page in every layout.
+func TestOverlayFitsThePage(t *testing.T) {
+	for _, shared := range []string{"x", "y"} {
+		for _, layout := range Layouts {
+			fig := overlayFigure(t, 3)
+			if err := OverlayAll(fig, shared); err != nil {
+				t.Fatal(err)
+			}
+			if err := Layout(fig, layout); err != nil {
+				t.Fatal(err)
+			}
+			d, _ := render.Render(fig)
+			const unit = 1000
+			box := backend.BoundingBox(d, unit)
+			if box.URX/unit > d.Width || box.URY/unit > d.Height {
+				t.Errorf("shared %s, %s: drawn to %.3f, %.3f on a %.3f x %.3f page", shared, layout, box.URX/unit, box.URY/unit, d.Width, d.Height)
+			}
+		}
+	}
+}
+
+// TestOverlayKeepsLabels: a shared axis shows its label once, but each
+// graph gets it back when it leaves the group, however often it is
+// overlaid again.
+func TestOverlayKeepsLabels(t *testing.T) {
+	fig := overlayFigure(t, 3)
+	want := fig.Graphs[0].X.Label.Text
+	if want == "" {
+		t.Fatal("test3 has an x label")
+	}
+	if err := OverlayAll(fig, "x"); err != nil {
+		t.Fatal(err)
+	}
+	if err := OverlayShift(fig, 1, 0.03); err != nil {
+		t.Fatal(err)
+	}
+	Unlink(fig, 1)
+	if err := OverlayAll(fig, "y"); err != nil {
+		t.Fatal(err)
+	}
+	for _, g := range fig.Graphs {
+		if g.X.Label.Text != want {
+			t.Errorf("g%d x label %q, want %q", g.ID, g.X.Label.Text, want)
+		}
+	}
+}

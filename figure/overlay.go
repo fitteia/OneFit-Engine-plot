@@ -1,0 +1,417 @@
+package figure
+
+import (
+	"fmt"
+	"math"
+	"strings"
+
+	"github.com/fitteia/OneFit-Engine-plot/agr"
+	"github.com/fitteia/OneFit-Engine-plot/backend"
+	"github.com/fitteia/OneFit-Engine-plot/draw"
+	"github.com/fitteia/OneFit-Engine-plot/render"
+)
+
+// Overlays: graphs drawn over a base graph, sharing one of its axes (x or
+// y). The shared axis is kept linked - SyncLinks gives every graph of the
+// group the same range, scale, ticks and numbers - and is drawn once, by
+// the base, unless an overlaid graph is shifted away from it (OverlayShift)
+// and draws its own copy. The other axis of an overlaid graph, its free
+// axis, is drawn on the base's opposite side (right for a y axis, top for
+// an x one), each further one on that side moved out by OverlayAxisStep.
+// an axis's width as drawn (its numbers and label) and AxisGap apart. The
+// links are saved in the project (agr.Link).
+
+// AxisGap is the space, in viewport units, between the drawn extent of one
+// free axis and the next on the same side.
+const AxisGap = 0.02
+
+// free is the other axis.
+func free(shared string) string {
+	if shared == "x" {
+		return "y"
+	}
+	return "x"
+}
+
+func axisOf(g *agr.Graph, name string) *agr.Axis {
+	if name == "x" {
+		return &g.X
+	}
+	return &g.Y
+}
+
+// Overlays are the graphs overlaid on base, in the figure's order.
+func Overlays(fig *agr.Project, base int) []*agr.Graph {
+	var over []*agr.Graph
+	for _, g := range fig.Graphs {
+		if g.Overlay.Shared != "" && g.Overlay.Base == base {
+			over = append(over, g)
+		}
+	}
+	return over
+}
+
+// Overlay draws graph over on graph base, sharing axis shared ("x" or
+// "y"): over takes base's place and base's shared axis, its frame and
+// background are not drawn (base's are), its copy of the shared axis is
+// off and its free axis moves to the opposite side, beyond those of the
+// graphs overlaid there before it. Base's free axis keeps its ticks on its
+// own side. An overlay already linked elsewhere is moved.
+func Overlay(fig *agr.Project, base, over int, shared string) error {
+	if shared != "x" && shared != "y" {
+		return fmt.Errorf("the shared axis is x or y, not %q", shared)
+	}
+	b, o := graph(fig, base), graph(fig, over)
+	switch {
+	case b == nil:
+		return fmt.Errorf("no graph %d", base)
+	case o == nil:
+		return fmt.Errorf("no graph %d", over)
+	case base == over:
+		return fmt.Errorf("a graph cannot be overlaid on itself")
+	case b.Overlay.Shared != "":
+		return fmt.Errorf("graph %d is overlaid on graph %d; overlay on that one", base, b.Overlay.Base)
+	case len(Overlays(fig, over)) > 0:
+		return fmt.Errorf("graph %d has graphs overlaid on it", over)
+	}
+	if o.Overlay.Shared != "" {
+		Unlink(fig, over)
+	}
+	resize(fig, o, b.View)
+	o.Overlay = agr.Link{Base: base, Shared: shared}
+	o.Frame.LineStyle = 0
+	o.Frame.BackgroundPattern = 0
+	// the base's free axis: ticks on its own side only, the other side is
+	// the overlay's
+	fb := axisOf(b, free(shared))
+	if fb.Tick.Place == "both" {
+		fb.Tick.Place = "normal"
+	}
+	fa := axisOf(o, free(shared))
+	fa.On = true
+	fa.Tick.Place, fa.TickLabel.Place, fa.Label.Place = "opposite", "opposite", "opposite"
+	fa.Bar.On = true
+	fa.Bar.Color, fa.Bar.LineStyle, fa.Bar.LineWidth = b.Frame.Color, max(b.Frame.LineStyle, 1), b.Frame.LineWidth
+	sa := axisOf(o, shared)
+	sa.On = false
+	sa.Tick.Place, sa.TickLabel.Place, sa.Label.Place = "normal", "normal", "normal"
+	sa.Bar.On = true
+	sa.Bar.Color, sa.Bar.LineStyle, sa.Bar.LineWidth = b.Frame.Color, max(b.Frame.LineStyle, 1), b.Frame.LineWidth
+	SyncLinks(fig, base, shared)
+	ArrangeOverlays(fig)
+	return nil
+}
+
+// OverlayAll overlays every graph of the figure on its first one, sharing
+// axis shared: what the Layout choice "overlay" does.
+func OverlayAll(fig *agr.Project, shared string) error {
+	if len(fig.Graphs) < 2 {
+		return fmt.Errorf("an overlay needs two graphs or more")
+	}
+	base := fig.Graphs[0]
+	if base.Overlay.Shared != "" {
+		Unlink(fig, base.ID)
+	}
+	for _, g := range fig.Graphs[1:] {
+		Unlink(fig, g.ID)
+	}
+	for _, g := range fig.Graphs[1:] {
+		if err := Overlay(fig, base.ID, g.ID, shared); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Unlink makes an overlaid graph a graph of its own again, where it is,
+// with its frame, its shared axis (numbers and label) and its other axis
+// on its own side; unlinking a base unlinks the graphs overlaid on it. A
+// graph not linked is left as it is.
+func Unlink(fig *agr.Project, id int) {
+	g := graph(fig, id)
+	if g == nil {
+		return
+	}
+	if g.Overlay.Shared == "" {
+		for _, o := range Overlays(fig, id) {
+			Unlink(fig, o.ID)
+		}
+		return
+	}
+	shared := g.Overlay.Shared
+	// the group's label of the shared axis - only one copy shows it - is
+	// this graph's own again, and the base's if this one had it
+	label := ""
+	for _, c := range group(fig, id, shared) {
+		if t := axisOf(c, shared).Label.Text; t != "" && label == "" {
+			label = t
+		}
+	}
+	if base := graph(fig, g.Overlay.Base); base != nil && axisOf(base, shared).Label.Text == "" {
+		axisOf(base, shared).Label.Text = label
+	}
+	g.Overlay = agr.Link{}
+	g.Frame.LineStyle = 1
+	a := axisOf(g, shared)
+	a.On, a.Offset = true, [2]float64{}
+	a.Bar.On = false
+	a.TickLabel.On = true
+	if a.Label.Text == "" {
+		a.Label.Text = label
+	}
+	// its free axis back on its own side, at the frame
+	fa := axisOf(g, free(shared))
+	fa.Tick.Place, fa.TickLabel.Place, fa.Label.Place = "both", "normal", "normal"
+	fa.Offset, fa.Bar.On = [2]float64{}, false
+	ArrangeOverlays(fig)
+}
+
+// OverlayShift moves an overlaid graph away from its base by d viewport
+// units at right angles to the shared axis - down for a shared x, left for
+// a shared y - so it draws its own copy of the shared axis, still linked;
+// 0 puts it back exactly over the base, the copy off.
+func OverlayShift(fig *agr.Project, id int, d float64) error {
+	g := graph(fig, id)
+	if g == nil {
+		return fmt.Errorf("no graph %d", id)
+	}
+	if g.Overlay.Shared == "" {
+		return fmt.Errorf("graph %d is not overlaid on another", id)
+	}
+	if math.IsNaN(d) || d < 0 || d > 0.2 {
+		return fmt.Errorf("the shift is 0 to 0.2")
+	}
+	b := graph(fig, g.Overlay.Base)
+	v := b.View
+	if g.Overlay.Shared == "x" {
+		v.YMin, v.YMax = v.YMin-d, v.YMax-d
+	} else {
+		v.XMin, v.XMax = v.XMin-d, v.XMax-d
+	}
+	g.View = v
+	axisOf(g, g.Overlay.Shared).On = d > 0
+	ArrangeOverlays(fig)
+	return nil
+}
+
+// ArrangeOverlays places what the overlays of every group draw outside the
+// base: each free axis beyond the one before it on its side (by what that
+// one draws, its numbers and label, and AxisGap), and the numbers and label
+// of a shared axis on its outermost copy - the graph shifted furthest, or
+// the base - the other copies drawing their line and ticks only. Edits to
+// the axes of a group (sizes, labels, formats) call for it again.
+func ArrangeOverlays(fig *agr.Project) {
+	for _, b := range fig.Graphs {
+		over := Overlays(fig, b.ID)
+		if b.Overlay.Shared != "" || len(over) == 0 {
+			continue
+		}
+		for _, shared := range []string{"x", "y"} {
+			sharedNumbers(fig, b, shared)
+		}
+		var d *draw.Drawing
+		for _, shared := range []string{"x", "y"} {
+			out := 0.0 // how far the last free axis on the side reaches
+			first := true
+			for _, o := range over {
+				if o.Overlay.Shared != shared {
+					continue
+				}
+				a := axisOf(o, free(shared))
+				if first {
+					a.Offset[1], first = 0, false
+				} else {
+					a.Offset[1] = out + AxisGap
+				}
+				if d == nil {
+					d, _ = render.Render(fig)
+				}
+				out = a.Offset[1] + reach(d, o, free(shared), a.Offset[1])
+			}
+		}
+	}
+}
+
+// Reach is how far beyond the base's frame the free axes of its overlays
+// on the side of the overlays sharing axis shared are drawn, in viewport
+// units; 0 when none is.
+func Reach(fig *agr.Project, base int, shared string) float64 {
+	var r float64
+	var d *draw.Drawing
+	for _, o := range Overlays(fig, base) {
+		if o.Overlay.Shared == shared {
+			if d == nil {
+				d, _ = render.Render(fig)
+			}
+			a := axisOf(o, free(shared))
+			r = max(r, a.Offset[1]+reach(d, o, free(shared), a.Offset[1]))
+		}
+	}
+	return r
+}
+
+// reach is how far out from where it is drawn (its frame edge, offset out
+// by off) graph g's axis name, on the opposite side, reaches with all it
+// draws there.
+func reach(d *draw.Drawing, g *agr.Graph, name string, off float64) float64 {
+	prefix := fmt.Sprintf("g%d.%s.", g.ID, name)
+	part := &draw.Drawing{Width: d.Width, Height: d.Height}
+	for _, p := range d.Paths {
+		if strings.HasPrefix(p.ID, prefix) {
+			part.Paths = append(part.Paths, p)
+		}
+	}
+	for _, t := range d.Texts {
+		if strings.HasPrefix(t.ID, prefix) {
+			part.Texts = append(part.Texts, t)
+		}
+	}
+	if len(part.Paths)+len(part.Texts) == 0 {
+		return 0
+	}
+	const unit = 10000
+	box := backend.BoundingBox(part, unit)
+	if name == "y" {
+		return max(0, box.URX/unit-g.View.XMax-off)
+	}
+	return max(0, box.URY/unit-g.View.YMax-off)
+}
+
+// sharedNumbers puts the numbers and label of the group's shared axis on
+// its outermost copy; the label text moves with them, never lost. Numbers
+// switched off by the user stay off.
+func sharedNumbers(fig *agr.Project, b *agr.Graph, shared string) {
+	copies := []*agr.Graph{b}
+	for _, o := range Overlays(fig, b.ID) {
+		if o.Overlay.Shared == shared {
+			copies = append(copies, o)
+		}
+	}
+	if len(copies) < 2 {
+		return
+	}
+	outer, far := b, 0.0
+	numbers, label := false, ""
+	for _, g := range copies {
+		a := axisOf(g, shared)
+		if g != b && a.On && Shift(fig, g.ID) > far {
+			outer, far = g, Shift(fig, g.ID)
+		}
+		numbers = numbers || a.TickLabel.On
+		if label == "" {
+			label = a.Label.Text
+		}
+	}
+	for _, g := range copies {
+		a := axisOf(g, shared)
+		if g == outer {
+			a.TickLabel.On, a.Label.Text = numbers, label
+		} else {
+			a.TickLabel.On, a.Label.Text = false, ""
+		}
+	}
+}
+
+// Shift is how far an overlaid graph is moved off its base (OverlayShift),
+// 0 for one exactly over it or not overlaid.
+func Shift(fig *agr.Project, id int) float64 {
+	g := graph(fig, id)
+	if g == nil || g.Overlay.Shared == "" {
+		return 0
+	}
+	b := graph(fig, g.Overlay.Base)
+	if b == nil {
+		return 0
+	}
+	if g.Overlay.Shared == "x" {
+		return b.View.YMin - g.View.YMin
+	}
+	return b.View.XMin - g.View.XMin
+}
+
+// group is the graphs that share axis name with graph id: its base and the
+// base's overlays sharing that axis; nil when the axis is not shared.
+func group(fig *agr.Project, id int, name string) []*agr.Graph {
+	g := graph(fig, id)
+	if g == nil {
+		return nil
+	}
+	base := g
+	if g.Overlay.Shared != "" {
+		if g.Overlay.Shared != name {
+			return nil
+		}
+		base = graph(fig, g.Overlay.Base)
+		if base == nil {
+			return nil
+		}
+	}
+	out := []*agr.Graph{base}
+	for _, o := range Overlays(fig, base.ID) {
+		if o.Overlay.Shared == name {
+			out = append(out, o)
+		}
+	}
+	if len(out) < 2 {
+		return nil
+	}
+	return out
+}
+
+// Linked are the graphs whose axis name is linked with graph id's, id's
+// own included; nil when it is not linked.
+func Linked(fig *agr.Project, id int, name string) []int {
+	var ids []int
+	for _, g := range group(fig, id, name) {
+		ids = append(ids, g.ID)
+	}
+	return ids
+}
+
+// SyncLinks gives every graph sharing axis name with graph id what id's
+// axis has: its range, scale, inversion, ticks, numbers and color. What
+// each graph keeps of its own: whether its copy is drawn (On), where (the
+// axis offset and the sides of its ticks, numbers and label), and whether
+// it has the numbers and the label, which only one copy draws
+// (ArrangeOverlays; the label's color is shared). Nothing is done
+// when the axis is not shared.
+func SyncLinks(fig *agr.Project, id int, name string) {
+	from := graph(fig, id)
+	for _, g := range group(fig, id, name) {
+		if g == from {
+			continue
+		}
+		if name == "x" {
+			g.World.XMin, g.World.XMax = from.World.XMin, from.World.XMax
+		} else {
+			g.World.YMin, g.World.YMax = from.World.YMin, from.World.YMax
+		}
+		src, dst := axisOf(from, name), axisOf(g, name)
+		keep := *dst
+		*dst = *src
+		dst.On, dst.Offset, dst.Zero = keep.On, keep.Offset, keep.Zero
+		dst.Bar.On, dst.Bar.LineStyle, dst.Bar.LineWidth = keep.Bar.On, keep.Bar.LineStyle, keep.Bar.LineWidth
+		dst.Label = keep.Label
+		dst.Label.Color = src.Label.Color
+		dst.Tick.Place, dst.TickLabel.Place = keep.Tick.Place, keep.TickLabel.Place
+		dst.TickLabel.On = keep.TickLabel.On // which copy has the numbers: sharedNumbers
+		dst.Tick.Spec = append([]agr.SpecTick(nil), src.Tick.Spec...)
+	}
+}
+
+// AxisColor colors an axis whole - its line, ticks, numbers and label -
+// and, when it is shared, the same axis of the graphs it is linked with.
+func AxisColor(fig *agr.Project, id int, name string, color int) error {
+	g := graph(fig, id)
+	if g == nil {
+		return fmt.Errorf("no graph %d", id)
+	}
+	if err := UseColor(fig, color); err != nil {
+		return err
+	}
+	a := axisOf(g, name)
+	a.Bar.Color, a.Tick.MajorMarks.Color, a.Tick.MinorMarks.Color = color, color, color
+	a.TickLabel.Color, a.Label.Color = color, color
+	SyncLinks(fig, id, name)
+	return nil
+}
