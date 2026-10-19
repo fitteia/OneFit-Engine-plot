@@ -25,7 +25,8 @@ then vendored in the GUI and pinned in the debs.
   always clears it, and linking keeps each copy's ticks. v0.2.44 (audit):
   a label cleared on a copy that does not draw it clears it too
   (`ShareLabel`), and free axes beyond one that grew are placed by what it
-  draws now, from the third overlay on a side on too.
+  draws now, from the third overlay on a side on too. v0.2.45: an overlaid
+  graph's title and subtitle move to the base, joined after its own.
 - **Variable-size symbols** (`xysize`): v0.2.25. Per-point
   size column with standard symbol styles, character symbols and legend sample
   sizing measured against Grace. Figures pairs this with a plot-type choice and

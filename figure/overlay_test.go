@@ -474,6 +474,28 @@ func TestOverlayLabelEdits(t *testing.T) {
 	}
 }
 
+// TestOverlayMovesTitles: an overlaid graph's title and subtitle go to
+// the base, after its own; the base draws them once.
+func TestOverlayMovesTitles(t *testing.T) {
+	fig := overlayFigure(t, 4)
+	g := fig.Graphs
+	g[0].Title.Text, g[0].Subtitle.Text = "zone12", ""
+	g[1].Title.Text, g[1].Subtitle.Text = "zone13", "300 K"
+	g[2].Title.Text, g[2].Subtitle.Text = "zone12", ""
+	g[3].Title.Text, g[3].Subtitle.Text = "", "310 K"
+	if err := OverlayAll(fig, "x"); err != nil {
+		t.Fatal(err)
+	}
+	if g[0].Title.Text != "zone12 / zone13" || g[0].Subtitle.Text != "300 K / 310 K" {
+		t.Errorf("base title %q, subtitle %q", g[0].Title.Text, g[0].Subtitle.Text)
+	}
+	for _, o := range g[1:] {
+		if o.Title.Text != "" || o.Subtitle.Text != "" {
+			t.Errorf("g%d still draws %q / %q", o.ID, o.Title.Text, o.Subtitle.Text)
+		}
+	}
+}
+
 // TestOverlayArrangeAfterResize: when what a free axis draws grows, the
 // free axes beyond it move out, each just beyond the one before as drawn
 // now - one ArrangeOverlays, with three overlays on one side, so the third

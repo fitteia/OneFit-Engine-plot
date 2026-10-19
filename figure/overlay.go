@@ -3,6 +3,7 @@ package figure
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/fitteia/OneFit-Engine-plot/agr"
@@ -97,10 +98,29 @@ func Overlay(fig *agr.Project, base, over int, shared string) error {
 	sa.Tick.Place, sa.TickLabel.Place, sa.Label.Place = "normal", "normal", "normal"
 	sa.Bar.On = true
 	sa.Bar.Color, sa.Bar.LineStyle, sa.Bar.LineWidth = b.Frame.Color, max(b.Frame.LineStyle, 1), b.Frame.LineWidth
+	moveTitles(b, o)
 	SyncLinks(fig, base, shared)
 	ArrangeOverlays(fig)
 	separateLegend(fig, o)
 	return nil
+}
+
+// moveTitles puts overlay o's title and subtitle on base b, which draws
+// them once for the group: after b's own, " / " between (not again when b
+// already has that text, alone or joined), or as they are when b has none.
+// o's are cleared. They are plain texts the user edits as wished.
+func moveTitles(b, o *agr.Graph) {
+	for _, t := range [][2]*agr.Title{{&b.Title, &o.Title}, {&b.Subtitle, &o.Subtitle}} {
+		to, from := t[0], t[1]
+		switch {
+		case from.Text == "" || slices.Contains(strings.Split(to.Text, " / "), from.Text):
+		case to.Text == "":
+			to.Text = from.Text
+		default:
+			to.Text += " / " + from.Text
+		}
+		from.Text = ""
+	}
 }
 
 // LegendGap is the space, in viewport units, between an overlay's legend

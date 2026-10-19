@@ -155,7 +155,11 @@ styled like the base's frame. Further overlays on that side are moved out by
 the axis offset, each beyond what the one before draws (numbers and label)
 plus `AxisGap`, as drawn when `ArrangeOverlays` runs (again after edits
 that change what an axis draws). `OverlayAll` overlays every graph on the
-first.
+first. The overlaid graph's title and subtitle move to the base, which
+draws them once: after the base's own, joined by " / " (a text the base
+already has is not repeated), or as they are when it has none; they are
+plain texts to edit as wished. `Link` (an overlay made in Grace) leaves
+titles as they are.
 
 - `SyncLinks` copies the shared axis - range, scale, inversion, ticks,
   numbers, formula, colour and label - from the graph edited to the others;
