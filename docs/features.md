@@ -169,9 +169,11 @@ first.
   Only the outermost copy has the numbers and the label; the others draw
   their line and ticks.
 - `AxisColor` colours an axis whole; on a shared axis, in every graph.
-- An overlay's legend that covers another legend of its group goes below
-  the lowest of them, left edges aligned, `LegendGap` apart; legends
-  already apart stay where they are.
+- When a graph is overlaid (`Overlay`, `OverlayAll`), its legend, if it
+  covers another legend of its group, goes below the lowest of them, left
+  edges aligned, `LegendGap` apart; legends already apart stay where they
+  are. Only then: later edits never move a legend (`ArrangeOverlays`
+  places axes only).
 - `Candidates` lists graphs that look overlaid without a link - at the
   same place as an earlier graph, with its range and scale on an axis, as
   an overlay saved by Grace would be - for an editor to offer; `Link` adds
