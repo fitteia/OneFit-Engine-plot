@@ -59,3 +59,6 @@ jobs:
             dist/NOTICE
             dist/MustRead.html
           generate_release_notes: true
+          # a tag with a "-" (v1.0.0-rc1) is a GitHub pre-release, so
+          # releases/latest/download/... stays the last final version
+          prerelease: ${{ contains(github.ref_name, '-') }}
