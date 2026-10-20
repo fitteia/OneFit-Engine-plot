@@ -71,6 +71,10 @@ Vector exports do not require any of these converters.
    SVG - the same drawing as the PDF - and edits (ranges, labels, styles,
    texts) go into the `.agr` and re-render. Both are Artistic 2.0, so the
    GUI can use plot-go as a library.
+8. Plots inside other PDFs: `backend.WritePDFForm` gives a drawing as a
+   PDF form XObject (numbered from a given object), so a document of many
+   pages - OneFit's fit report - places plots as vectors, drawn exactly
+   as their own PDFs.
 
 ## Install
 

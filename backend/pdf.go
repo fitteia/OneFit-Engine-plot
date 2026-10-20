@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -40,6 +41,41 @@ type PDFOptions struct {
 }
 
 func WritePDFWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string, opt PDFOptions) error {
+	b, err := buildPDF(d, pageW, pageH, title, opt)
+	if err != nil {
+		return err
+	}
+	objs := b.objs
+	var out bytes.Buffer
+	out.WriteString("%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+	offsets := make([]int, len(objs))
+	for i, o := range objs {
+		offsets[i] = out.Len()
+		fmt.Fprintf(&out, "%d 0 obj\n%s\nendobj\n", i+1, o)
+	}
+	xref := out.Len()
+	fmt.Fprintf(&out, "xref\n0 %d\n0000000000 65535 f \n", len(objs)+1)
+	for _, off := range offsets {
+		fmt.Fprintf(&out, "%010d 00000 n \n", off)
+	}
+	fmt.Fprintf(&out, "trailer\n<< /Size %d /Root 1 0 R /Info 5 0 R >>\nstartxref\n%d\n%%%%EOF\n", len(objs)+1, xref)
+	_, err = w.Write(out.Bytes())
+	return err
+}
+
+// builtPDF is a one-page PDF's objects, numbered from 1 by their place:
+// 1 catalog, 2 pages, 3 page, 4 content, 5 info, then the page's resources
+// (fonts, patterns, forms, glyphs). res is the page's resource
+// dictionary, content its compressed content stream, width and height the
+// page's size in points.
+type builtPDF struct {
+	objs          []string
+	res           string
+	content       []byte
+	width, height float64
+}
+
+func buildPDF(d *draw.Drawing, pageW, pageH float64, title string, opt PDFOptions) (builtPDF, error) {
 	pageW, pageH = draw.PageSize(pageW, pageH)
 	unit := math.Min(pageW, pageH)
 	bb := BoundingBox(d, unit)
@@ -251,7 +287,7 @@ func WritePDFWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 		}
 		chars, box, err := usedGlyphs(d, f)
 		if err != nil {
-			return fmt.Errorf("embed font %q: %w", f, err)
+			return builtPDF{}, fmt.Errorf("embed font %q: %w", f, err)
 		}
 		if len(chars) == 0 {
 			continue
@@ -259,22 +295,46 @@ func WritePDFWith(w io.Writer, d *draw.Drawing, pageW, pageH float64, title stri
 		fontObj := embedPDFFont(&objs, chars, box, f)
 		objs[5+i] = fontObj
 	}
+	return builtPDF{objs: objs, res: res.String(), content: z.Bytes(), width: bb.URX - bb.LLX, height: bb.URY - bb.LLY}, nil
+}
 
-	var out bytes.Buffer
-	out.WriteString("%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
-	offsets := make([]int, len(objs))
-	for i, o := range objs {
-		offsets[i] = out.Len()
-		fmt.Fprintf(&out, "%d 0 obj\n%s\nendobj\n", i+1, o)
+// PDFForm is a drawing as a PDF form XObject, for another PDF (a document
+// of many pages, such as OneFit's fit report) to place where it wants, as
+// vectors: Objects[0] is the form, the rest its resources (fonts,
+// patterns, glyphs), numbered First, First+1, ... in that order. The
+// form's own space is Width x Height points with its origin at the bottom
+// left, the drawing cropped as WritePDF crops it (or the whole page with
+// FullPage).
+type PDFForm struct {
+	First         int
+	Objects       []string
+	Width, Height float64
+}
+
+var pdfRef = regexp.MustCompile(`(\d+) 0 R\b`)
+
+// WritePDFForm makes the drawing a form whose objects are numbered from
+// first. It is WritePDFWith's page, so a plot looks the same placed in a
+// document as in its own PDF.
+func WritePDFForm(d *draw.Drawing, pageW, pageH float64, opt PDFOptions, first int) (PDFForm, error) {
+	b, err := buildPDF(d, pageW, pageH, "", opt)
+	if err != nil {
+		return PDFForm{}, err
 	}
-	xref := out.Len()
-	fmt.Fprintf(&out, "xref\n0 %d\n0000000000 65535 f \n", len(objs)+1)
-	for _, off := range offsets {
-		fmt.Fprintf(&out, "%010d 00000 n \n", off)
+	// the page's resources are objects 6...: they become first+1...
+	renumber := func(s string) string {
+		return pdfRef.ReplaceAllStringFunc(s, func(m string) string {
+			n, _ := strconv.Atoi(pdfRef.FindStringSubmatch(m)[1])
+			return fmt.Sprintf("%d 0 R", first+1+n-6)
+		})
 	}
-	fmt.Fprintf(&out, "trailer\n<< /Size %d /Root 1 0 R /Info 5 0 R >>\nstartxref\n%d\n%%%%EOF\n", len(objs)+1, xref)
-	_, err := w.Write(out.Bytes())
-	return err
+	f := PDFForm{First: first, Width: b.width, Height: b.height}
+	f.Objects = append(f.Objects, fmt.Sprintf("<< /Type /XObject /Subtype /Form /BBox [0 0 %s %s] /Resources %s /Length %d /Filter /FlateDecode >>\nstream\n%s\nendstream",
+		num(b.width), num(b.height), renumber(b.res), len(b.content), b.content))
+	for _, o := range b.objs[5:] {
+		f.Objects = append(f.Objects, renumber(o))
+	}
+	return f, nil
 }
 
 // ellipseForm is an ellipse's shape as a form draws it: its radii (as
