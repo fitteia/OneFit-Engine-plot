@@ -31,6 +31,20 @@ This repo is Artistic License 2.0, and part of the suite's dual-license
 2. `go vet ./...` and `go test ./...`.
 3. Keep `docs/features.md` in step with what the renderer supports.
 
+## Branches
+
+Two long-lived branches, as in every OneFit-Engine repository:
+
+- `main` - the current stable release; it moves only when a release is
+  promoted.
+- `unstable` - where every change lands first (feature branches merge
+  here); it changes often and may break.
+
+Pre-releases and release candidates are tags on `unstable`
+(`v0.4.0-pre2`, `v0.4.0-rc1`); the release workflow builds from any `v*` tag. When the maintainer accepts one,
+`unstable` is fast-forwarded into `main` (no merge commits) and the final
+version is tagged there. CI runs on both branches.
+
 ## Conventions
 
 - Go, standard library first; any dependency needs a license compatible
