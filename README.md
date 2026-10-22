@@ -29,6 +29,7 @@ plot-go -o plot.png fit-curves-1.agr      # cropped to the drawing, at 300 dpi
 plot-go -dpi 600 -o plot.png fit-curves-1.agr   # line art at 600 dpi
 plot-go -fullpage -o plot.png fit-curves-1.agr  # the whole page, as gracebat's PNG
 plot-go -dpi 600 -o plot.tiff fit-curves-1.agr  # lossless TIFF (.tif also accepted)
+plot-go -merge -o All.pdf fit-curves-1.pdf fit-curves-2.pdf  # one PDF, page after page
 
 # gracebat's command line, as OneFit's C core calls Grace:
 plot-go -settype xydy gnu0.da_ -nxy fit-curves-1 -param fit1.agr-par \
@@ -50,6 +51,19 @@ Program Files `gs/gs*/bin` folders, newest version first. Add a nonstandard
 installation's `bin` directory to PATH. Windows' unrelated `convert.exe` is
 never used. ImageMagick may also need Ghostscript and a policy allowing PDF.
 Vector exports do not require any of these converters.
+
+## Merging PDF files
+
+`plot-go -merge -o All.pdf A.pdf B.pdf ...` joins PDF files page after
+page, as `pdftk A.pdf B.pdf cat output All.pdf` does, so OneFit needs no
+PDF tool to assemble a fit's `All.pdf`. It is Go's standard library only
+(package `pdfmerge`, which a Go program can also call directly) and reads
+any unencrypted PDF 1.0-2.0: cross-reference tables or streams, compressed
+object streams (as Ghostscript writes them), incremental updates, and
+files whose cross-reference data is broken, by scanning for the objects.
+Each page keeps its contents, fonts, images, links and the attributes it
+inherits from its page tree; document-level parts (outlines, forms) are
+not copied. The output may be one of the inputs.
 
 ## Plan
 

@@ -11,6 +11,11 @@
 // Lines plot-go cannot use, and features it does not draw, are warnings on
 // stderr; it still writes the file, as gracebat does.
 //
+// -merge joins PDF files into one, page after page, as
+// `pdftk A.pdf B.pdf cat output All.pdf` does, without a PDF tool:
+//
+//	plot-go -merge -o All.pdf fit-curves-1.pdf fit-curves-2.pdf ...
+//
 // It also takes gracebat's own command line (see grace.go), so OneFit can
 // call it in Grace's place:
 //
@@ -32,6 +37,7 @@ import (
 	"github.com/fitteia/OneFit-Engine-plot/draw"
 	"github.com/fitteia/OneFit-Engine-plot/internal/afm"
 	"github.com/fitteia/OneFit-Engine-plot/internal/glyph"
+	"github.com/fitteia/OneFit-Engine-plot/pdfmerge"
 	"github.com/fitteia/OneFit-Engine-plot/render"
 )
 
@@ -85,8 +91,10 @@ func main() {
 	showNotices := flag.Bool("notices", false, "print the license and third-party notices and exit")
 	listFonts := flag.Bool("list-fonts", false, "list standard and available installed TTF/OpenType font names and exit")
 	outlineText := flag.Bool("outline-text", false, "SVG: draw text as glyph outlines (the same in every browser) instead of <text>")
+	merge := flag.Bool("merge", false, "join the PDF files given into -o, page after page (as pdftk FILES cat output OUT)")
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, "usage: plot-go [-o OUT] [-format pdf|eps|svg|png|tiff] [-dpi N] [-fullpage] [-q] FILE.agr")
+		fmt.Fprintln(os.Stderr, "       plot-go -merge -o OUT.pdf FILE.pdf ...")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -102,6 +110,31 @@ func main() {
 	}
 	if *showVersion {
 		fmt.Println("plot-go", version)
+		return
+	}
+	if *merge {
+		if *out == "" || flag.NArg() == 0 {
+			flag.Usage()
+			os.Exit(2)
+		}
+		// Every input is read before the output is written, so it may
+		// replace one of them.
+		pdfs := make([][]byte, flag.NArg())
+		for i, in := range flag.Args() {
+			b, err := os.ReadFile(in)
+			if err != nil {
+				fail(err)
+			}
+			pdfs[i] = b
+		}
+		if err := writeFile(*out, func(w io.Writer) error {
+			if err := pdfmerge.Merge(w, pdfs...); err != nil {
+				return mergeError(err, flag.Args())
+			}
+			return nil
+		}); err != nil {
+			fail(err)
+		}
 		return
 	}
 	if flag.NArg() != 1 {
@@ -150,6 +183,17 @@ func main() {
 	}); err != nil {
 		fail(err)
 	}
+}
+
+// mergeError names the input pdfmerge's "PDF N: ..." refers to.
+func mergeError(err error, files []string) error {
+	var n int
+	var rest string
+	if _, scanErr := fmt.Sscanf(err.Error(), "PDF %d:", &n); scanErr == nil && n >= 1 && n <= len(files) {
+		rest = strings.TrimPrefix(err.Error(), fmt.Sprintf("PDF %d:", n))
+		return fmt.Errorf("%s:%s", files[n-1], rest)
+	}
+	return err
 }
 
 func fail(err error) {
