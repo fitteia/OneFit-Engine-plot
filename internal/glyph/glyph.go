@@ -155,13 +155,16 @@ var urwFiles = map[string]string{
 func ownCodes(font string) bool { return font == "Symbol" || font == "ZapfDingbats" }
 
 // urwDirs are searched in order, after $OFE_URW_FONTS: Debian's and
-// Fedora's places, Homebrew's (where the onefite-go formula installs
+// Fedora's places, Arch's (its gsfonts package), openSUSE's (its
+// urw-base35-fonts puts the .otf files among the TrueType ones), Homebrew's (where the onefite-go formula installs
 // them: share/fonts/urw-base35 under its prefix, or next to plot-go's own
 // install), then macOS's font folders.
 var urwDirs = append(append([]string{
 	"/usr/share/fonts/opentype/urw-base35",
 	"/usr/local/share/fonts/opentype/urw-base35",
 	"/usr/share/fonts/urw-base35",
+	"/usr/share/fonts/gsfonts",
+	"/usr/share/fonts/truetype",
 	"/opt/homebrew/share/fonts/urw-base35",
 	"/usr/local/share/fonts/urw-base35",
 }, besideExecutable()...), macFontDirs(os.Getenv("HOME"))...)

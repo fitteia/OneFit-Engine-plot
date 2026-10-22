@@ -112,7 +112,7 @@ it on the PATH, and Grace otherwise; `OFE_PLOTTER=grace` forces Grace.
 
 plot-go measures and draws text with the URW base-35 fonts, as Ghostscript
 and gracebat do, when they are installed: `fonts-urw-base35` on Debian and
-Ubuntu; on macOS the onefite-go Homebrew formula installs them (in
+Ubuntu, `urw-base35-fonts` on Fedora and openSUSE, `gsfonts` on Arch; on macOS the onefite-go Homebrew formula installs them (in
 Homebrew's `share/fonts/urw-base35`), as does `brew install --cask
 font-urw-base35` (into `~/Library/Fonts`); or any folder named in
 `OFE_URW_FONTS`. Without them it
