@@ -16,7 +16,9 @@ exactly; the tolerances are in
 [docs/grace-behaviour.md](docs/grace-behaviour.md) ("How closely plot-go
 matches"). plot-go also takes gracebat's own command line - the one
 OneFit's C core gives Grace, recorded from real fits in
-testdata/gracebat-call* - and writes the EPS and a saved project. OneFit's
+testdata/gracebat-call* - and writes the EPS and a saved project; without a
+`-param` file it scales the axes from the data, by OneFit's own `--autox`
+rule ([docs/features.md](docs/features.md)). OneFit's
 C core uses it when installed, and the OneFit GUI draws its Figures with
 it.
 

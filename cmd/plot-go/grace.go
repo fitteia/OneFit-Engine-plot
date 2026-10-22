@@ -298,10 +298,15 @@ func (g *graceRun) loadParam(name string) error {
 	if err != nil {
 		return err
 	}
-	sc := bufio.NewScanner(strings.NewReader(string(b)))
-	sc.Buffer(make([]byte, 1<<20), 1<<20)
-	for sc.Scan() {
-		line := strings.TrimRight(sc.Text(), " \t\r")
+	g.settings.WriteString(paramText(string(b)))
+	return nil
+}
+
+// paramText is a parameter file's directives, each starting with "@".
+func paramText(s string) string {
+	var b strings.Builder
+	for _, line := range strings.Split(s, "\n") {
+		line = strings.TrimRight(line, " \t\r")
 		t := strings.TrimSpace(line)
 		if t == "" || strings.HasPrefix(t, "#") {
 			continue
@@ -309,9 +314,9 @@ func (g *graceRun) loadParam(name string) error {
 		if !strings.HasPrefix(t, "@") && !isDataLine(t) {
 			line = "@" + line
 		}
-		g.settings.WriteString(line + "\n")
+		b.WriteString(line + "\n")
 	}
-	return sc.Err()
+	return b.String()
 }
 
 // isDataLine: inside a project file's data blocks, rows and "&" stay as
@@ -356,8 +361,12 @@ func (g *graceRun) dataText(types map[int]string) string {
 
 func (g *graceRun) finish() int {
 	// the data first and the settings after, so a parameter file's settings
-	// (set types included) apply to the loaded sets, as in Grace
-	text := g.dataText(nil) + g.settings.String()
+	// (set types included) apply to the loaded sets, as in Grace; data
+	// without a data window is scaled from the data (autoscale.go), before
+	// the settings so they still apply
+	before, after := g.autoSettings()
+	settings := before + g.settings.String() + after
+	text := g.dataText(nil) + settings
 	p, err := agr.Parse(strings.NewReader(text))
 	if err != nil {
 		g.warn(err.Error())
@@ -410,7 +419,7 @@ func (g *graceRun) finish() int {
 				types[s.ID] = s.Type
 			}
 		}
-		project := "# Grace project file\n#\n" + canonical(g.settings.String(), p) + g.dataText(types)
+		project := "# Grace project file\n#\n" + canonical(settings, p) + g.dataText(types)
 		if err := writeFile(g.saveall, func(w io.Writer) error {
 			_, err := io.WriteString(w, project)
 			return err

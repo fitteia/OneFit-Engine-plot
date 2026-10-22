@@ -21,7 +21,15 @@ every directive appears in all 704 files.
   points consistently in the drawing and PDF, EPS and SVG output.
 - One graph, `g0`, `type XY`, with its viewport (`view xmin ... ymax`) and
   data window (`world xmin ... ymax`) stated - OneFit computes the axis
-  ranges itself, so Grace's autoscaling is never needed.
+  ranges itself. A gracebat command line without a data window (OneFit's
+  engine run without a `-param` file) is scaled from the data with OneFit's
+  own `--autox`/`--autoy` rule, error bars included: on a Normal axis a
+  major step of 2, 5 or 10 times a power of ten for about five intervals,
+  the ends a quarter step out and on a step; on a Logarithmic one (`-log x`,
+  `y` or `xy`) decades from 0.9 times the smallest positive value to 1.1
+  times the largest. The rest is OneFit's own `.agr-par` template - page,
+  view, axes, line widths, legend and frame; sets with error bars drawn as
+  OneFit's data (symbols, error bars on), the others as its curves (lines).
 - Frame: type 0, black, linestyle 1.
 
 ## Axes
@@ -86,7 +94,7 @@ Parameter files (`.agr-par`) write their directives without the leading
 
 ## Not needed
 
-Grace's interactive editor, autoscaling, other graph types (bar, polar,
+Grace's interactive editor, Grace's own autoscaling (see above), other graph types (bar, polar,
 pie, ...), several graphs per page, fits/transforms/scripting, regions,
 fills, and fonts beyond the three above.
 
