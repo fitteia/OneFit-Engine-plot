@@ -342,6 +342,27 @@ func Outline(fontName string, c byte) ([]Seg, error) {
 	return out, nil
 }
 
+// URWGlyph is the URW font file drawing standard font fontName and the
+// index of byte c's glyph in it - what a PDF embeds of the font. ok is
+// false without the URW font or without a glyph for c.
+func URWGlyph(fontName string, c byte) (file string, gid int, ok bool) {
+	f, err := load(fontName)
+	if err != nil || !f.urw {
+		return "", 0, false
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	r := Rune(fontName, c)
+	if ownCodes(fontName) {
+		r = rune(c)
+	}
+	i, err := f.f.GlyphIndex(&f.buf, r)
+	if err != nil || i == 0 {
+		return "", 0, false
+	}
+	return urwPath(fontName), int(i), true
+}
+
 // URWInk is the box of the ink character c leaves in a standard font, in
 // ems, from the URW font when it is installed - the glyphs gracebat lays
 // its text out with. ok is false without the URW font (or for a character

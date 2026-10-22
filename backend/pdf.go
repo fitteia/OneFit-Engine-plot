@@ -20,8 +20,10 @@ const kappa = 0.5522847498
 
 // WritePDF writes the drawing as a one-page PDF cropped to its bounding box
 // (the page is the box, the drawing shifted into it), as epstopdf makes
-// OneFit's PDFs from gracebat's EPS. The standard fonts are named; additional
-// fonts are embedded as vector glyph subsets with a Unicode text mapping.
+// OneFit's PDFs from gracebat's EPS. The standard fonts are embedded from the
+// URW base-35 fonts where installed (as Ghostscript embeds them), else named;
+// additional fonts are embedded as vector glyph subsets with a Unicode text
+// mapping.
 func WritePDF(w io.Writer, d *draw.Drawing, pageW, pageH float64, title string) error {
 	return WritePDFWith(w, d, pageW, pageH, title, PDFOptions{})
 }
@@ -283,6 +285,10 @@ func buildPDF(d *draw.Drawing, pageW, pageH float64, title string, opt PDFOption
 	}
 	for i, f := range fontOrder {
 		if afm.Standard(f) {
+			// embedded from the URW font where it is installed (pdffont.go)
+			if fontObj, ok := embedStandardPDFFont(&objs, d, f); ok {
+				objs[5+i] = fontObj
+			}
 			continue
 		}
 		chars, box, err := usedGlyphs(d, f)
@@ -322,11 +328,17 @@ func WritePDFForm(d *draw.Drawing, pageW, pageH float64, opt PDFOptions, first i
 		return PDFForm{}, err
 	}
 	// the page's resources are objects 6...: they become first+1...
+	// only in an object's dictionary: a stream's bytes (a compressed font
+	// program) can hold "7 0 R" by chance
 	renumber := func(s string) string {
-		return pdfRef.ReplaceAllStringFunc(s, func(m string) string {
+		dict, stream := s, ""
+		if i := strings.Index(s, "\nstream\n"); i >= 0 {
+			dict, stream = s[:i], s[i:]
+		}
+		return pdfRef.ReplaceAllStringFunc(dict, func(m string) string {
 			n, _ := strconv.Atoi(pdfRef.FindStringSubmatch(m)[1])
 			return fmt.Sprintf("%d 0 R", first+1+n-6)
-		})
+		}) + stream
 	}
 	f := PDFForm{First: first, Width: b.width, Height: b.height}
 	f.Objects = append(f.Objects, fmt.Sprintf("<< /Type /XObject /Subtype /Form /BBox [0 0 %s %s] /Resources %s /Length %d /Filter /FlateDecode >>\nstream\n%s\nendstream",

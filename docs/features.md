@@ -71,7 +71,8 @@ every directive appears in all 704 files.
   normal), `\-` (smaller), `\x` (Symbol font, for Greek), `\0`, `\4`,
   `\8` (switch to font 0, 4, 8).
 - Fonts used: Times-Roman (0), Helvetica (4), Symbol (8) - all three are
-  standard PDF fonts, so a PDF can name them without embedding.
+  standard PDF fonts; a PDF embeds subsets of them from the URW base-35
+  fonts when those are installed, and names them otherwise.
 - Colors: Grace's standard 16-color map, written in every file.
 
 The current renderer also supports underline/overline, zoom, baseline and

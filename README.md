@@ -119,6 +119,14 @@ font-urw-base35` (into `~/Library/Fonts`); or any folder named in
 uses the Liberation fonts it carries: same widths, but legends and justified
 texts can sit 1.5-2 points off gracebat's.
 
+With the URW fonts installed, a PDF that plot-go writes embeds the standard
+fonts it uses (Times, Helvetica, Courier, Symbol, ...): a subset of the URW
+font's outlines holding only the glyphs drawn, a Type1C font program as
+Ghostscript embeds when it converts an EPS, with a Unicode map for copying
+the text. The PDF then needs no font on the reader's machine and passes
+"all fonts embedded" checks. Without the URW fonts the standard fonts are
+named, as the PDF standard allows, and the reader supplies them.
+
 ## Clean-room rule
 
 plot-go is distributed under the Artistic License 2.0 (see

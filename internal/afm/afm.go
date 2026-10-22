@@ -53,9 +53,19 @@ type glyph struct {
 	box   Box
 }
 
+// Header is what a PDF font descriptor tells of a standard font, from its
+// AFM file, in thousandths of an em (ItalicAngle in degrees).
+type Header struct {
+	FontBBox                                    [4]float64
+	ItalicAngle, Ascender, Descender, CapHeight float64
+	StdVW                                       float64
+	FixedPitch                                  bool
+}
+
 // Font holds one font's metrics by character code.
 type Font struct {
 	Name    string
+	Header  Header // standard fonts' AFM header values; zero for additional fonts
 	glyphs  map[byte]glyph
 	kern    map[[2]byte]float64
 	missing map[byte]bool
@@ -121,6 +131,27 @@ func parse(name, src string) (*Font, error) {
 	sc := bufio.NewScanner(strings.NewReader(src))
 	for sc.Scan() {
 		line := sc.Text()
+		if h := strings.Fields(line); len(h) > 1 {
+			v := func(i int) float64 { x, _ := strconv.ParseFloat(h[i], 64); return x }
+			switch h[0] {
+			case "FontBBox":
+				if len(h) == 5 {
+					f.Header.FontBBox = [4]float64{v(1), v(2), v(3), v(4)}
+				}
+			case "ItalicAngle":
+				f.Header.ItalicAngle = v(1)
+			case "Ascender":
+				f.Header.Ascender = v(1)
+			case "Descender":
+				f.Header.Descender = v(1)
+			case "CapHeight":
+				f.Header.CapHeight = v(1)
+			case "StdVW":
+				f.Header.StdVW = v(1)
+			case "IsFixedPitch":
+				f.Header.FixedPitch = h[1] == "true"
+			}
+		}
 		if strings.HasPrefix(line, "KPX ") {
 			p := strings.Fields(line)
 			if len(p) == 4 {

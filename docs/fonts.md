@@ -75,6 +75,15 @@ No additional font files are shipped with plot-go. OpenType flags forbidding
 embedding, subsetting or outline embedding cause a warned Helvetica fallback.
 Use fonts whose terms permit your intended use and distribution of figures.
 
+The standard fonts (Times, Helvetica, Courier, Symbol, ZapfDingbats and the
+rest of the base 35) are embedded in a PDF when the URW base-35 fonts are
+installed: the glyphs used, subset from the URW OpenType file's CFF outlines
+into a Type1C font program (`FontFile3`) with the font's own encoding and a
+Unicode mapping - the same kind of font Ghostscript embeds from an EPS, and
+drawn the same. Without the URW fonts, or for a character the URW font has
+no glyph for, the font is named instead and the viewer supplies it. EPS
+output names the standard fonts, as PostScript does.
+
 ## Limits
 
 Grace text remains byte-oriented Latin-1; `\#{b0}C` produces degrees Celsius,
