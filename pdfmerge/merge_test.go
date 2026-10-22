@@ -270,6 +270,34 @@ func TestMergeInheritsFromThePageTree(t *testing.T) {
 	}
 }
 
+func TestSplit(t *testing.T) {
+	a, b := gsPDF(t), plotPDF(t, "style-avalue-1.agr")
+	pages, err := Split(merge(t, a, b))
+	if err != nil || len(pages) != 2 {
+		t.Fatalf("Split: %d pages, %v", len(pages), err)
+	}
+	for i, src := range [][]byte{a, b} {
+		if n, err := Pages(pages[i]); err != nil || n != 1 {
+			t.Errorf("page %d: %d pages, %v", i+1, n, err)
+		}
+		if !bytes.Equal(content(t, pages[i], 0), content(t, src, 0)) {
+			t.Errorf("page %d: content differs from its source", i+1)
+		}
+	}
+	// treePDF's page 2 links to page 1: alone, the link leads nowhere
+	// rather than pulling page 1 in.
+	tree, err := Split(build(treePDF, false, nil))
+	if err != nil || len(tree) != 2 {
+		t.Fatalf("Split tree: %d, %v", len(tree), err)
+	}
+	if bytes.Contains(tree[1], []byte("0 0 m S")) {
+		t.Error("page 2 alone carries page 1's content")
+	}
+	if !bytes.Contains(tree[1], []byte("/Dest [null /Fit]")) {
+		t.Errorf("page 2's link: %s", tree[1])
+	}
+}
+
 // TestMergeFindsObjectsWhenOffsetsAreWrong: a file edited by hand (lines
 // added) has every xref offset wrong; the objects are found by scanning.
 func TestMergeFindsObjectsWhenOffsetsAreWrong(t *testing.T) {

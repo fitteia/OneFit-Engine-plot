@@ -63,7 +63,9 @@ object streams (as Ghostscript writes them), incremental updates, and
 files whose cross-reference data is broken, by scanning for the objects.
 Each page keeps its contents, fonts, images, links and the attributes it
 inherits from its page tree; document-level parts (outlines, forms) are
-not copied. The output may be one of the inputs.
+not copied. The output may be one of the inputs. From Go, `pdfmerge.Split`
+also does the reverse - a PDF per page, as `pdftk A.pdf burst` - which
+OneFit uses to make a fit's movie from `All.pdf`.
 
 ## Plan
 

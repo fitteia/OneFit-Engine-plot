@@ -1,6 +1,7 @@
 // Package pdfmerge joins PDF files into one, page after page, as
-// `pdftk A.pdf B.pdf cat output All.pdf` does - with the standard library
-// only, so OneFit needs no PDF tool for it.
+// `pdftk A.pdf B.pdf cat output All.pdf` does, and splits one into a PDF
+// per page, as `pdftk A.pdf burst` does - with the standard library only,
+// so OneFit needs no PDF tool for either.
 //
 // It reads PDF 1.0 to 1.7 and 2.0 files: cross-reference tables or
 // streams (and hybrids), compressed object streams, incremental updates,
@@ -35,7 +36,42 @@ func Merge(w io.Writer, pdfs ...[]byte) error {
 		}
 		docs[i] = d
 	}
-	return write(w, docs, nil)
+	return write(w, parts(docs), nil)
+}
+
+// Split returns each page of pdf as a PDF of its own, in order.
+func Split(pdf []byte) ([][]byte, error) {
+	d, err := parse(pdf)
+	if err != nil {
+		return nil, err
+	}
+	pages, err := d.pages()
+	if err != nil {
+		return nil, err
+	}
+	out := make([][]byte, len(pages))
+	for i := range pages {
+		var b bytes.Buffer
+		if err := write(&b, []part{{d, []int{i}}}, nil); err != nil {
+			return nil, err
+		}
+		out[i] = b.Bytes()
+	}
+	return out, nil
+}
+
+// part is the pages of one input to write: all of them when pages is nil.
+type part struct {
+	d     *doc
+	pages []int
+}
+
+func parts(docs []*doc) []part {
+	ps := make([]part, len(docs))
+	for i, d := range docs {
+		ps[i] = part{d: d}
+	}
+	return ps
 }
 
 // MergeFiles is Merge for files: it reads every one before writing, so
@@ -54,7 +90,7 @@ func MergeFiles(w io.Writer, paths ...string) error {
 			return fmt.Errorf("%s: %w", path, err)
 		}
 	}
-	return write(w, docs, paths)
+	return write(w, parts(docs), paths)
 }
 
 // Pages counts the pages of a PDF.
@@ -175,12 +211,13 @@ func (o *output) alloc() int {
 	return len(o.objs)
 }
 
-func write(w io.Writer, docs []*doc, paths []string) error {
+func write(w io.Writer, docs []part, paths []string) error {
 	o := &output{}
 	catalog, tree := o.alloc(), o.alloc()
 	version := "1.4"
 	var kids []int
-	for i, d := range docs {
+	for i, part := range docs {
+		d := part.d
 		label := fmt.Sprintf("PDF %d", i+1)
 		if paths != nil {
 			label = paths[i]
@@ -197,7 +234,24 @@ func write(w io.Writer, docs []*doc, paths []string) error {
 		if err != nil {
 			return fmt.Errorf("%s: %w", label, err)
 		}
-		c := &copier{d: d, o: o, newNum: map[int]int{}}
+		all := pages
+		if part.pages != nil {
+			chosen := make([]page, 0, len(part.pages))
+			for _, j := range part.pages {
+				if j < 0 || j >= len(pages) {
+					return fmt.Errorf("%s: no page %d", label, j+1)
+				}
+				chosen = append(chosen, pages[j])
+			}
+			pages = chosen
+		}
+		c := &copier{d: d, o: o, newNum: map[int]int{}, skip: map[int]bool{}}
+		// A page not written (Split) is not reached through a link to it.
+		for _, p := range all {
+			if p.num != 0 {
+				c.skip[p.num] = true
+			}
+		}
 		// References to the old page tree's nodes lead to the new one.
 		for _, n := range d.treeNodes() {
 			c.newNum[n] = tree
@@ -207,6 +261,7 @@ func write(w io.Writer, docs []*doc, paths []string) error {
 			nums[j] = o.alloc()
 			if p.num != 0 {
 				c.newNum[p.num] = nums[j]
+				delete(c.skip, p.num)
 			}
 		}
 		for j, p := range pages {
@@ -279,7 +334,8 @@ type copier struct {
 	d      *doc
 	o      *output
 	newNum map[int]int
-	queue  []int // input numbers given a new number, still to copy
+	skip   map[int]bool // pages left out, written as null where referred to
+	queue  []int        // input numbers given a new number, still to copy
 }
 
 func (c *copier) num(old int) int {
@@ -341,7 +397,7 @@ func (c *copier) value(b *bytes.Buffer, v object) {
 	case outRef:
 		fmt.Fprintf(b, "%d 0 R", int(o))
 	case ref:
-		if _, ok := c.d.xref[o.num]; !ok {
+		if _, ok := c.d.xref[o.num]; !ok || c.skip[o.num] {
 			b.WriteString("null") // a reference to nothing is null
 			return
 		}
