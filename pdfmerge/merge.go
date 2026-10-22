@@ -278,6 +278,11 @@ func write(w io.Writer, docs []part, paths []string) error {
 		}
 		kids = append(kids, nums...)
 	}
+	// No page found at all is a file not understood, not an empty result:
+	// a PDF of no pages is not a valid PDF.
+	if len(kids) == 0 {
+		return errors.New("no pages found in the PDF files")
+	}
 	var b bytes.Buffer
 	b.WriteString("<< /Type /Pages /Kids [")
 	for i, k := range kids {
@@ -391,7 +396,7 @@ func (c *copier) value(b *bytes.Buffer, v object) {
 		b.WriteString(string(o))
 	case name:
 		b.WriteByte('/')
-		b.WriteString(string(o))
+		b.WriteString(encodeName(o))
 	case str:
 		b.Write(o)
 	case outRef:
@@ -415,7 +420,7 @@ func (c *copier) value(b *bytes.Buffer, v object) {
 		b.WriteString("<<")
 		for i, k := range o.keys {
 			b.WriteString(" /")
-			b.WriteString(string(k))
+			b.WriteString(encodeName(k))
 			b.WriteByte(' ')
 			c.value(b, o.vals[i])
 		}

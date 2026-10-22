@@ -8,6 +8,7 @@ import (
 	"io"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 // A PDF object as read: nil (null), bool, number (its text, kept to
@@ -87,6 +88,16 @@ type parser struct {
 	doc *doc
 }
 
+// at is a parser reading b from pos. An offset taken from the file may
+// point anywhere: one outside b reads as the end of the file (no object
+// there), so it is an error or a reason to rebuild, never a crash.
+func at(b []byte, pos int, d *doc) *parser {
+	if pos < 0 || pos > len(b) {
+		pos = len(b)
+	}
+	return &parser{b: b, pos: pos, doc: d}
+}
+
 func (p *parser) skip() {
 	for p.pos < len(p.b) {
 		c := p.b[p.pos]
@@ -153,7 +164,7 @@ func (p *parser) objectDepth(depth int) (object, error) {
 	switch c := p.b[p.pos]; {
 	case c == '/':
 		p.pos++
-		return name(p.word()), nil
+		return decodeName(p.word()), nil
 	case c == '(':
 		return p.literal()
 	case c == '<' && p.pos+1 < len(p.b) && p.b[p.pos+1] == '<':
@@ -239,6 +250,42 @@ func (p *parser) objectDepth(depth int) (object, error) {
 	}
 }
 
+// decodeName undoes a name's #xx escapes: /Pa#67es is the name /Pages.
+// A # not followed by two hex digits stays as it is.
+func decodeName(raw string) name {
+	if !strings.Contains(raw, "#") {
+		return name(raw)
+	}
+	var b strings.Builder
+	for i := 0; i < len(raw); i++ {
+		if raw[i] == '#' && i+2 < len(raw) {
+			if v, err := strconv.ParseUint(raw[i+1:i+3], 16, 8); err == nil {
+				b.WriteByte(byte(v))
+				i += 2
+				continue
+			}
+		}
+		b.WriteByte(raw[i])
+	}
+	return name(b.String())
+}
+
+// encodeName writes a name's bytes back, escaping as #xx those a name
+// cannot hold as they are (white space, delimiters, #, and bytes outside
+// printable ASCII).
+func encodeName(n name) string {
+	var b strings.Builder
+	for i := 0; i < len(n); i++ {
+		c := n[i]
+		if c < '!' || c > '~' || c == '#' || isDelim(c) {
+			fmt.Fprintf(&b, "#%02X", c)
+			continue
+		}
+		b.WriteByte(c)
+	}
+	return b.String()
+}
+
 // literal reads a (string), whose parentheses nest and whose backslash
 // escapes the next byte.
 func (p *parser) literal() (object, error) {
@@ -295,7 +342,7 @@ func (p *parser) indirect() (int, object, error) {
 		}
 	}
 	if length >= 0 && start+length <= len(p.b) {
-		q := &parser{b: p.b, pos: start + length}
+		q := at(p.b, start+length, nil)
 		if q.keyword("endstream") {
 			p.pos = q.pos
 			return num, &stream{d, p.b[start : start+length]}, nil
@@ -379,7 +426,7 @@ func (d *doc) readXref() error {
 	if i < 0 {
 		return errors.New("no startxref")
 	}
-	p := &parser{b: tail, pos: i + len("startxref")}
+	p := at(tail, i+len("startxref"), nil)
 	p.skip()
 	off, err := strconv.Atoi(p.word())
 	if err != nil {
@@ -415,7 +462,7 @@ func (d *doc) readXref() error {
 // readSection reads the xref table or xref stream at off and returns its
 // trailer dictionary.
 func (d *doc) readSection(off int) (*dict, error) {
-	p := &parser{b: d.b, pos: off}
+	p := at(d.b, off, nil)
 	if !p.keyword("xref") {
 		_, v, err := p.indirect()
 		if err != nil {
@@ -467,7 +514,7 @@ func (d *doc) readSection(off int) (*dict, error) {
 	// A hybrid file lists its compressed objects in an xref stream too.
 	if x, ok := trailer.get("XRefStm").(number); ok {
 		if n, err := strconv.Atoi(string(x)); err == nil {
-			q := &parser{b: d.b, pos: n}
+			q := at(d.b, n, nil)
 			if _, v, err := q.indirect(); err == nil {
 				if s, ok := v.(*stream); ok {
 					if err := d.readXrefStream(s); err != nil {
@@ -578,7 +625,7 @@ func (d *doc) rebuild() error {
 		direct[n] = true
 	}
 	for n := range direct {
-		p := &parser{b: d.b, pos: d.xref[n].off}
+		p := at(d.b, d.xref[n].off, nil)
 		_, v, err := p.indirect()
 		s, ok := v.(*stream)
 		if err != nil || !ok || s.d.get("Type") != name("ObjStm") {
@@ -598,7 +645,7 @@ func (d *doc) rebuild() error {
 	// stream's, else one made from the catalog.
 	trailer := &dict{}
 	if i := bytes.LastIndex(d.b, []byte("trailer")); i >= 0 {
-		p := &parser{b: d.b, pos: i + len("trailer")}
+		p := at(d.b, i+len("trailer"), nil)
 		if v, err := p.object(); err == nil {
 			if t, ok := v.(*dict); ok {
 				trailer = t
@@ -656,7 +703,7 @@ func (d *doc) get(num int) (object, error) {
 	if e.inStm {
 		v, err = d.fromStream(num, e)
 	} else {
-		p := &parser{b: d.b, pos: e.off, doc: d}
+		p := at(d.b, e.off, d)
 		var n int
 		n, v, err = p.indirect()
 		if err == nil && n != num {
@@ -718,7 +765,7 @@ func (d *doc) unpack(stm int, s *stream) ([]int, []object, error) {
 	if !ok1 || !ok2 || n < 0 || first < 0 || first > len(data) {
 		return nil, nil, fmt.Errorf("object stream %d: bad /N or /First", stm)
 	}
-	p := &parser{b: data[:first]}
+	p := at(data[:first], 0, nil)
 	nums := make([]int, 0, n)
 	offs := make([]int, 0, n)
 	for i := 0; i < n; i++ {
@@ -733,7 +780,7 @@ func (d *doc) unpack(stm int, s *stream) ([]int, []object, error) {
 	}
 	objs := make([]object, n)
 	for i, off := range offs {
-		q := &parser{b: data, pos: first + off, doc: d}
+		q := at(data, first+off, d)
 		if first+off > len(data) {
 			return nil, nil, fmt.Errorf("object stream %d: bad offset", stm)
 		}

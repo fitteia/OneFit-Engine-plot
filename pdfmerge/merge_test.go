@@ -321,6 +321,7 @@ func TestMergeRefuses(t *testing.T) {
 		want string
 	}{
 		{"nothing", nil, "no PDF files"},
+		{"no pages", [][]byte{build([]string{"<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [] /Count 0 >>"}, false, nil)}, "no pages"},
 		{"not a PDF", [][]byte{[]byte("hello")}, "not a PDF"},
 		{"encrypted", [][]byte{enc}, "encrypted"},
 	} {
@@ -356,7 +357,78 @@ func FuzzMerge(f *testing.F) {
 	if b, err := os.ReadFile(filepath.Join("..", "testdata", "pdfmerge", "gs-objstm.pdf")); err == nil {
 		f.Add(b)
 	}
+	f.Add(bytes.Replace(build(treePDF, false, nil), []byte("/Type /Pages /Kids [3 0 R]"), []byte("/Type /Pa#67es /Kids [3 0 R]"), 1))
+	f.Add(bytes.Replace(build(treePDF, false, nil), []byte("/Root 1 0 R"), []byte("/Root 1 0 R /XRefStm 12"), 1))
+	// whatever comes in, a merge that succeeds wrote a valid PDF: pages,
+	// and a cross-reference table that is right
 	f.Fuzz(func(t *testing.T, b []byte) {
-		Merge(&bytes.Buffer{}, b)
+		var out bytes.Buffer
+		if Merge(&out, b) != nil {
+			return
+		}
+		d, err := parse(out.Bytes())
+		if err != nil || d.rebuilt {
+			t.Fatalf("merge succeeded but wrote an unreadable PDF: %v", err)
+		}
+		if n, err := Pages(out.Bytes()); err != nil || n == 0 {
+			t.Fatalf("merge succeeded but wrote %d pages: %v", n, err)
+		}
 	})
+}
+
+// TestMergeNamesWithHexEscapes: /Pa#67es is the name /Pages (a #xx
+// escape is the byte it stands for), so the page is found.
+func TestMergeNamesWithHexEscapes(t *testing.T) {
+	src := build(treePDF, false, nil)
+	src = bytes.Replace(src, []byte("/Type /Pages /Kids [3 0 R]"), []byte("/Type /Pa#67es /Kids [3 0 R]"), 1)
+	src = bytes.Replace(src, []byte("/Type /Catalog /Pages 2 0 R"), []byte("/Type /Catalog /P#61ges 2 0 R"), 1)
+	out := merge(t, src)
+	if n, err := Pages(out); err != nil || n != 2 {
+		t.Fatalf("pages = %d, %v; want 2", n, err)
+	}
+	// a name with a character that must be escaped is written escaped
+	d, _ := parse(build([]string{"<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+		"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 1 1] /Resources << /Font << /F#20one 4 0 R >> >> >>", "<< /Type /Font >>"}, false, nil))
+	var b bytes.Buffer
+	if err := write(&b, parts([]*doc{d}), nil); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(b.Bytes(), []byte("/F#20one")) {
+		t.Errorf("a name with a space is not written escaped:\n%s", b.Bytes())
+	}
+}
+
+// TestMergeBadOffsetsAreErrorsNotPanics: offsets out of the file (a
+// negative /XRefStm, xref entries past the end) are reported or repaired,
+// never a crash.
+func TestMergeBadOffsetsAreErrorsNotPanics(t *testing.T) {
+	src := build(treePDF, false, nil)
+	for _, c := range [][2]string{
+		{"/Root 1 0 R", "/Root 1 0 R /XRefStm -1"},
+		{"/Root 1 0 R", "/Root 1 0 R /XRefStm 99999999"},
+		{"/Root 1 0 R", "/Root 1 0 R /Prev -5"},
+	} {
+		in := bytes.Replace(src, []byte(c[0]), []byte(c[1]), 1)
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Errorf("%s: panic %v", c[1], r)
+				}
+			}()
+			Merge(&bytes.Buffer{}, in)
+		}()
+	}
+	// an xref entry pointing past the end of the file
+	i := bytes.Index(src, []byte("xref\n"))
+	bad := append([]byte{}, src...)
+	j := bytes.Index(bad[i:], []byte(" 00000 n")) + i
+	copy(bad[j-10:j], "9999999999")
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("offset past the end: panic %v", r)
+			}
+		}()
+		Merge(&bytes.Buffer{}, bad)
+	}()
 }
