@@ -13,7 +13,7 @@ cd "$(dirname "$0")/.."
 version="${VERSION:-$(git describe --tags --always --dirty | sed 's/^v//')}"
 rm -rf dist
 mkdir -p dist
-for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
+for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
   os="${target%/*}" arch="${target#*/}"
   out="dist/plot-go_${os}_${arch}"
   [ "$os" = windows ] && out="$out.exe"
