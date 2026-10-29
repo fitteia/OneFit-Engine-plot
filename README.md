@@ -96,10 +96,12 @@ OneFit uses to make a fit's movie from `All.pdf`.
 
 ## Install
 
-Prebuilt binaries for Linux (amd64, arm64), macOS (Intel, Apple Silicon)
-and Windows are attached to each [release](https://github.com/fitteia/OneFit-Engine-plot/releases)
+Prebuilt binaries for Linux, macOS and Windows, each on amd64 and arm64
+(Intel and Apple Silicon on macOS), are attached to each [release](https://github.com/fitteia/OneFit-Engine-plot/releases)
 (`plot-go_OS_ARCH`, with `SHA256SUMS`; `releases/latest/download/plot-go_linux_amd64`
-is always the newest); put one on the PATH as `plot-go`. Or, with Go: `go install github.com/fitteia/OneFit-Engine-plot/cmd/plot-go@latest`.
+is always the newest); put one on the PATH as `plot-go`. Each release also has
+`plot-go-VERSION-OS-ARCH.zip`, the binary with its licences (`LICENSE`,
+`THIRD-PARTY-LICENSES.txt`, `MustRead.html`), to pass on to someone. Or, with Go: `go install github.com/fitteia/OneFit-Engine-plot/cmd/plot-go@latest`.
 
 Building from source requires Go 1.25 or newer; use the latest security patch
 of your Go release. Release builds use the current stable Go toolchain.

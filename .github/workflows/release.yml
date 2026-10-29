@@ -24,7 +24,7 @@ jobs:
         run: |
           apt-get update -qq
           apt-get install -y -qq --no-install-recommends git ca-certificates \
-            ghostscript poppler-utils fonts-urw-base35 librsvg2-bin
+            ghostscript poppler-utils fonts-urw-base35 librsvg2-bin zip
 
       - uses: actions/checkout@v5
         with:
@@ -53,11 +53,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            dist/plot-go_*
-            dist/SHA256SUMS
-            dist/LICENSE
-            dist/NOTICE
-            dist/MustRead.html
+            dist/*
           generate_release_notes: true
           # a tag with a "-" (v1.0.0-rc1) is a GitHub pre-release, so
           # releases/latest/download/... stays the last final version
